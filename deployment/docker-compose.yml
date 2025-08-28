@@ -1,0 +1,105 @@
+
+# Environment variables that should be set:
+# PROJECT_NAME - Project name (default: )
+# NGINX_PORT_80 - HTTP port (default: 8090)
+# NGINX_PORT_443 - HTTPS port (default: 8091)
+
+services:
+    app:
+        build:
+            context: ../.
+            dockerfile: deployment/Dockerfile
+        image: ${PROJECT_NAME:-}
+        restart: unless-stopped
+        working_dir: /var/www/
+        volumes:
+            - code_base:/var/www
+            - ../.env:/var/www/.env
+        networks:
+            - app_network
+        depends_on:
+            db:
+                condition: service_healthy
+            redis:
+                condition: service_started
+        env_file:
+            - ../.env
+
+    db:
+        image: postgres:13
+        restart: unless-stopped
+        env_file:
+            - ../.env
+        volumes:
+            - db_data:/var/lib/postgresql/data
+        networks:
+            - app_network
+        healthcheck:
+            test: [ "CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_DATABASE:-app_db}" ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
+
+    redis:
+        image: redis:7-alpine
+        container_name: ${PROJECT_NAME:-}_redis_prod
+        restart: unless-stopped
+        volumes:
+            - redis_data:/data
+        networks:
+            - app_network
+
+    nginx:
+        image: nginx:alpine
+        container_name: ${PROJECT_NAME:-}_nginx_prod
+        restart: unless-stopped
+        # Expose port externally for testing
+        ports:
+            - "${NGINX_PORT_80:-8080}:80"
+        volumes:
+            - code_base:/var/www
+            - ./nginx.conf:/etc/nginx/nginx.conf:ro
+            - ../storage/logs:/var/log/nginx
+        networks:
+            - app_network
+        depends_on:
+            - app
+        healthcheck:
+            test: ["CMD", "curl", "--silent", "--fail", "http://localhost/health"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
+        command: >
+            sh -c "
+              nginx -g 'daemon off;'
+            "
+
+    queue:
+        image: ${PROJECT_NAME:-}
+        restart: unless-stopped
+        working_dir: /var/www/
+        volumes:
+            - code_base:/var/www
+            - ../.env:/var/www/.env
+        networks:
+            - app_network
+        depends_on:
+            db:
+                condition: service_healthy
+            redis:
+                condition: service_started
+        env_file:
+            - ../.env
+        command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+
+
+volumes:
+    code_base:
+    db_data:
+    redis_data:
+
+networks:
+    app_network:
+        driver: bridge
