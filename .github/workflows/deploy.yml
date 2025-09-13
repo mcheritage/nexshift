@@ -1,4 +1,4 @@
-name: Deploy CampusHive
+name: Deploy Nexshift App
 
 on:
   push:
@@ -48,7 +48,7 @@ jobs:
     # Set environment-specific variables
     env:
       # Project Configuration (set these in GitHub repository variables)
-      PROJECT_NAME: ${{ vars.PROJECT_NAME || 'campushive' }}
+      PROJECT_NAME: ${{ vars.PROJECT_NAME || 'nexshift' }}
       PROJECT_PORT: ${{ vars.PROJECT_PORT || '8080' }}
       DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || github.ref_name }}
 
@@ -57,8 +57,8 @@ jobs:
       NGINX_PORT_443: ${{ vars.PROJECT_PORT_443 || '8091' }}
 
       # Domain Configuration (set these in GitHub repository variables)
-      DOMAIN: ${{ vars.DOMAIN || 'campushive.sandbox.novarelabs.dev' }}
-      API_DOMAIN: ${{ vars.API_DOMAIN || 'api.campushive.sandbox.novarelabs.dev' }}
+      DOMAIN: ${{ vars.DOMAIN || 'nexshift.sandbox.novarelabs.dev' }}
+      API_DOMAIN: ${{ vars.API_DOMAIN || 'api.nexshift.sandbox.novarelabs.dev' }}
 
       # Deployment Options (GitHub Variables or workflow inputs)
       FORCE_REBUILD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force_rebuild || vars.FORCE_REBUILD || 'false' }}
@@ -117,12 +117,12 @@ jobs:
           ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} << 'EOF'
             chmod +x /tmp/setup-reverse-proxy.sh
             cd /tmp
-            
+
             # Get domain from environment variables or use defaults
-            DOMAIN="${{ vars.DOMAIN || 'campushive.sandbox.novarelabs.dev' }}"
-            API_DOMAIN="${{ vars.API_DOMAIN || 'api.campushive.sandbox.novarelabs.dev' }}"
+            DOMAIN="${{ vars.DOMAIN || 'nexshift.sandbox.novarelabs.dev' }}"
+            API_DOMAIN="${{ vars.API_DOMAIN || 'api.nexshift.sandbox.novarelabs.dev' }}"
             PROJECT_PORT="${{ vars.PROJECT_PORT || '8080' }}"
-            
+
             # Run setup script with our specific domain
             ./setup-reverse-proxy.sh "$DOMAIN" "$API_DOMAIN" "$PROJECT_PORT"
           EOF
@@ -134,8 +134,8 @@ jobs:
           NGINX_PORT_443_NUM=$((PROJECT_PORT_NUM + 1))
 
           # Get domain information
-          DOMAIN="${{ vars.DOMAIN || 'campushive.sandbox.novarelabs.dev' }}"
-          API_DOMAIN="${{ vars.API_DOMAIN || 'api.campushive.sandbox.novarelabs.dev' }}"
+          DOMAIN="${{ vars.DOMAIN || 'nexshift.sandbox.novarelabs.dev' }}"
+          API_DOMAIN="${{ vars.API_DOMAIN || 'api.nexshift.sandbox.novarelabs.dev' }}"
 
           echo "🚀 Deployment completed!"
           echo "Environment: $DEPLOY_ENV"

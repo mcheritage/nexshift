@@ -22,4 +22,9 @@ class CareHome extends Model
     {
         return $this->hasOne(User::class);
     }
+
+    public function documents()
+    {
+        return $this->hasMany(Document::class);
+    }
 }

@@ -19,7 +19,7 @@ class AdminUserSeeder extends Seeder
             'email' => 'admin@nexshift.com',
             'password' => Hash::make('password'),
             'email_verified_at' => now(),
-            'is_admin' => true,
+            'role' => 'admin',
             'gender' => 'other',
         ]);
 

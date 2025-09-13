@@ -14,7 +14,7 @@ VPS_USER="${VPS_USER:-}"
 VPS_PATH="${VPS_PATH:-}"
 
 # Project Configuration (set in GitHub workflow)
-PROJECT_NAME="${PROJECT_NAME:-}"
+PROJECT_NAME="${PROJECT_NAME:-nexshift}"
 DEPLOY_ENV="${DEPLOY_ENV:-sandbox}"
 PROJECT_PORT="${PROJECT_PORT:-8080}"
 
@@ -23,8 +23,8 @@ NGINX_PORT_80="${PROJECT_PORT}"
 NGINX_PORT_443="$((PROJECT_PORT + 1))"
 
 # Domain Configuration (set in GitHub workflow)
-DOMAIN="${DOMAIN:-campushive.sandbox.novarelabs.dev}"
-API_DOMAIN="${API_DOMAIN:-api.campushive.sandbox.novarelabs.dev}"
+DOMAIN="${DOMAIN:-nexshift.sandbox.novarelabs.dev}"
+API_DOMAIN="${API_DOMAIN:-api.nexshift.sandbox.novarelabs.dev}"
 
 # Deployment Options (set in GitHub workflow)
 FORCE_REBUILD="${FORCE_REBUILD:-false}"
@@ -111,7 +111,7 @@ fi
 echo -e "${BLUE}📁 Checking project directory...${NC}"
 if ssh $VPS_USER@$VPS_HOST "[ -d \"$VPS_PATH\" ]"; then
     echo -e "${GREEN}✅ Project directory exists, pulling latest changes...${NC}"
-    ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && GIT_SSH_COMMAND='ssh -i ~/.ssh/campushive' git fetch origin && GIT_SSH_COMMAND='ssh -i ~/.ssh/campushive' git reset --hard origin/$DEPLOY_ENV"
+    ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && GIT_SSH_COMMAND='ssh -i ~/.ssh/nexshift' git fetch origin && GIT_SSH_COMMAND='ssh -i ~/.ssh/nexshift' git reset --hard origin/$DEPLOY_ENV"
 else
     echo -e "${YELLOW}⚠️  Project directory does not exist, creating and cloning repository...${NC}"
 
@@ -120,7 +120,7 @@ else
 
     # Clone the repository using SSH key
     echo -e "${BLUE}📥 Cloning repository to $VPS_PATH using SSH key...${NC}"
-    ssh $VPS_USER@$VPS_HOST "GIT_SSH_COMMAND='ssh -i ~/.ssh/campushive' git clone -b $DEPLOY_ENV git@github.com:novarelabs/campushive_laravel.git \"$VPS_PATH\""
+    ssh $VPS_USER@$VPS_HOST "GIT_SSH_COMMAND='ssh -i ~/.ssh/nexshift' git clone -b $DEPLOY_ENV git@github.com:novarelabs/nexshift.git \"$VPS_PATH\""
 
     if [ $? -ne 0 ]; then
         echo -e "${RED}❌ Failed to clone repository. Please check:${NC}"
@@ -162,7 +162,7 @@ elif [ "$CLEAR_VOLUMES" = "true" ]; then
 
   # Remove only volumes specific to this project
   # Docker Compose creates volumes with pattern: PROJECT_NAME_ENV_volumename
-  # Example: campushive_sandbox_code_base, campushive_sandbox_db_data, etc.
+  # Example: nexshift_sandbox_code_base, nexshift_sandbox_db_data, etc.
   ssh $VPS_USER@$VPS_HOST "docker volume ls -q | grep -E '${COMPOSE_PROJECT_NAME}_|${PROJECT_NAME}_' | xargs -r docker volume rm" || echo "No project-specific volumes found to remove"
 
   echo -e "${YELLOW}⚠️ Project volumes cleared. This will reset database and cache data for $PROJECT_NAME only.${NC}"
@@ -185,6 +185,13 @@ if [ "$FORCE_REBUILD" = "true" ]; then
   ssh $VPS_USER@$VPS_HOST "docker builder prune -f"
   echo "Build cache cleared."
 fi
+
+# Fix Git ownership issues on VPS before building containers
+echo -e "${BLUE}🔧 Fixing Git ownership issues...${NC}"
+ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && git config --global --add safe.directory $VPS_PATH" || echo "Git config already set"
+ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && git config --global user.name 'Deployment Script'" || echo "Git user.name already set"
+ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && git config --global user.email 'deploy@novarelabs.dev'" || echo "Git user.email already set"
+echo -e "${GREEN}✅ Git ownership issues resolved${NC}"
 
 # Copy .env file to VPS
 echo -e "${BLUE}📋 Copying .env file...${NC}"

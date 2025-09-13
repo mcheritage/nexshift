@@ -40,6 +40,7 @@ class User extends Authenticatable
         'care_home_id',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -79,10 +80,35 @@ class User extends Authenticatable
         return $this->belongsTo(CareHome::class);
     }
 
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class);
+    }
+
+    public function unreadNotifications()
+    {
+        return $this->hasMany(Notification::class)->where('read', false);
+    }
+
     public function getNameAttribute(): string {
         if($care_home = $this->care_home) {
             return $care_home->name;
         }
         return "{$this->first_name} {$this->last_name}";
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isCareHomeAdmin(): bool
+    {
+        return $this->role === 'care_home_admin';
+    }
+
+    public function isHealthCareWorker(): bool
+    {
+        return $this->role === 'health_care_worker';
     }
 }

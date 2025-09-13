@@ -1,4 +1,4 @@
-FROM php:8.2-fpm
+FROM php:8.4-fpm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -40,6 +40,30 @@ COPY . /var/www
 # Set proper ownership for all files
 RUN chown -R dev:dev /var/www
 
+# Configure Git to trust the directory ownership (fixes dubious ownership error)
+RUN git config --global --add safe.directory /var/www
+
+# Create a startup script to handle Git ownership issues
+RUN echo '#!/bin/bash\n\
+    # Fix Git ownership issues if they occur\n\
+    if [ -d "/var/www/.git" ]; then\n\
+    git config --global --add safe.directory /var/www\n\
+    git config --global user.name "Docker Container"\n\
+    git config --global user.email "docker@container.local"\n\
+    fi\n\
+    \n\
+    # Start the original command\n\
+    exec "$@"' > /usr/local/bin/docker-entrypoint.sh && \
+    chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Create a Git configuration file in the working directory
+RUN echo "[safe]\n\
+    directory = /var/www\n\
+    [user]\n\
+    name = Docker Container\n\
+    email = docker@container.local" > /var/www/.gitconfig && \
+    chown dev:dev /var/www/.gitconfig
+
 # Install Composer dependencies
 RUN composer install --no-interaction
 
@@ -52,7 +76,7 @@ RUN chmod -R 775 storage bootstrap/cache
 # Change current user to dev
 USER dev
 
-
 # Expose port 9000 and start php-fpm server
 EXPOSE 9000
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["php-fpm"]
