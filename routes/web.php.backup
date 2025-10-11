@@ -40,50 +40,59 @@ Route::middleware(['auth'])->group(function () {
             'testData' => 'Navigation Test'
         ]);
     });
-    
-    // Debug navigation route
-    Route::get('/debug-nav', function () {
-        return Inertia::render('DebugNav');
+
+    // Document upload routes for care homes
+    Route::prefix('documents')->name('documents.')->group(function () {
+        Route::get('/', [App\Http\Controllers\DocumentUploadController::class, 'index'])->name('index');
+        Route::post('/upload', [App\Http\Controllers\DocumentUploadController::class, 'upload'])->name('upload');
+        Route::delete('/delete', [App\Http\Controllers\DocumentUploadController::class, 'delete'])->name('delete');
+        Route::get('/download/{document}', [App\Http\Controllers\DocumentUploadController::class, 'download'])->name('download');
     });
-    
-    // Simple JSON debug route
-    Route::get('/debug-simple', function () {
-        return response()->json([
-            'user' => auth()->user(),
-            'role' => auth()->user()?->role,
-            'expected_nav_for_care_home_admin' => [
-                ['title' => 'Dashboard', 'href' => '/dashboard'],
-                ['title' => 'Shifts', 'href' => '/shifts'],
-                ['title' => 'Documents', 'href' => '/documents']
-            ]
-        ]);
+
+    // Shift management routes for care homes
+    Route::resource('shifts', App\Http\Controllers\ShiftController::class);
+    Route::prefix('shifts')->name('shifts.')->group(function () {
+        Route::patch('/{shift}/publish', [App\Http\Controllers\ShiftController::class, 'publish'])->name('publish');
+        Route::patch('/{shift}/cancel', [App\Http\Controllers\ShiftController::class, 'cancel'])->name('cancel');
     });
-    
-    // Debug shifts data
-    Route::get('/debug-shifts', function () {
-        $user = auth()->user();
-        $careHome = $user->care_home;
+
+    // Admin routes
+    Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
+        // Admin Dashboard
+        Route::get('/', [App\Http\Controllers\Admin\AdminDashboardController::class, 'index'])->name('dashboard');
         
-        if (!$careHome) {
-            return response()->json(['error' => 'No care home associated']);
-        }
+        // Document Verification
+        Route::get('/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'index'])->name('main.documents.index');
+        Route::get('/carehomes/{careHome}/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'showCareHome'])->name('main.carehomes.documents');
+        Route::patch('/documents/{document}/status', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'updateStatus'])->name('main.documents.update-status');
+        Route::get('/documents/{document}/download', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'download'])->name('main.documents.download');
         
-        $shifts = App\Models\Shift::where('care_home_id', $careHome->id)->get();
+        // Care Home Management
+        Route::get('/carehomes', [App\Http\Controllers\Admin\CareHomeManagementController::class, 'index'])->name('carehomes.index');
+        Route::get('/carehomes/{careHome}', [App\Http\Controllers\Admin\CareHomeManagementController::class, 'show'])->name('carehomes.show');
+        Route::post('/carehomes', [App\Http\Controllers\Admin\CareHomeManagementController::class, 'store'])->name('carehomes.store');
+        Route::put('/carehomes/{careHome}', [App\Http\Controllers\Admin\CareHomeManagementController::class, 'update'])->name('carehomes.update');
+        Route::delete('/carehomes/{careHome}', [App\Http\Controllers\Admin\CareHomeManagementController::class, 'destroy'])->name('carehomes.destroy');
         
-        return response()->json([
-            'user' => $user->only(['id', 'email', 'role']),
-            'care_home' => $careHome,
-            'shifts_count' => $shifts->count(),
-            'shifts' => $shifts->toArray()
-        ]);
+        // Health Care Worker Management
+        Route::get('/healthcare-workers', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'index'])->name('healthcare-workers.index');
+        Route::get('/healthcare-workers/{healthCareWorker}', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'show'])->name('healthcare-workers.show');
+        Route::post('/healthcare-workers', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'store'])->name('healthcare-workers.store');
+        Route::put('/healthcare-workers/{healthCareWorker}', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'update'])->name('healthcare-workers.update');
+        Route::patch('/healthcare-workers/{healthCareWorker}/password', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'updatePassword'])->name('healthcare-workers.update-password');
+        Route::delete('/healthcare-workers/{healthCareWorker}', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'destroy'])->name('healthcare-workers.destroy');
     });
-    
-    // Simple Inertia test page
-    Route::get('/test-inertia', function () {
-        return Inertia::render('TestInertia', [
-            'message' => 'Hello from Inertia!'
-        ]);
-    });
+});
+
+// Auto-login route for testing (remove in production)
+Route::get('/auto-login', function () {
+    $user = App\Models\User::where('email', 'admin@sunshinecare.com')->first();
+    if ($user) {
+        Auth::login($user);
+        return redirect()->route('dashboard')->with('success', 'Logged in as ' . $user->email);
+    }
+    return redirect()->route('login')->with('error', 'User not found');
+});
 
     // Document upload routes for care homes
     Route::prefix('documents')->name('documents.')->group(function () {
@@ -130,3 +139,4 @@ Route::middleware(['auth'])->group(function () {
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
+

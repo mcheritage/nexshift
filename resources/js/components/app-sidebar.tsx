@@ -1,3 +1,4 @@
+import React from 'react';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -11,6 +12,7 @@ import { type SharedData } from '@/types';
 export function AppSidebar() {
     const { auth } = usePage<SharedData>().props;
     const userRole = auth.user?.role;
+    
     const navItems = getMainNavItems(userRole);
     
     // Determine the dashboard href based on user role

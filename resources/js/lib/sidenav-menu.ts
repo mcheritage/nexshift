@@ -11,6 +11,8 @@ import {
   Shield,
   Users,
   Settings,
+  Calendar,
+  Clock,
 } from "lucide-react";
 
 // Care Home Admin Navigation Items
@@ -19,6 +21,11 @@ const careHomeAdminNavItems: NavItem[] = [
     title: "Dashboard",
     href: "/dashboard",
     icon: LayoutGrid,
+  },
+  {
+    title: "Shifts",
+    href: "/shifts",
+    icon: Calendar,
   },
   {
     title: "Documents",
