@@ -127,6 +127,14 @@ class Shift extends Model
     }
 
     /**
+     * Get role labels (alias for getRoles for backward compatibility)
+     */
+    public static function getRoleLabels(): array
+    {
+        return self::getRoles();
+    }
+
+    /**
      * Get all available statuses
      */
     public static function getStatuses(): array
@@ -167,12 +175,11 @@ class Shift extends Model
 
     /**
      * Relationship: Shift has many applications
-     * TODO: Uncomment when Application model is created
      */
-    // public function applications(): HasMany
-    // {
-    //     return $this->hasMany(Application::class);
-    // }
+    public function applications(): HasMany
+    {
+        return $this->hasMany(Application::class);
+    }
 
     /**
      * Calculate duration in hours based on start and end time
@@ -223,6 +230,14 @@ class Shift extends Model
     {
         return $this->status === self::STATUS_PUBLISHED && 
                ($this->application_deadline === null || now()->lessThan($this->application_deadline));
+    }
+
+    /**
+     * Check if shift can accept new applications (not filled)
+     */
+    public function canAcceptApplications(): bool
+    {
+        return $this->isAvailable() && $this->status !== self::STATUS_FILLED;
     }
 
     /**

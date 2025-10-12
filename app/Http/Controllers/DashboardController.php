@@ -25,6 +25,11 @@ class DashboardController extends Controller
             return redirect()->route('admin.dashboard');
         }
         
+        // Redirect healthcare workers to worker dashboard
+        if ($user->isHealthCareWorker()) {
+            return redirect()->route('worker.dashboard');
+        }
+        
         $careHome = $user->care_home;
         
         if (!$careHome) {

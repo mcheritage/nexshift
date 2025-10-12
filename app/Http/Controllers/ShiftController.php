@@ -28,8 +28,8 @@ class ShiftController extends Controller
 
         // Get shifts with filters
         $query = Shift::where('care_home_id', $careHome->id)
-            ->with(['selectedWorker', 'createdBy']);
-            // TODO: Add ->withCount('applications') when Application model is created
+            ->with(['selectedWorker', 'createdBy'])
+            ->withCount('applications');
 
         // Apply filters
         if ($request->filled('status')) {
@@ -59,7 +59,9 @@ class ShiftController extends Controller
             'total_shifts' => Shift::where('care_home_id', $careHome->id)->count(),
             'published_shifts' => Shift::where('care_home_id', $careHome->id)->where('status', Shift::STATUS_PUBLISHED)->count(),
             'filled_shifts' => Shift::where('care_home_id', $careHome->id)->where('status', Shift::STATUS_FILLED)->count(),
-            'applications_count' => 0, // Will be calculated when applications table is created
+            'applications_count' => \App\Models\Application::whereHas('shift', function($query) use ($careHome) {
+                $query->where('care_home_id', $careHome->id);
+            })->count(),
         ];
 
         return inertia('Shifts/CleanIndex', [
@@ -164,8 +166,8 @@ class ShiftController extends Controller
             abort(403, 'Access denied');
         }
 
-        $shift->load(['careHome', 'selectedWorker', 'createdBy']);
-        // TODO: Add 'applications.applicant' when Application model is created
+        $shift->load(['careHome', 'selectedWorker', 'createdBy', 'applications.worker']);
+        $shift->loadCount('applications');
 
         return Inertia::render('Shifts/Show', [
             'shift' => $shift,

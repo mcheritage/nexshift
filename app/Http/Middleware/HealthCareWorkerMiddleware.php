@@ -15,6 +15,10 @@ class HealthCareWorkerMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
+        if (!auth()->check() || !auth()->user()->isHealthCareWorker()) {
+            abort(403, 'Access denied. Only healthcare workers can access this section.');
+        }
+
         return $next($request);
     }
 }

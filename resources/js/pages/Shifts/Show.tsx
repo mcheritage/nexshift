@@ -21,6 +21,16 @@ import {
     Pause
 } from 'lucide-react';
 
+interface Application {
+    id: string;
+    status: string;
+    worker: {
+        id: string;
+        name: string;
+        email: string;
+    };
+}
+
 interface Shift {
     id: string;
     role: string;
@@ -38,6 +48,7 @@ interface Shift {
     total_pay: number;
     created_at: string;
     applications_count?: number;
+    applications?: Application[];
 }
 
 interface ShiftShowProps extends SharedData {
@@ -309,14 +320,16 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
                             <CardContent>
                                 <div className="text-center space-y-2">
                                     <div className="text-3xl font-bold text-blue-600">
-                                        {shift.applications_count || 0}
+                                        {shift.applications_count ?? shift.applications?.length ?? 0}
                                     </div>
                                     <div className="text-sm text-gray-600">applications received</div>
                                     {shift.status === 'published' && (
-                                        <Button className="w-full mt-4" size="sm">
-                                            <Eye className="h-4 w-4 mr-2" />
-                                            View Applications
-                                        </Button>
+                                        <Link href={`/applications/shift/${shift.id}`}>
+                                            <Button className="w-full mt-4" size="sm">
+                                                <Eye className="h-4 w-4 mr-2" />
+                                                View Applications
+                                            </Button>
+                                        </Link>
                                     )}
                                 </div>
                             </CardContent>
