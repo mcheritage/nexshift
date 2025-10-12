@@ -100,6 +100,27 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/{shift}/cancel', [App\Http\Controllers\ShiftController::class, 'cancel'])->name('cancel');
     });
 
+    // Application management routes for care homes
+    Route::prefix('applications')->name('applications.')->group(function () {
+        Route::get('/shift/{shift}', [App\Http\Controllers\ApplicationController::class, 'index'])->name('index');
+        Route::patch('/{application}/accept', [App\Http\Controllers\ApplicationController::class, 'accept'])->name('accept');
+        Route::patch('/{application}/reject', [App\Http\Controllers\ApplicationController::class, 'reject'])->name('reject');
+    });
+});
+
+// Healthcare Worker routes (outside care home middleware)
+Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worker.')->group(function () {
+    Route::get('/', function () {
+        return redirect()->route('worker.dashboard');
+    });
+    Route::get('/dashboard', [App\Http\Controllers\WorkerController::class, 'dashboard'])->name('dashboard');
+    Route::get('/shifts', [App\Http\Controllers\WorkerController::class, 'shifts'])->name('shifts');
+    Route::post('/shifts/{shift}/apply', [App\Http\Controllers\WorkerController::class, 'apply'])->name('apply');
+    Route::get('/applications', [App\Http\Controllers\WorkerController::class, 'applications'])->name('applications');
+    Route::patch('/applications/{application}/withdraw', [App\Http\Controllers\WorkerController::class, 'withdrawApplication'])->name('applications.withdraw');
+});
+
+Route::middleware(['auth'])->group(function () {
     // Admin routes
     Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
         // Admin Dashboard
