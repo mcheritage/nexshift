@@ -150,10 +150,10 @@ export function DocumentUploadItem({
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex-1">
-            <h3 className="font-medium text-gray-900">
+            <h3 className="font-medium text-gray-900 dark:text-white">
               {documentType.displayName}
             </h3>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
               {documentType.description}
             </p>
           </div>
@@ -171,10 +171,10 @@ export function DocumentUploadItem({
         {uploadedDocument ? (
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-600 dark:text-gray-300">
                 📄 {uploadedDocument.original_name}
               </span>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
                 ({(uploadedDocument.file_size / 1024 / 1024).toFixed(1)} MB)
               </span>
             </div>
@@ -216,7 +216,7 @@ export function DocumentUploadItem({
             onDragLeave={handleDragLeave}
           >
             <div className="space-y-2">
-              <div className="text-gray-600">
+              <div className="text-gray-600 dark:text-gray-300">
                 📁 Drag and drop your file here, or
               </div>
               <Button
@@ -226,7 +226,7 @@ export function DocumentUploadItem({
               >
                 {isUploading ? 'Uploading...' : 'Choose File'}
               </Button>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
                 PDF, JPG, PNG, GIF, DOC, DOCX (max 10MB)
               </div>
             </div>
