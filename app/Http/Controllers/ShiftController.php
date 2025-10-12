@@ -49,8 +49,9 @@ class ShiftController extends Controller
             });
         }
 
-        // Order by start datetime
-        $shifts = $query->orderBy('start_date_time', 'desc')
+        // Order by shift date and start time
+        $shifts = $query->orderBy('shift_date', 'desc')
+            ->orderBy('start_time', 'desc')
             ->paginate(20);
 
         // Get summary statistics
@@ -130,32 +131,21 @@ class ShiftController extends Controller
             'created_by' => $user->id,
             'title' => $validated['title'],
             'role' => $validated['role'],
+            'location' => $validated['location'],
             'shift_date' => $validated['shift_date'],
             'start_time' => $validated['start_time'],
             'end_time' => $validated['end_time'],
+            'ends_next_day' => $validated['ends_next_day'] ?? false,
             'duration_hours' => $durationHours,
             'hourly_rate' => $validated['hourly_rate'],
             'total_pay' => $totalPay,
             'required_skills' => $validated['required_skills'] ?? [],
             'special_requirements' => $validated['additional_requirements'],
+            'description' => $validated['notes'],
             'status' => $validated['status'],
             'is_urgent' => $validated['is_urgent'] ?? false,
             'published_at' => $validated['status'] === Shift::STATUS_PUBLISHED ? now() : null,
         ];
-
-        // Add location if it maps to a database field, otherwise add to special_requirements
-        if (!empty($validated['location'])) {
-            if (isset($validated['special_requirements'])) {
-                $shiftData['special_requirements'] = "Location: " . $validated['location'] . "\n\n" . $validated['additional_requirements'];
-            } else {
-                $shiftData['special_requirements'] = "Location: " . $validated['location'];
-            }
-        }
-
-        // Add notes to description field
-        if (!empty($validated['notes'])) {
-            $shiftData['description'] = $validated['notes'];
-        }
 
         $shift = Shift::create($shiftData);
 
@@ -280,7 +270,7 @@ class ShiftController extends Controller
     /**
      * Publish a draft shift
      */
-    public function publish(Shift $shift): JsonResponse
+    public function publish(Shift $shift): RedirectResponse
     {
         $user = Auth::user();
         
@@ -289,7 +279,7 @@ class ShiftController extends Controller
         }
 
         if ($shift->status !== Shift::STATUS_DRAFT) {
-            return response()->json(['error' => 'Only draft shifts can be published'], 400);
+            return redirect()->back()->withErrors(['error' => 'Only draft shifts can be published']);
         }
 
         $shift->update([
@@ -297,17 +287,14 @@ class ShiftController extends Controller
             'published_at' => now(),
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Shift published successfully',
-            'shift' => $shift->fresh(),
-        ]);
+        return redirect()->back()
+            ->with('success', 'Shift published successfully');
     }
 
     /**
      * Cancel a published shift
      */
-    public function cancel(Shift $shift): JsonResponse
+    public function cancel(Shift $shift): RedirectResponse
     {
         $user = Auth::user();
         
@@ -316,15 +303,12 @@ class ShiftController extends Controller
         }
 
         if ($shift->status === Shift::STATUS_COMPLETED) {
-            return response()->json(['error' => 'Cannot cancel completed shifts'], 400);
+            return redirect()->back()->withErrors(['error' => 'Cannot cancel completed shifts']);
         }
 
         $shift->update(['status' => Shift::STATUS_CANCELLED]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Shift cancelled successfully',
-            'shift' => $shift->fresh(),
-        ]);
+        return redirect()->back()
+            ->with('success', 'Shift cancelled successfully');
     }
 }

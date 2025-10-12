@@ -4,6 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { 
     ArrowLeft, 
     Calendar, 
@@ -64,15 +65,26 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
     const { patch, processing } = useForm();
 
     const formatDateTime = (dateTime: string) => {
-        const date = new Date(dateTime);
-        return date.toLocaleDateString('en-GB', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        try {
+            const date = new Date(dateTime);
+            
+            if (isNaN(date.getTime())) {
+                console.error('Invalid date string:', dateTime);
+                return 'Invalid Date';
+            }
+            
+            return date.toLocaleDateString('en-GB', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (error) {
+            console.error('Error formatting date:', error, dateTime);
+            return 'Invalid Date';
+        }
     };
 
     const handlePublish = () => {
@@ -93,72 +105,75 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
         <AppLayout>
             <Head title={`${roleLabels[shift.role] || shift.role} - Shift Details`} />
             
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
                 {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+                <div className="space-y-4">
+                    {/* Back Button */}
+                    <div className="flex justify-between items-center">
                         <Link href="/shifts">
                             <Button variant="outline" size="sm">
                                 <ArrowLeft className="h-4 w-4 mr-2" />
                                 Back to Shifts
                             </Button>
                         </Link>
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900">
-                                {roleLabels[shift.role] || shift.role}
-                            </h1>
-                            <div className="flex items-center gap-2 mt-1">
-                                <Badge className={statusColors[shift.status] || 'bg-gray-100 text-gray-800'}>
-                                    {shift.status.charAt(0).toUpperCase() + shift.status.slice(1)}
-                                </Badge>
-                                {shift.is_urgent && (
-                                    <Badge variant="destructive">
-                                        <AlertTriangle className="h-3 w-3 mr-1" />
-                                        Urgent
-                                    </Badge>
-                                )}
-                            </div>
+                        
+                        <div className="flex gap-2">
+                            {canEdit && (
+                                <Link href={`/shifts/${shift.id}/edit`}>
+                                    <Button variant="outline">
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit
+                                    </Button>
+                                </Link>
+                            )}
+                            
+                            {canPublish && (
+                                <Button 
+                                    onClick={handlePublish}
+                                    disabled={processing}
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                >
+                                    <PlayCircle className="h-4 w-4 mr-2" />
+                                    Publish
+                                </Button>
+                            )}
+
+                            {canCancel && (
+                                <Button 
+                                    onClick={handleCancel}
+                                    disabled={processing}
+                                    variant="destructive"
+                                >
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                    Cancel
+                                </Button>
+                            )}
                         </div>
                     </div>
-
-                    <div className="flex gap-2">
-                        {canEdit && (
-                            <Link href={`/shifts/${shift.id}/edit`}>
-                                <Button variant="outline">
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit
-                                </Button>
-                            </Link>
-                        )}
-                        
-                        {canPublish && (
-                            <Button 
-                                onClick={handlePublish}
-                                disabled={processing}
-                                className="bg-blue-600 hover:bg-blue-700"
-                            >
-                                <PlayCircle className="h-4 w-4 mr-2" />
-                                Publish
-                            </Button>
-                        )}
-
-                        {canCancel && (
-                            <Button 
-                                onClick={handleCancel}
-                                disabled={processing}
-                                variant="destructive"
-                            >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Cancel
-                            </Button>
-                        )}
+                    
+                    {/* Title Section */}
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                            {roleLabels[shift.role] || shift.role}
+                        </h1>
+                        <div className="flex items-center gap-2 mt-2">
+                            <Badge className={statusColors[shift.status] || 'bg-gray-100 text-gray-800'}>
+                                {shift.status.charAt(0).toUpperCase() + shift.status.slice(1)}
+                            </Badge>
+                            {shift.is_urgent && (
+                                <Badge variant="destructive">
+                                    <AlertTriangle className="h-3 w-3 mr-1" />
+                                    Urgent
+                                </Badge>
+                            )}
+                        </div>
                     </div>
                 </div>
 
                 {/* Main Details */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                     {/* Left Column - Main Info */}
-                    <div className="lg:col-span-2 space-y-6">
+                    <div className="xl:col-span-2 space-y-6">
                         {/* Schedule & Location */}
                         <Card>
                             <CardHeader>
@@ -241,14 +256,14 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
                                 {shift.additional_requirements && (
                                     <div>
                                         <Label className="text-sm font-medium text-gray-600">Additional Requirements</Label>
-                                        <p className="text-gray-900 mt-1">{shift.additional_requirements}</p>
+                                        <p className="text-gray-900 dark:text-gray-100 mt-1">{shift.additional_requirements}</p>
                                     </div>
                                 )}
 
                                 {shift.notes && (
                                     <div>
                                         <Label className="text-sm font-medium text-gray-600">Shift Notes</Label>
-                                        <p className="text-gray-900 mt-1">{shift.notes}</p>
+                                        <p className="text-gray-900 dark:text-gray-100 mt-1">{shift.notes}</p>
                                     </div>
                                 )}
                             </CardContent>
@@ -325,7 +340,7 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">Priority:</span>
-                                    <span className={shift.is_urgent ? 'text-red-600 font-medium' : 'text-gray-900'}>
+                                    <span className={shift.is_urgent ? 'text-red-600 font-medium' : 'text-gray-900 dark:text-gray-100'}>
                                         {shift.is_urgent ? 'Urgent' : 'Normal'}
                                     </span>
                                 </div>
@@ -336,8 +351,4 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
             </div>
         </AppLayout>
     );
-}
-
-function Label({ className, children }: { className?: string; children: React.ReactNode }) {
-    return <div className={className}>{children}</div>;
 }

@@ -241,16 +241,17 @@ export default function CreateShift({}: CreateShiftProps) {
             
             <div className="max-w-4xl mx-auto space-y-6">
                 {/* Header */}
-                <div className="flex items-center gap-4">
+                <div className="space-y-4">
                     <Link href="/shifts">
                         <Button variant="outline" size="sm">
                             <ArrowLeft className="h-4 w-4 mr-2" />
                             Back to Shifts
                         </Button>
                     </Link>
+                    
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Post New Shift</h1>
-                        <p className="text-gray-600 mt-1">Create a new shift posting to attract qualified healthcare workers</p>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Post New Shift</h1>
+                        <p className="text-gray-600 dark:text-gray-400 mt-1">Create a new shift posting to attract qualified healthcare workers</p>
                     </div>
                 </div>
 
