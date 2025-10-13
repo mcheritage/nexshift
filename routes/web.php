@@ -33,57 +33,6 @@ Route::middleware(['auth'])->group(function () {
             'is_care_home_admin' => auth()->user()?->isCareHomeAdmin(),
         ]);
     });
-    
-    // Test page with Inertia to check props
-    Route::get('/test-nav', function () {
-        return Inertia::render('TestNav', [
-            'testData' => 'Navigation Test'
-        ]);
-    });
-    
-    // Debug navigation route
-    Route::get('/debug-nav', function () {
-        return Inertia::render('DebugNav');
-    });
-    
-    // Simple JSON debug route
-    Route::get('/debug-simple', function () {
-        return response()->json([
-            'user' => auth()->user(),
-            'role' => auth()->user()?->role,
-            'expected_nav_for_care_home_admin' => [
-                ['title' => 'Dashboard', 'href' => '/dashboard'],
-                ['title' => 'Shifts', 'href' => '/shifts'],
-                ['title' => 'Documents', 'href' => '/documents']
-            ]
-        ]);
-    });
-    
-    // Debug shifts data
-    Route::get('/debug-shifts', function () {
-        $user = auth()->user();
-        $careHome = $user->care_home;
-        
-        if (!$careHome) {
-            return response()->json(['error' => 'No care home associated']);
-        }
-        
-        $shifts = App\Models\Shift::where('care_home_id', $careHome->id)->get();
-        
-        return response()->json([
-            'user' => $user->only(['id', 'email', 'role']),
-            'care_home' => $careHome,
-            'shifts_count' => $shifts->count(),
-            'shifts' => $shifts->toArray()
-        ]);
-    });
-    
-    // Simple Inertia test page
-    Route::get('/test-inertia', function () {
-        return Inertia::render('TestInertia', [
-            'message' => 'Hello from Inertia!'
-        ]);
-    });
 
     // Document upload routes for care homes
     Route::prefix('documents')->name('documents.')->group(function () {
