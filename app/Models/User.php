@@ -41,6 +41,18 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'phone_number',
+        'bio',
+        'qualifications',
+        'certifications',
+        'years_experience',
+        'skills',
+        'profile_photo',
+        'hourly_rate_min',
+        'hourly_rate_max',
+        'available_weekends',
+        'available_nights',
+        'additional_notes',
     ];
 
     /**
@@ -72,6 +84,11 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'qualifications' => 'array',
+            'certifications' => 'array',
+            'skills' => 'array',
+            'available_weekends' => 'boolean',
+            'available_nights' => 'boolean',
         ];
     }
 

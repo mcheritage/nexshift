@@ -4,6 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { 
     ArrowLeft, 
     User, 
@@ -11,9 +12,33 @@ import {
     CheckCircle, 
     XCircle, 
     Clock,
-    MessageSquare
+    MessageSquare,
+    Search,
+    Filter,
+    Users
 } from 'lucide-react';
 import { useState } from 'react';
+import WorkerProfileCard from '@/components/WorkerProfileCard';
+import WorkerProfileModal from '@/components/WorkerProfileModal';
+
+interface Worker {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_number?: string;
+    bio?: string;
+    qualifications?: string[];
+    certifications?: string[];
+    years_experience?: number;
+    skills?: string[];
+    profile_photo?: string;
+    hourly_rate_min?: number;
+    hourly_rate_max?: number;
+    available_weekends?: boolean;
+    available_nights?: boolean;
+    additional_notes?: string;
+}
 
 interface Application {
     id: string;
@@ -22,12 +47,7 @@ interface Application {
     applied_at: string;
     reviewed_at?: string;
     review_notes?: string;
-    worker: {
-        id: string;
-        name: string;
-        email: string;
-        // Add more worker fields as needed
-    };
+    worker: Worker;
 }
 
 interface Shift {
@@ -70,6 +90,10 @@ const roleLabels = {
 export default function ApplicationsIndex({ shift, applications }: ApplicationsIndexProps) {
     const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [experienceFilter, setExperienceFilter] = useState('all');
+    const [selectedProfileApplication, setSelectedProfileApplication] = useState<Application | null>(null);
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     
     const { patch } = useForm();
     const rejectForm = useForm({
@@ -95,6 +119,34 @@ export default function ApplicationsIndex({ shift, applications }: ApplicationsI
         });
     };
 
+    const handleViewProfile = (application: Application) => {
+        setSelectedProfileApplication(application);
+        setIsProfileModalOpen(true);
+    };
+
+    const handleCloseProfileModal = () => {
+        setIsProfileModalOpen(false);
+        setSelectedProfileApplication(null);
+    };
+
+    // Filter applications based on search and filters
+    const filteredApplications = applications.filter(application => {
+        const { worker } = application;
+        const fullName = `${worker.first_name} ${worker.last_name}`.toLowerCase();
+        const matchesSearch = searchTerm === '' || 
+            fullName.includes(searchTerm.toLowerCase()) ||
+            worker.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (worker.skills && worker.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase())));
+
+        const matchesExperience = experienceFilter === 'all' || 
+            (experienceFilter === 'entry' && (!worker.years_experience || worker.years_experience < 1)) ||
+            (experienceFilter === 'junior' && worker.years_experience && worker.years_experience >= 1 && worker.years_experience < 3) ||
+            (experienceFilter === 'mid' && worker.years_experience && worker.years_experience >= 3 && worker.years_experience < 5) ||
+            (experienceFilter === 'senior' && worker.years_experience && worker.years_experience >= 5);
+
+        return matchesSearch && matchesExperience;
+    });
+
     const isShiftFilled = shift.status === 'filled';
 
     const formatDateTime = (dateTimeString: string) => {
@@ -113,8 +165,8 @@ export default function ApplicationsIndex({ shift, applications }: ApplicationsI
         }
     };
 
-    const pendingApplications = applications.filter(app => app.status === 'pending');
-    const reviewedApplications = applications.filter(app => app.status !== 'pending');
+    const pendingApplications = filteredApplications.filter(app => app.status === 'pending');
+    const reviewedApplications = filteredApplications.filter(app => app.status !== 'pending');
 
     return (
         <AppLayout>
@@ -180,6 +232,61 @@ export default function ApplicationsIndex({ shift, applications }: ApplicationsI
                     </CardContent>
                 </Card>
 
+                {/* Search and Filter Section */}
+                <Card>
+                    <CardContent className="p-6">
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <div className="flex-1">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <Input
+                                        type="text"
+                                        placeholder="Search by name, email, or skills..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-10"
+                                    />
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                                <Filter className="h-4 w-4 text-gray-400" />
+                                <select
+                                    value={experienceFilter}
+                                    onChange={(e) => setExperienceFilter(e.target.value)}
+                                    className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                                >
+                                    <option value="all">All Experience Levels</option>
+                                    <option value="entry">Entry Level (&lt;1 year)</option>
+                                    <option value="junior">Junior (1-3 years)</option>
+                                    <option value="mid">Mid-level (3-5 years)</option>
+                                    <option value="senior">Senior (5+ years)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        {(searchTerm || experienceFilter !== 'all') && (
+                            <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+                                <Users className="h-4 w-4" />
+                                Showing {filteredApplications.length} of {applications.length} applications
+                                {filteredApplications.length !== applications.length && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            setSearchTerm('');
+                                            setExperienceFilter('all');
+                                        }}
+                                        className="text-blue-600 hover:text-blue-800 p-1 h-auto"
+                                    >
+                                        Clear filters
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
                 {/* Applications Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Card>
@@ -206,86 +313,32 @@ export default function ApplicationsIndex({ shift, applications }: ApplicationsI
 
                 {/* Pending Applications */}
                 {pendingApplications.length > 0 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Pending Applications ({pendingApplications.length})</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                                Pending Applications ({pendingApplications.length})
+                            </h2>
+                        </div>
+                        
+                        <div className="space-y-4">
                             {pendingApplications.map(application => (
-                                <div key={application.id} className="border border-gray-200 rounded-lg p-4">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex items-start space-x-4">
-                                            <div className="bg-gray-100 rounded-full p-3">
-                                                <User className="h-5 w-5 text-gray-600" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h4 className="font-medium text-gray-900 dark:text-white">
-                                                    {application.worker.name}
-                                                </h4>
-                                                <p className="text-sm text-gray-600 dark:text-gray-300">
-                                                    {application.worker.email}
-                                                </p>
-                                                <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                                                    <div className="flex items-center">
-                                                        <Calendar className="h-4 w-4 mr-1" />
-                                                        Applied {formatDateTime(application.applied_at)}
-                                                    </div>
-                                                </div>
-                                                {application.message && (
-                                                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                                                        <div className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                                                            <MessageSquare className="h-4 w-4 mr-1" />
-                                                            Cover Message
-                                                        </div>
-                                                        <p className="text-sm text-gray-600">{application.message}</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex space-x-2">
-                                            {shift.status === 'filled' ? (
-                                                <div className="text-sm text-gray-500 italic">
-                                                    Position filled
-                                                </div>
-                                            ) : application.status === 'pending' ? (
-                                                <>
-                                                    <Button
-                                                        onClick={() => handleAccept(application.id)}
-                                                        size="sm"
-                                                        className="bg-green-600 hover:bg-green-700"
-                                                    >
-                                                        <CheckCircle className="h-4 w-4 mr-1" />
-                                                        Accept
-                                                    </Button>
-                                                    <Button
-                                                        onClick={() => setSelectedApplication(application.id)}
-                                                        variant="destructive"
-                                                        size="sm"
-                                                    >
-                                                        <XCircle className="h-4 w-4 mr-1" />
-                                                        Reject
-                                                    </Button>
-                                                </>
-                                            ) : null}
-                                        </div>
-                                    </div>
+                                <div key={application.id} className="space-y-4">
+                                    <WorkerProfileCard
+                                        application={application}
+                                        shiftStatus={shift.status}
+                                        onAccept={handleAccept}
+                                        onReject={() => setSelectedApplication(application.id)}
+                                        onViewProfile={handleViewProfile}
+                                        isRejecting={selectedApplication === application.id}
+                                        rejectionReason={rejectionReason}
+                                        onRejectionReasonChange={setRejectionReason}
+                                    />
                                     
-                                    {/* Rejection Form */}
+                                    {/* Rejection confirmation */}
                                     {selectedApplication === application.id && (
-                                        <div className="mt-4 pt-4 border-t border-gray-200">
-                                            <div className="space-y-3">
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Rejection Reason *
-                                                </label>
-                                                <textarea
-                                                    value={rejectionReason}
-                                                    onChange={(e) => setRejectionReason(e.target.value)}
-                                                    placeholder="Please provide a reason for rejection..."
-                                                    className="w-full p-3 border border-gray-300 rounded-lg text-sm"
-                                                    rows={3}
-                                                />
-                                                <div className="flex space-x-2">
+                                        <Card className="border-red-200">
+                                            <CardContent className="p-4">
+                                                <div className="flex justify-end space-x-2">
                                                     <Button
                                                         onClick={() => handleReject(application.id)}
                                                         variant="destructive"
@@ -304,65 +357,49 @@ export default function ApplicationsIndex({ shift, applications }: ApplicationsI
                                                         Cancel
                                                     </Button>
                                                 </div>
-                                            </div>
-                                        </div>
+                                            </CardContent>
+                                        </Card>
                                     )}
                                 </div>
                             ))}
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
                 )}
 
                 {/* Reviewed Applications */}
                 {reviewedApplications.length > 0 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Reviewed Applications ({reviewedApplications.length})</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                                Reviewed Applications ({reviewedApplications.length})
+                            </h2>
+                        </div>
+                        
+                        <div className="space-y-4">
                             {reviewedApplications.map(application => (
-                                <div key={application.id} className="border border-gray-200 rounded-lg p-4">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex items-start space-x-4">
-                                            <div className="bg-gray-100 rounded-full p-3">
-                                                <User className="h-5 w-5 text-gray-600" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h4 className="font-medium text-gray-900 dark:text-white">
-                                                    {application.worker.name}
-                                                </h4>
-                                                <p className="text-sm text-gray-600 dark:text-gray-300">
-                                                    {application.worker.email}
-                                                </p>
-                                                <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                                                    <div className="flex items-center">
-                                                        <Calendar className="h-4 w-4 mr-1" />
-                                                        Applied {formatDateTime(application.applied_at)}
-                                                    </div>
-                                                    {application.reviewed_at && (
-                                                        <div className="flex items-center">
-                                                            <Clock className="h-4 w-4 mr-1" />
-                                                            Reviewed {formatDateTime(application.reviewed_at)}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                {application.review_notes && (
-                                                    <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                                                        <h4 className="text-sm font-medium text-red-800 dark:text-red-200 mb-1">
-                                                            Review Notes
-                                                        </h4>
-                                                        <p className="text-sm text-red-600">{application.review_notes}</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        
-                                        <Badge className={statusColors[application.status as keyof typeof statusColors]}>
-                                            {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
-                                        </Badge>
-                                    </div>
-                                </div>
+                                <WorkerProfileCard
+                                    key={application.id}
+                                    application={application}
+                                    shiftStatus={shift.status}
+                                    onAccept={handleAccept}
+                                    onReject={() => setSelectedApplication(application.id)}
+                                    onViewProfile={handleViewProfile}
+                                />
                             ))}
+                        </div>
+                    </div>
+                )}
+
+                {filteredApplications.length === 0 && applications.length > 0 && (
+                    <Card>
+                        <CardContent className="p-8 text-center">
+                            <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                                No Applications Match Your Filters
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-400">
+                                Try adjusting your search terms or filters to see more applications.
+                            </p>
                         </CardContent>
                     </Card>
                 )}
@@ -382,6 +419,16 @@ export default function ApplicationsIndex({ shift, applications }: ApplicationsI
                     </Card>
                 )}
             </div>
+
+            {/* Worker Profile Modal */}
+            <WorkerProfileModal
+                isOpen={isProfileModalOpen}
+                onClose={handleCloseProfileModal}
+                application={selectedProfileApplication}
+                onAccept={handleAccept}
+                onReject={(applicationId) => setSelectedApplication(applicationId)}
+                shiftStatus={shift.status}
+            />
         </AppLayout>
     );
 }

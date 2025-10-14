@@ -26,7 +26,14 @@ class ApplicationController extends Controller
         }
 
         $applications = $shift->applications()
-            ->with('worker')
+            ->with(['worker' => function($query) {
+                $query->select([
+                    'id', 'first_name', 'last_name', 'email', 'phone_number', 
+                    'bio', 'qualifications', 'certifications', 'years_experience', 
+                    'skills', 'profile_photo', 'hourly_rate_min', 'hourly_rate_max',
+                    'available_weekends', 'available_nights', 'additional_notes'
+                ]);
+            }])
             ->orderBy('applied_at', 'desc')
             ->get();
 
