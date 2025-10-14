@@ -96,7 +96,15 @@ export default function WorkerProfileModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent 
+                className="w-[85vw] max-w-none h-[85vh] overflow-y-auto p-6"
+                style={{
+                    width: '85vw',
+                    maxWidth: '85vw',
+                    height: '85vh',
+                    margin: 'auto'
+                }}
+            >
                 <DialogHeader>
                     <DialogTitle>Worker Profile</DialogTitle>
                 </DialogHeader>
