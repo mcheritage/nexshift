@@ -83,6 +83,14 @@ class Application extends Model
     }
 
     /**
+     * Relationship: Application belongs to a user (alias for worker)
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'worker_id');
+    }
+
+    /**
      * Relationship: Application reviewed by user
      */
     public function reviewer(): BelongsTo

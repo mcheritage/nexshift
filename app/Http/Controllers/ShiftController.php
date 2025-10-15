@@ -28,7 +28,7 @@ class ShiftController extends Controller
 
         // Get shifts with filters
         $query = Shift::where('care_home_id', $careHome->id)
-            ->with(['selectedWorker', 'createdBy'])
+            ->with(['selectedWorker', 'createdBy', 'applications.user'])
             ->withCount('applications');
 
         // Apply filters
@@ -64,7 +64,7 @@ class ShiftController extends Controller
             })->count(),
         ];
 
-        return inertia('Shifts/CleanIndex', [
+        return inertia('Shifts/TableIndex', [
             'shifts' => $shifts,
             'stats' => $stats,
             'filters' => $request->only(['status', 'role', 'search']),
