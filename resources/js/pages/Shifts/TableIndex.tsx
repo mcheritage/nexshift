@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Clock, MapPin, Users, TrendingUp, Plus, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useState } from 'react';
+import WorkerProfileModal from '@/components/WorkerProfileModal';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -109,6 +110,8 @@ export default function ShiftsTableIndex({ shifts, stats, filters = {} }: Shifts
     const [roleFilter, setRoleFilter] = useState(filters.role || 'all');
     const [sortField, setSortField] = useState<string>('shift_date');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+    const [selectedWorker, setSelectedWorker] = useState<any>(null);
+    const [isWorkerModalOpen, setIsWorkerModalOpen] = useState(false);
 
     const handleSearch = () => {
         router.get('/shifts', {
@@ -147,6 +150,18 @@ export default function ShiftsTableIndex({ shifts, stats, filters = {} }: Shifts
         return sortDirection === 'asc' ? 
             <ArrowUp className="h-4 w-4" /> : 
             <ArrowDown className="h-4 w-4" />;
+    };
+
+    const handleWorkerClick = (worker: any) => {
+        // Create a mock application object for the modal
+        const mockApplication = {
+            id: `temp-${worker.id}`,
+            status: 'accepted',
+            applied_at: new Date().toISOString(),
+            worker: worker
+        };
+        setSelectedWorker(mockApplication);
+        setIsWorkerModalOpen(true);
     };
 
     // Filter and sort the shifts data locally
@@ -405,6 +420,12 @@ export default function ShiftsTableIndex({ shifts, stats, filters = {} }: Shifts
                                                             <div className="text-sm text-muted-foreground">
                                                                 {shift.selected_worker.email}
                                                             </div>
+                                                            <button 
+                                                                onClick={() => handleWorkerClick(shift.selected_worker)}
+                                                                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                                            >
+                                                                View Profile
+                                                            </button>
                                                         </div>
                                                     ) : (
                                                         <span className="text-muted-foreground">Not assigned</span>
@@ -416,20 +437,11 @@ export default function ShiftsTableIndex({ shifts, stats, filters = {} }: Shifts
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Link href={`/shifts/${shift.id}`}>
-                                                            <Button variant="outline" size="sm">
-                                                                View
-                                                            </Button>
-                                                        </Link>
-                                                        {shift.applications_count && shift.applications_count > 0 && (
-                                                            <Link href={`/applications/shift/${shift.id}`}>
-                                                                <Button variant="outline" size="sm">
-                                                                    Applications ({shift.applications_count})
-                                                                </Button>
-                                                            </Link>
-                                                        )}
-                                                    </div>
+                                                    <Link href={`/shifts/${shift.id}`}>
+                                                        <Button variant="outline" size="sm">
+                                                            View Details
+                                                        </Button>
+                                                    </Link>
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -476,6 +488,16 @@ export default function ShiftsTableIndex({ shifts, stats, filters = {} }: Shifts
                 </Card>
                 </div>
             </div>
+
+            {/* Worker Profile Modal */}
+            <WorkerProfileModal
+                isOpen={isWorkerModalOpen}
+                onClose={() => {
+                    setIsWorkerModalOpen(false);
+                    setSelectedWorker(null);
+                }}
+                application={selectedWorker}
+            />
         </AppLayout>
     );
 }

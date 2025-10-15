@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import WorkerProfileModal from '@/components/WorkerProfileModal';
 import { 
     ArrowLeft, 
     Calendar, 
     Clock, 
     MapPin, 
-    DollarSign, 
+    Coins, 
     Users, 
     AlertTriangle, 
     Edit, 
@@ -20,6 +21,7 @@ import {
     PlayCircle,
     Pause
 } from 'lucide-react';
+import { useState } from 'react';
 
 interface Application {
     id: string;
@@ -49,6 +51,12 @@ interface Shift {
     created_at: string;
     applications_count?: number;
     applications?: Application[];
+    selected_worker?: {
+        id: string;
+        first_name: string;
+        last_name: string;
+        email: string;
+    };
 }
 
 interface ShiftShowProps extends SharedData {
@@ -74,6 +82,8 @@ const statusColors: Record<string, string> = {
 
 export default function ShiftShow({ shift }: ShiftShowProps) {
     const { patch, processing } = useForm();
+    const [selectedWorker, setSelectedWorker] = useState<any>(null);
+    const [isWorkerModalOpen, setIsWorkerModalOpen] = useState(false);
 
     const formatDateTime = (dateTime: string) => {
         try {
@@ -96,6 +106,18 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
             console.error('Error formatting date:', error, dateTime);
             return 'Invalid Date';
         }
+    };
+
+    const handleWorkerClick = (worker: any) => {
+        // Create a mock application object for the modal
+        const mockApplication = {
+            id: `temp-${worker.id}`,
+            status: 'accepted',
+            applied_at: new Date().toISOString(),
+            worker: worker
+        };
+        setSelectedWorker(mockApplication);
+        setIsWorkerModalOpen(true);
     };
 
     const handlePublish = () => {
@@ -178,6 +200,28 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
                                 </Badge>
                             )}
                         </div>
+                        {shift.status === 'filled' && shift.selected_worker && (
+                            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                    <span className="text-sm font-medium text-green-800">
+                                        Assigned to: 
+                                        <span className="ml-1 font-medium">
+                                            {shift.selected_worker.first_name} {shift.selected_worker.last_name}
+                                        </span>
+                                        <button 
+                                            onClick={() => handleWorkerClick(shift.selected_worker)}
+                                            className="ml-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                                        >
+                                            View Profile
+                                        </button>
+                                    </span>
+                                </div>
+                                <div className="text-xs text-green-600 ml-6">
+                                    {shift.selected_worker.email}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -287,7 +331,7 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
-                                    <DollarSign className="h-5 w-5" />
+                                    <Coins className="h-5 w-5" />
                                     Pay Information
                                 </CardTitle>
                             </CardHeader>
@@ -351,6 +395,25 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
                                         {shift.status.charAt(0).toUpperCase() + shift.status.slice(1)}
                                     </Badge>
                                 </div>
+                                {shift.status === 'filled' && shift.selected_worker && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">Assigned Worker:</span>
+                                        <div className="text-right">
+                                            <div className="font-medium">
+                                                {shift.selected_worker.first_name} {shift.selected_worker.last_name}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {shift.selected_worker.email}
+                                            </div>
+                                            <button 
+                                                onClick={() => handleWorkerClick(shift.selected_worker)}
+                                                className="text-xs text-blue-600 hover:text-blue-800 underline mt-1"
+                                            >
+                                                View Profile
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">Priority:</span>
                                     <span className={shift.is_urgent ? 'text-red-600 font-medium' : 'text-gray-900 dark:text-gray-100'}>
@@ -362,6 +425,16 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
                     </div>
                 </div>
             </div>
+
+            {/* Worker Profile Modal */}
+            <WorkerProfileModal
+                isOpen={isWorkerModalOpen}
+                onClose={() => {
+                    setIsWorkerModalOpen(false);
+                    setSelectedWorker(null);
+                }}
+                application={selectedWorker}
+            />
         </AppLayout>
     );
 }

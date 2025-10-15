@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Calendar, Clock, MapPin, DollarSign, Users, AlertTriangle, Plus, X } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, MapPin, Coins, Users, AlertTriangle, Plus, X } from 'lucide-react';
 
 interface CreateShiftProps extends SharedData {}
 
@@ -459,7 +459,7 @@ export default function CreateShift({}: CreateShiftProps) {
                                 <div>
                                     <Label htmlFor="hourly_rate">Hourly Rate (£) *</Label>
                                     <div className="relative">
-                                        <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                        <Coins className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                                         <Input
                                             id="hourly_rate"
                                             type="number"

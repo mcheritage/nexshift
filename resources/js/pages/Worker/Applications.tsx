@@ -4,7 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Calendar, Clock, MapPin, DollarSign, Building2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, MapPin, Coins, Building2 } from 'lucide-react';
 
 interface Application {
     id: string;
@@ -189,7 +189,7 @@ export default function WorkerApplications({ applications, applicationsByStatus 
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center space-x-2">
-                                                    <DollarSign className="h-4 w-4 text-gray-500" />
+                                                    <Coins className="h-4 w-4 text-gray-500" />
                                                     <span className="text-sm text-gray-600 dark:text-gray-300">
                                                         £{application.shift.hourly_rate}/hour
                                                     </span>

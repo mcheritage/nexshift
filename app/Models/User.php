@@ -107,6 +107,11 @@ class User extends Authenticatable
         return $this->hasMany(Notification::class)->where('read', false);
     }
 
+    public function applications()
+    {
+        return $this->hasMany(\App\Models\Application::class, 'worker_id');
+    }
+
     public function getNameAttribute(): string {
         if($care_home = $this->care_home) {
             return $care_home->name;

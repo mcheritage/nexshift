@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { 
     Clock, 
-    DollarSign, 
+    Coins, 
     CheckCircle, 
     XCircle, 
     AlertTriangle,
@@ -409,7 +409,7 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
                                                         {timesheet.total_hours}h
                                                     </div>
                                                     <div className="flex items-center">
-                                                        <DollarSign className="h-4 w-4 mr-1" />
+                                                        <Coins className="h-4 w-4 mr-1" />
                                                         {formatCurrency(timesheet.total_pay)}
                                                     </div>
                                                 </div>

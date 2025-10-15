@@ -8,7 +8,7 @@ import {
     Calendar, 
     Clock, 
     MapPin, 
-    DollarSign, 
+    Coins, 
     Building2, 
     Eye,
     Plus,
@@ -210,7 +210,7 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                                                     {shift.location}
                                                 </div>
                                                 <div className="flex items-center">
-                                                    <DollarSign className="h-4 w-4 mr-1" />
+                                                    <Coins className="h-4 w-4 mr-1" />
                                                     £{shift.hourly_rate}/hour
                                                 </div>
                                             </div>

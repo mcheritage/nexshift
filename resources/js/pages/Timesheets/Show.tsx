@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
     Clock, 
-    DollarSign, 
+    Coins, 
     CheckCircle, 
     XCircle, 
     AlertTriangle,
@@ -374,7 +374,7 @@ export default function TimesheetShow({ timesheet, statusOptions }: TimesheetSho
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center">
-                            <DollarSign className="h-5 w-5 mr-2" />
+                            <Coins className="h-5 w-5 mr-2" />
                             Pay Calculation
                         </CardTitle>
                     </CardHeader>
