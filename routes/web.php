@@ -12,6 +12,8 @@ Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
 
+
+
 // Auto-login route for testing (remove in production)
 Route::get('/auto-login', function () {
     $user = App\Models\User::where('email', 'admin@sunshinecare.com')->first();
@@ -24,15 +26,6 @@ Route::get('/auto-login', function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    
-    // Debug route to check user data
-    Route::get('/debug-user', function () {
-        return response()->json([
-            'user' => auth()->user(),
-            'role' => auth()->user()?->role,
-            'is_care_home_admin' => auth()->user()?->isCareHomeAdmin(),
-        ]);
-    });
 
     // Document upload routes for care homes
     Route::prefix('documents')->name('documents.')->group(function () {
@@ -54,6 +47,16 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/shift/{shift}', [App\Http\Controllers\ApplicationController::class, 'index'])->name('index');
         Route::patch('/{application}/accept', [App\Http\Controllers\ApplicationController::class, 'accept'])->name('accept');
         Route::patch('/{application}/reject', [App\Http\Controllers\ApplicationController::class, 'reject'])->name('reject');
+    });
+
+    // Timesheet approval routes for care homes
+    Route::prefix('timesheets')->name('timesheets.')->group(function () {
+        Route::get('/', [App\Http\Controllers\TimesheetController::class, 'index'])->name('index');
+        Route::get('/{timesheet}', [App\Http\Controllers\TimesheetController::class, 'show'])->name('show');
+        Route::patch('/{timesheet}/approve', [App\Http\Controllers\TimesheetController::class, 'approve'])->name('approve');
+        Route::patch('/{timesheet}/query', [App\Http\Controllers\TimesheetController::class, 'query'])->name('query');
+        Route::patch('/{timesheet}/reject', [App\Http\Controllers\TimesheetController::class, 'reject'])->name('reject');
+        Route::patch('/bulk-approve', [App\Http\Controllers\TimesheetController::class, 'bulkApprove'])->name('bulk-approve');
     });
 });
 

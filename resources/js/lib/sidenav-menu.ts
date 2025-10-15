@@ -28,6 +28,11 @@ const careHomeAdminNavItems: NavItem[] = [
     icon: Calendar,
   },
   {
+    title: "Timesheets",
+    href: "/timesheets",
+    icon: Clock,
+  },
+  {
     title: "Documents",
     href: "/documents",
     icon: FileText,
