@@ -39,7 +39,7 @@ class AuthService
             gender: null,
             email: $payload->email,
             password: $payload->password
-        ));
+        ), 'care_home_admin');
 
         $user->care_home_id = $care_home->id;
         $user->save();
@@ -47,7 +47,7 @@ class AuthService
         return $user;
     }
 
-    public function registerUser(RegisterUserDto $payload): User
+    public function registerUser(RegisterUserDto $payload, string $role = 'health_care_worker'): User
     {
         $user = User::create([
             'first_name' => $payload->first_name,
@@ -56,6 +56,7 @@ class AuthService
             'gender' => $payload->gender,
             'email' => $payload->email,
             'password' => Hash::make($payload->password),
+            'role' => $role,
         ]);
 
         event(new Registered($user));

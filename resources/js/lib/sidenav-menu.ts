@@ -8,9 +8,11 @@ import {
   FileText,
   Building2,
   UserCheck,
+  Calendar,
   Shield,
   Users,
   Settings,
+  Clock,
 } from "lucide-react";
 
 // Care Home Admin Navigation Items
@@ -19,6 +21,16 @@ const careHomeAdminNavItems: NavItem[] = [
     title: "Dashboard",
     href: "/dashboard",
     icon: LayoutGrid,
+  },
+  {
+    title: "Shifts",
+    href: "/shifts",
+    icon: Calendar,
+  },
+  {
+    title: "Timesheets",
+    href: "/timesheets",
+    icon: Clock,
   },
   {
     title: "Documents",
@@ -55,8 +67,18 @@ const adminNavItems: NavItem[] = [
 const healthCareWorkerNavItems: NavItem[] = [
   {
     title: "Dashboard",
-    href: "/dashboard",
+    href: "/worker/dashboard",
     icon: LayoutGrid,
+  },
+  {
+    title: "Browse Shifts",
+    href: "/worker/shifts",
+    icon: Calendar,
+  },
+  {
+    title: "My Applications",
+    href: "/worker/applications",
+    icon: FileText,
   },
 ];
 

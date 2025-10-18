@@ -69,18 +69,18 @@ export function DocumentUploadForm({
       {/* Progress Summary */}
       <Card>
         <CardHeader>
-          <CardTitle>Upload Progress</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-gray-900 dark:text-white">Upload Progress</CardTitle>
+          <CardDescription className="dark:text-gray-300">
             Complete all required document uploads to verify your care home's legitimacy and adherence to standards.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-4">
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">
                 {completedCount} / {totalCount}
               </div>
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-gray-600 dark:text-gray-300">
                 Documents Approved
               </div>
             </div>
@@ -107,8 +107,8 @@ export function DocumentUploadForm({
         {/* Registration & Legal Documents */}
         <Card>
           <CardHeader>
-            <CardTitle>Registration & Legal Documents</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-gray-900 dark:text-white">Registration & Legal Documents</CardTitle>
+            <CardDescription className="dark:text-gray-300">
               Essential legal and registration documents required for care home operation.
             </CardDescription>
           </CardHeader>
@@ -140,8 +140,8 @@ export function DocumentUploadForm({
         {/* Compliance & Safety */}
         <Card>
           <CardHeader>
-            <CardTitle>Compliance & Safety</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-gray-900 dark:text-white">Compliance & Safety</CardTitle>
+            <CardDescription className="dark:text-gray-300">
               Safety policies, certificates, and compliance documentation.
             </CardDescription>
           </CardHeader>
@@ -173,8 +173,8 @@ export function DocumentUploadForm({
         {/* Financial & Operational */}
         <Card>
           <CardHeader>
-            <CardTitle>Financial & Operational</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-gray-900 dark:text-white">Financial & Operational</CardTitle>
+            <CardDescription className="dark:text-gray-300">
               Financial verification and operational documentation.
             </CardDescription>
           </CardHeader>

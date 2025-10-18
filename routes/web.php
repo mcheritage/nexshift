@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -10,6 +11,18 @@ require __DIR__.'/admin.php';
 Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
+
+
+
+// Auto-login route for testing (remove in production)
+Route::get('/auto-login', function () {
+    $user = App\Models\User::where('email', 'admin@sunshinecare.com')->first();
+    if ($user) {
+        Auth::login($user);
+        return redirect()->route('dashboard')->with('success', 'Logged in as ' . $user->email);
+    }
+    return redirect()->route('login')->with('error', 'User not found');
+});
 
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -22,6 +35,44 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/download/{document}', [App\Http\Controllers\DocumentUploadController::class, 'download'])->name('download');
     });
 
+    // Shift management routes for care homes
+    Route::resource('shifts', App\Http\Controllers\ShiftController::class);
+    Route::prefix('shifts')->name('shifts.')->group(function () {
+        Route::patch('/{shift}/publish', [App\Http\Controllers\ShiftController::class, 'publish'])->name('publish');
+        Route::patch('/{shift}/cancel', [App\Http\Controllers\ShiftController::class, 'cancel'])->name('cancel');
+    });
+
+    // Application management routes for care homes
+    Route::prefix('applications')->name('applications.')->group(function () {
+        Route::get('/shift/{shift}', [App\Http\Controllers\ApplicationController::class, 'index'])->name('index');
+        Route::patch('/{application}/accept', [App\Http\Controllers\ApplicationController::class, 'accept'])->name('accept');
+        Route::patch('/{application}/reject', [App\Http\Controllers\ApplicationController::class, 'reject'])->name('reject');
+    });
+
+    // Timesheet approval routes for care homes
+    Route::prefix('timesheets')->name('timesheets.')->group(function () {
+        Route::get('/', [App\Http\Controllers\TimesheetController::class, 'index'])->name('index');
+        Route::get('/{timesheet}', [App\Http\Controllers\TimesheetController::class, 'show'])->name('show');
+        Route::patch('/{timesheet}/approve', [App\Http\Controllers\TimesheetController::class, 'approve'])->name('approve');
+        Route::patch('/{timesheet}/query', [App\Http\Controllers\TimesheetController::class, 'query'])->name('query');
+        Route::patch('/{timesheet}/reject', [App\Http\Controllers\TimesheetController::class, 'reject'])->name('reject');
+        Route::patch('/bulk-approve', [App\Http\Controllers\TimesheetController::class, 'bulkApprove'])->name('bulk-approve');
+    });
+});
+
+// Healthcare Worker routes (outside care home middleware)
+Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worker.')->group(function () {
+    Route::get('/', function () {
+        return redirect()->route('worker.dashboard');
+    });
+    Route::get('/dashboard', [App\Http\Controllers\WorkerController::class, 'dashboard'])->name('dashboard');
+    Route::get('/shifts', [App\Http\Controllers\WorkerController::class, 'shifts'])->name('shifts');
+    Route::post('/shifts/{shift}/apply', [App\Http\Controllers\WorkerController::class, 'apply'])->name('apply');
+    Route::get('/applications', [App\Http\Controllers\WorkerController::class, 'applications'])->name('applications');
+    Route::patch('/applications/{application}/withdraw', [App\Http\Controllers\WorkerController::class, 'withdrawApplication'])->name('applications.withdraw');
+});
+
+Route::middleware(['auth'])->group(function () {
     // Admin routes
     Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
         // Admin Dashboard
@@ -52,4 +103,3 @@ Route::middleware(['auth'])->group(function () {
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
-
