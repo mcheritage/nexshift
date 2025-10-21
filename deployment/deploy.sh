@@ -14,7 +14,7 @@ VPS_USER="${VPS_USER:-}"
 VPS_PATH="${VPS_PATH:-}"
 
 # Project Configuration (set in GitHub workflow)
-PROJECT_NAME="${PROJECT_NAME:-nexshift}"
+PROJECT_NAME="${PROJECT_NAME:-fibroidscare}"
 DEPLOY_ENV="${DEPLOY_ENV:-sandbox}"
 PROJECT_PORT="${PROJECT_PORT:-8080}"
 
@@ -22,9 +22,10 @@ PROJECT_PORT="${PROJECT_PORT:-8080}"
 NGINX_PORT_80="${PROJECT_PORT}"
 NGINX_PORT_443="$((PROJECT_PORT + 1))"
 
-# Domain Configuration (set in GitHub workflow)
-DOMAIN="${DOMAIN:-nexshift.sandbox.novarelabs.dev}"
-API_DOMAIN="${API_DOMAIN:-api.nexshift.sandbox.novarelabs.dev}"
+# SSL Configuration (set in GitHub workflow)
+SSL_DOMAIN="${SSL_DOMAIN:-sandbox.novarelabs.dev}"
+SSL_EMAIL="${SSL_EMAIL:-sandbox@novarelabs.dev}"
+SSL_SUBDOMAINS="${SSL_SUBDOMAINS:-www,api}"
 
 # Deployment Options (set in GitHub workflow)
 FORCE_REBUILD="${FORCE_REBUILD:-false}"
@@ -40,7 +41,7 @@ CLEAR_NODE_MODULES="${CLEAR_NODE_MODULES:-false}"
 # Function to run docker-compose commands with environment variables
 run_docker_compose() {
     local command="$1"
-    ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && PROJECT_NAME=$PROJECT_NAME NGINX_PORT_80=$NGINX_PORT_80 NGINX_PORT_443=$NGINX_PORT_443 docker-compose -f $COMPOSE_FILE -p $COMPOSE_PROJECT_NAME $command"
+    ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && PROJECT_NAME=$PROJECT_NAME NGINX_PORT_80=$NGINX_PORT_80 NGINX_PORT_443=$NGINX_PORT_443 SSL_DOMAIN=$SSL_DOMAIN SSL_EMAIL=$SSL_EMAIL SSL_SUBDOMAINS=$SSL_SUBDOMAINS docker-compose -f $COMPOSE_FILE -p $COMPOSE_PROJECT_NAME $command"
 }
 
 # =============================================================================
@@ -70,8 +71,8 @@ if [ -n "$GITHUB_ACTIONS" ]; then
   [ -n "$PROJECT_PORT" ] && echo "    PROJECT_PORT: $PROJECT_PORT"
   [ -n "$NGINX_PORT_80" ] && echo "    NGINX_PORT_80: $NGINX_PORT_80"
   [ -n "$NGINX_PORT_443" ] && echo "    NGINX_PORT_443: $NGINX_PORT_443"
-  [ -n "$DOMAIN" ] && echo "    DOMAIN: $DOMAIN"
-  [ -n "$API_DOMAIN" ] && echo "    API_DOMAIN: $API_DOMAIN"
+  [ -n "$SSL_DOMAIN" ] && echo "    SSL_DOMAIN: $SSL_DOMAIN"
+  [ -n "$SSL_EMAIL" ] && echo "    SSL_EMAIL: $SSL_EMAIL"
   [ -n "$FORCE_REBUILD" ] && echo "    FORCE_REBUILD: $FORCE_REBUILD"
   [ -n "$CLEAR_VOLUMES" ] && echo "    CLEAR_VOLUMES: $CLEAR_VOLUMES"
   [ -n "$SEED_DATA" ] && echo "    SEED_DATA: $SEED_DATA"
@@ -101,17 +102,17 @@ echo ""
 
 # Use the main compose file
 COMPOSE_FILE="deployment/docker-compose.yml"
-if [ -n "$DOMAIN" ]; then
-  echo -e "${GREEN}✅ Using domain-based configuration for $DOMAIN${NC}"
+if [ -n "$SSL_DOMAIN" ] && [ -n "$SSL_EMAIL" ]; then
+  echo -e "${GREEN}✅ Using SSL-enabled configuration for $SSL_DOMAIN${NC}"
 else
-  echo -e "${YELLOW}⚠️  Using standard configuration (no domain)${NC}"
+  echo -e "${YELLOW}⚠️  Using standard configuration (no SSL)${NC}"
 fi
 
 # Check if VPS_PATH exists and handle repository setup
 echo -e "${BLUE}📁 Checking project directory...${NC}"
 if ssh $VPS_USER@$VPS_HOST "[ -d \"$VPS_PATH\" ]"; then
     echo -e "${GREEN}✅ Project directory exists, pulling latest changes...${NC}"
-    ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && GIT_SSH_COMMAND='ssh -i ~/.ssh/nexshift' git fetch origin && GIT_SSH_COMMAND='ssh -i ~/.ssh/nexshift' git reset --hard origin/$DEPLOY_ENV"
+    ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && GIT_SSH_COMMAND='ssh -i ~/.ssh/fibroidscare' git fetch origin && GIT_SSH_COMMAND='ssh -i ~/.ssh/fibroidscare' git reset --hard origin/$DEPLOY_ENV"
 else
     echo -e "${YELLOW}⚠️  Project directory does not exist, creating and cloning repository...${NC}"
 
@@ -120,7 +121,7 @@ else
 
     # Clone the repository using SSH key
     echo -e "${BLUE}📥 Cloning repository to $VPS_PATH using SSH key...${NC}"
-    ssh $VPS_USER@$VPS_HOST "GIT_SSH_COMMAND='ssh -i ~/.ssh/nexshift' git clone -b $DEPLOY_ENV git@github.com:novarelabs/nexshift.git \"$VPS_PATH\""
+    ssh $VPS_USER@$VPS_HOST "GIT_SSH_COMMAND='ssh -i ~/.ssh/fibroidscare' git clone -b $DEPLOY_ENV git@github.com:novarelabs/fibroidscare-admin.git \"$VPS_PATH\""
 
     if [ $? -ne 0 ]; then
         echo -e "${RED}❌ Failed to clone repository. Please check:${NC}"
@@ -134,6 +135,17 @@ else
     echo -e "${GREEN}✅ Repository cloned successfully${NC}"
 fi
 
+# Copy .env file to VPS
+echo -e "${BLUE}📋 Copying .env file...${NC}"
+
+# Create .env from GitHub APP_ENV variable (if set)
+if [ -n "$APP_ENV" ]; then
+    echo -e "${BLUE}📋 Creating .env from GitHub APP_ENV variable...${NC}"
+    ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && echo '$APP_ENV' > .env"
+    # Set ownership and permissions so the Docker container can write to the .env file
+    ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && sudo chown 1000:1000 .env && chmod 644 .env"
+    echo -e "${GREEN}✅ .env created from GitHub APP_ENV variable with proper permissions${NC}"
+fi
 
 # Stop existing containers
 echo -e "${BLUE}🛑 Stopping existing containers...${NC}"
@@ -162,7 +174,7 @@ elif [ "$CLEAR_VOLUMES" = "true" ]; then
 
   # Remove only volumes specific to this project
   # Docker Compose creates volumes with pattern: PROJECT_NAME_ENV_volumename
-  # Example: nexshift_sandbox_code_base, nexshift_sandbox_db_data, etc.
+  # Example: fibroidscare_sandbox_code_base, fibroidscare_sandbox_db_data, etc.
   ssh $VPS_USER@$VPS_HOST "docker volume ls -q | grep -E '${COMPOSE_PROJECT_NAME}_|${PROJECT_NAME}_' | xargs -r docker volume rm" || echo "No project-specific volumes found to remove"
 
   echo -e "${YELLOW}⚠️ Project volumes cleared. This will reset database and cache data for $PROJECT_NAME only.${NC}"
@@ -184,25 +196,6 @@ if [ "$FORCE_REBUILD" = "true" ]; then
   echo -e "${YELLOW}🧹 Clearing Docker build cache...${NC}"
   ssh $VPS_USER@$VPS_HOST "docker builder prune -f"
   echo "Build cache cleared."
-fi
-
-# Fix Git ownership issues on VPS before building containers
-echo -e "${BLUE}🔧 Fixing Git ownership issues...${NC}"
-ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && git config --global --add safe.directory $VPS_PATH" || echo "Git config already set"
-ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && git config --global user.name 'Deployment Script'" || echo "Git user.name already set"
-ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && git config --global user.email 'deploy@novarelabs.dev'" || echo "Git user.email already set"
-echo -e "${GREEN}✅ Git ownership issues resolved${NC}"
-
-# Copy .env file to VPS
-echo -e "${BLUE}📋 Copying .env file...${NC}"
-
-# Create .env from GitHub APP_ENV variable (if set)
-if [ -n "$APP_ENV" ]; then
-    echo -e "${BLUE}📋 Creating .env from GitHub APP_ENV variable...${NC}"
-    ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && echo '$APP_ENV' > .env"
-    # Set ownership and permissions so the Docker container can write to the .env file
-    ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && sudo chown 1000:1000 .env && chmod 644 .env"
-    echo -e "${GREEN}✅ .env created from GitHub APP_ENV variable with proper permissions${NC}"
 fi
 
 # Build new containers
@@ -245,8 +238,24 @@ fi
 
 run_docker_compose "up -d"
 
-# Note: SSL certificates are handled by the main VPS nginx reverse proxy
-echo -e "${BLUE}ℹ️  SSL certificates are managed by the main VPS nginx reverse proxy${NC}"
+# Check SSL certificate status
+if [ -n "$SSL_DOMAIN" ]; then
+  echo -e "${BLUE}🔒 Checking SSL certificate status...${NC}"
+  if ssh $VPS_USER@$VPS_HOST "[ -d /etc/letsencrypt/live/$SSL_DOMAIN ] && [ -f /etc/letsencrypt/live/$SSL_DOMAIN/fullchain.pem ]"; then
+    echo -e "${GREEN}✅ SSL certificate exists for $SSL_DOMAIN${NC}"
+
+    # Check if certificate is valid (not expiring in next 30 days)
+    if ssh $VPS_USER@$VPS_HOST "openssl x509 -checkend 2592000 -noout -in /etc/letsencrypt/live/$SSL_DOMAIN/fullchain.pem" 2>/dev/null; then
+      echo -e "${GREEN}✅ SSL certificate is valid and not expiring soon${NC}"
+    else
+      echo -e "${YELLOW}⚠️  SSL certificate is expiring soon. Please renew manually on the VPS.${NC}"
+    fi
+  else
+    echo -e "${YELLOW}⚠️  SSL certificate not found for $SSL_DOMAIN. Please ensure certificates are properly installed on the VPS.${NC}"
+  fi
+else
+  echo -e "${YELLOW}⚠️  SSL not configured, skipping certificate check${NC}"
+fi
 
 # Wait for services to be ready
 echo -e "${BLUE}⏳ Waiting for services to be ready...${NC}"
@@ -306,9 +315,8 @@ echo ""
 echo -e "${BLUE}🌐 Access URLs:${NC}"
 echo "  HTTP:  http://$VPS_HOST:$NGINX_PORT_80"
 echo "  HTTPS: https://$VPS_HOST:$NGINX_PORT_443"
-if [ -n "$DOMAIN" ]; then
-  echo "  Main Domain: https://$DOMAIN"
-  echo "  API Domain: https://$API_DOMAIN"
+if [ -n "$SSL_DOMAIN" ]; then
+  echo "  Domain: https://$SSL_DOMAIN"
 fi
 echo ""
 echo -e "${BLUE}🔧 Useful Commands:${NC}"

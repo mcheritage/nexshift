@@ -11,20 +11,20 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}🔧 Setting up Nginx Reverse Proxy for Nexshift Web Admin${NC}"
+echo -e "${BLUE}🔧 Setting up Nginx Reverse Proxy for Fibroids Care${NC}"
 
 # Configuration variables
-DOMAIN="${1:-nexshift.sandbox.novarelabs.dev}"
-API_DOMAIN="${2:-api.nexshift.sandbox.novarelabs.dev}"
+DOMAIN="${1:-fibroidscare.sandbox.novarelabs.dev}"
+API_DOMAIN="${2:-api.fibroidscare.sandbox.novarelabs.dev}"
 PROJECT_PORT="${3:-8080}"
 
 if [ -z "$1" ]; then
     echo -e "${YELLOW}⚠️  Usage: $0 <domain> [api-domain] [port]${NC}"
-    echo "Example: $0 nexshift.sandbox.novarelabs.dev api.nexshift.sandbox.novarelabs.dev 8080"
+    echo "Example: $0 fibroidscare.sandbox.novarelabs.dev api.fibroidscare.sandbox.novarelabs.dev 8080"
     echo ""
     echo -e "${BLUE}Please provide your domain name:${NC}"
-    read -p "Domain (e.g., nexshift.sandbox.novarelabs.dev): " DOMAIN
-    read -p "API Domain (optional, e.g., api.nexshift.sandbox.novarelabs.dev): " API_DOMAIN
+    read -p "Domain (e.g., fibroidscare.sandbox.novarelabs.dev): " DOMAIN
+    read -p "API Domain (optional, e.g., api.fibroidscare.sandbox.novarelabs.dev): " API_DOMAIN
     read -p "Project Port (default: 8080): " PROJECT_PORT
     PROJECT_PORT="${PROJECT_PORT:-8080}"
 fi
@@ -47,7 +47,7 @@ fi
 
 # Create the nginx configuration
 sudo tee "/etc/nginx/sites-available/$DOMAIN" > /dev/null <<EOF
-# Nginx Reverse Proxy Configuration for Nexshift Web Admin
+# Nginx Reverse Proxy Configuration for Fibroids Care
 # Generated on $(date)
 
 # HTTP to HTTPS redirect
@@ -137,7 +137,7 @@ if [ -n "$API_DOMAIN" ] && [ "$API_DOMAIN" != "null" ]; then
 
     # Create API nginx configuration
     sudo tee "/etc/nginx/sites-available/$API_DOMAIN" > /dev/null <<EOF
-# API Nginx Reverse Proxy Configuration for Nexshift Web Admin
+# API Nginx Reverse Proxy Configuration for Fibroids Care
 # Generated on $(date)
 
 # HTTP to HTTPS redirect

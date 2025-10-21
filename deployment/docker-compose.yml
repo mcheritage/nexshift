@@ -9,103 +9,129 @@ services:
         build:
             context: ../.
             dockerfile: deployment/Dockerfile
-        image: ${PROJECT_NAME:-}
-        restart: unless-stopped
-        working_dir: /var/www/
+            target: runtime
+            no_cache: true
+        restart: always
+        working_dir: /var/www/html
         volumes:
-            - code_base:/var/www
-            - ../.env:/var/www/.env
+            - ../../files/storage:/var/www/html/storage
+            - ../../files/cache:/var/www/html/bootstrap/cache
+            - ../../files/deployment:/var/www/html/deployment
         networks:
             - app_network
-        depends_on:
-            db:
-                condition: service_healthy
-            redis:
-                condition: service_started
-        env_file:
-            - ../.env
-        environment:
-            - GIT_CONFIG_GLOBAL=/var/www/.gitconfig
-            - GIT_SAFE_DIRECTORY=/var/www
-
-    db:
-        image: postgres:13
-        restart: unless-stopped
-        env_file:
-            - ../.env
-        volumes:
-            - db_data:/var/lib/postgresql/data
-        networks:
-            - app_network
+            - dokploy-network
         healthcheck:
-            test: [ "CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_DATABASE:-app_db}" ]
-            interval: 10s
-            timeout: 5s
-            retries: 5
+            test: ["CMD", "php-fpm", "-t"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
             start_period: 30s
+        environment:
+            APP_NAME: ${APP_NAME:?missing APP_NAME}
+            APP_ENV: ${APP_ENV:?missing APP_ENV}
+            APP_KEY: ${APP_KEY:?missing APP_KEY}
+            APP_DEBUG: ${APP_DEBUG:-false}
+            APP_URL: ${APP_URL:?missing APP_URL}
 
-    redis:
-        image: redis:7-alpine
-        container_name: ${PROJECT_NAME:-}_redis_prod
-        restart: unless-stopped
-        volumes:
-            - redis_data:/data
-        networks:
-            - app_network
+            DB_CONNECTION: ${DB_CONNECTION:?missing DB_CONNECTION}
+            DB_HOST: ${DB_HOST:?missing DB_HOST}
+            DB_DATABASE: ${DB_DATABASE:?missing DB_DATABASE}
+            DB_USERNAME: ${DB_USERNAME:?missing DB_USERNAME}
+            DB_PASSWORD: ${DB_PASSWORD:?missing DB_PASSWORD}
+
+            REDIS_HOST: ${REDIS_HOST:-redis}
+            REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+            REDIS_PORT: ${REDIS_PORT:-6379}
+
+            MAIL_MAILER: ${MAIL_MAILER:-smtp}
+            MAIL_PORT: ${MAIL_PORT:-587}
+            MAIL_HOST: ${MAIL_HOST:-}
+            MAIL_USERNAME: ${MAIL_USERNAME:-}
+            MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+            MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-no-reply@example.com}
+
+            ONESIGNAL_REST_API_URL: ${ONESIGNAL_REST_API_URL:-}
+            ONESIGNAL_APP_ID: ${ONESIGNAL_APP_ID:-}
+            ONESIGNAL_REST_API_KEY: ${ONESIGNAL_REST_API_KEY:-}
 
     nginx:
-        image: nginx:alpine
-        container_name: ${PROJECT_NAME:-}_nginx_prod
+        build:
+            context: ../.
+            dockerfile: deployment/Dockerfile
+            target: web
+            no_cache: true
         restart: unless-stopped
+        volumes:
+            - ../../files/deployment:/var/www/html/deployment
+            - ./nginx.conf:/etc/nginx/nginx.conf:ro
         # Expose port externally for testing
         ports:
-            - "${NGINX_PORT_80:-8080}:80"
-        volumes:
-            - code_base:/var/www
-            - ./nginx.conf:/etc/nginx/nginx.conf:ro
-            - ../storage/logs:/var/log/nginx
+            - "0.0.0.0:8000:10000"
         networks:
             - app_network
+            - dokploy-network
         depends_on:
-            - app
+            app:
+                condition: service_healthy
         healthcheck:
-            test: ["CMD", "curl", "--silent", "--fail", "http://localhost/health"]
+            test: [ "CMD", "curl", "--silent", "--fail", "http://localhost/health" ]
             interval: 10s
             timeout: 5s
             retries: 5
             start_period: 30s
         command: >
             sh -c "
-              nginx -g 'daemon off;'
+                nginx -g 'daemon off;'
             "
 
     queue:
-        image: ${PROJECT_NAME:-}
-        restart: unless-stopped
-        working_dir: /var/www/
-        volumes:
-            - code_base:/var/www
-            - ../.env:/var/www/.env
+        build:
+            context: ../.
+            dockerfile: deployment/Dockerfile
+            target: runtime
+            no_cache: true
+        restart: always
+        working_dir: /var/www/html
+        environment:
+            APP_NAME: ${APP_NAME:?missing APP_NAME}
+            APP_ENV: ${APP_ENV:?missing APP_ENV}
+            APP_KEY: ${APP_KEY:?missing APP_KEY}
+            APP_DEBUG: ${APP_DEBUG:-false}
+            APP_URL: ${APP_URL:?missing APP_URL}
+
+            LOG_CHANNEL: ${LOG_CHANNEL:-}
+            LOG_STACK: ${LOG_STACK:-}
+
+            DB_CONNECTION: ${DB_CONNECTION:?missing DB_CONNECTION}
+            DB_HOST: ${DB_HOST:?missing DB_HOST}
+            DB_DATABASE: ${DB_DATABASE:?missing DB_DATABASE}
+            DB_USERNAME: ${DB_USERNAME:?missing DB_USERNAME}
+            DB_PASSWORD: ${DB_PASSWORD:?missing DB_PASSWORD}
+
+            REDIS_HOST: ${REDIS_HOST:-redis}
+            REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+            REDIS_PORT: ${REDIS_PORT:-6379}
+
+            MAIL_MAILER: ${MAIL_MAILER:-smtp}
+            MAIL_PORT: ${MAIL_PORT:-587}
+            MAIL_HOST: ${MAIL_HOST:-}
+            MAIL_USERNAME: ${MAIL_USERNAME:-}
+            MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+            MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-no-reply@example.com}
+
+            ONESIGNAL_REST_API_URL: ${ONESIGNAL_REST_API_URL:-}
+            ONESIGNAL_APP_ID: ${ONESIGNAL_APP_ID:-}
+            ONESIGNAL_REST_API_KEY: ${ONESIGNAL_REST_API_KEY:-}
         networks:
             - app_network
         depends_on:
-            db:
+            app:
                 condition: service_healthy
-            redis:
-                condition: service_started
-        env_file:
-            - ../.env
-        environment:
-            - GIT_CONFIG_GLOBAL=/var/www/.gitconfig
-            - GIT_SAFE_DIRECTORY=/var/www
         command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
-
-
-volumes:
-    code_base:
-    db_data:
-    redis_data:
 
 networks:
     app_network:
         driver: bridge
+        internal: false
+    dokploy-network:
+        external: true
