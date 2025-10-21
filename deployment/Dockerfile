@@ -1,21 +1,10 @@
 # syntax=docker/dockerfile:1.7
 
 ############################
-# 1) PHP base with extensions for Composer
+# 1) PHP deps (Composer)
 ############################
-FROM php:8.3-cli AS deps
+FROM composer:2 AS deps
 WORKDIR /app
-
-# Install Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# System deps for PHP extensions
-RUN apt-get update && apt-get install -y \
-    git curl zip unzip libpng-dev libonig-dev libxml2-dev libpq-dev libzip-dev gnupg ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install PHP extensions needed for Composer
-RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd zip
 
 # Install vendor without running scripts (no artisan yet)
 COPY composer.json composer.lock ./
@@ -28,34 +17,65 @@ RUN composer install --no-dev --prefer-dist --no-interaction --no-progress --no-
 
 
 ############################
-# 2) Frontend assets (Node)
+# 2) Frontend assets (Node + PHP for wayfinder)
 ############################
-FROM node:20-alpine AS assets
+FROM node:22-alpine AS assets
 WORKDIR /app
+
+ENV APP_ENV=production \
+    APP_DEBUG=false \
+    LOG_CHANNEL=stderr \
+    LOG_LEVEL=error \
+    CACHE_DRIVER=file \
+    SESSION_DRIVER=array \
+    QUEUE_CONNECTION=sync \
+    BROADCAST_DRIVER=log \
+    APP_KEY='base64:9qa6QAAwxUOITTDDqxo/JD4p39yVXxN9cJnu3GfKoi0=' \
+    DB_CONNECTION=sqlite \
+    DB_DATABASE=/tmp/wayfinder.sqlite
+
+RUN touch /tmp/wayfinder.sqlite
+
+# Install PHP and required extensions for wayfinder plugin
+RUN apk add --no-cache \
+    php php-cli php-common php-curl php-dom php-fileinfo php-json php-mbstring \
+    php-openssl php-phar php-session php-tokenizer php-xml php-zip \
+    php-pdo php-pdo_sqlite php-sqlite3 \
+    composer
+
 # only copy what's needed for faster caching; adjust if you use Vite/Mix
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 RUN if [ -f package-lock.json ]; then npm ci; \
     elif [ -f pnpm-lock.yaml ]; then npm i -g pnpm && pnpm i --frozen-lockfile; \
     elif [ -f yarn.lock ]; then corepack enable && yarn install --frozen-lockfile; \
     else npm i; fi
+
+
+# Copy composer files for wayfinder plugin
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --prefer-dist --no-interaction --no-progress --no-scripts
+
+# Copy the full application for wayfinder to work
 COPY . .
+
+
 # Adjust for your build command (vite/mix)
 RUN npm run build
 
 ############################
 # 3) Runtime image (PHP-FPM)
 ############################
-FROM php:8.3-fpm AS runtime
+FROM php:8.4-fpm AS runtime
 # (You can switch to 8.4 when it’s stable for you)
 WORKDIR /var/www/html
 
 # System deps
 RUN apt-get update && apt-get install -y \
-    git curl zip unzip libpng-dev libonig-dev libxml2-dev libpq-dev libzip-dev gnupg ca-certificates \
+    git curl zip unzip libpng-dev libonig-dev libxml2-dev libpq-dev gnupg ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # PHP extensions
-RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd zip
+RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd
 
 # Optional: PECL, Redis, etc.
 # RUN pecl install redis && docker-php-ext-enable redis
