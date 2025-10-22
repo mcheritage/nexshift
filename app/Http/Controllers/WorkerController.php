@@ -322,21 +322,10 @@ class WorkerController extends Controller
             'break_duration_minutes' => 'required|integer|min:0|max:480',
             'worker_notes' => 'nullable|string|max:1000',
             'submit_for_approval' => 'boolean',
-            // Accept calculated values from frontend (allow 0 values for now)
             'calculated_hours' => 'required|numeric|min:0',
             'calculated_pay' => 'required|numeric|min:0',
             'has_overtime' => 'required|boolean',
             'overtime_hours' => 'required|numeric|min:0',
-        ]);
-
-        // Log what we received for debugging
-        \Log::info('Timesheet submission received', [
-            'calculated_hours' => $request->calculated_hours,
-            'calculated_pay' => $request->calculated_pay,
-            'has_overtime' => $request->has_overtime,
-            'overtime_hours' => $request->overtime_hours,
-            'clock_in_time' => $request->clock_in_time,
-            'clock_out_time' => $request->clock_out_time,
         ]);
 
         // Use the frontend calculated values instead of recalculating
@@ -350,58 +339,27 @@ class WorkerController extends Controller
         $submittedAt = $request->boolean('submit_for_approval') ? Carbon::now() : null;
 
         // Create proper datetime objects using shift date + times
-        // Clean the time inputs to ensure they're in H:i format
         $clockInTime = trim($request->clock_in_time);
         $clockOutTime = trim($request->clock_out_time);
         
         // Ensure times are in HH:MM format (pad with zero if needed)
         if (strlen($clockInTime) === 4 && strpos($clockInTime, ':') === 1) {
-            $clockInTime = '0' . $clockInTime; // Convert "8:00" to "08:00"
+            $clockInTime = '0' . $clockInTime;
         }
         if (strlen($clockOutTime) === 4 && strpos($clockOutTime, ':') === 1) {
-            $clockOutTime = '0' . $clockOutTime; // Convert "8:00" to "08:00"
+            $clockOutTime = '0' . $clockOutTime;
         }
         
-        \Log::info('StoreTimesheet - Time parsing debug', [
-            'original_clock_in' => $request->clock_in_time,
-            'original_clock_out' => $request->clock_out_time,
-            'cleaned_clock_in' => $clockInTime,
-            'cleaned_clock_out' => $clockOutTime,
-            'shift_date' => $shift->shift_date,
-        ]);
-        
-        // Extract just the date part from shift_date (in case it's a datetime string)
+        // Extract just the date part from shift_date
         $shiftDate = Carbon::parse($shift->shift_date)->format('Y-m-d');
         
-        try {
-            $clockInDateTime = Carbon::createFromFormat('Y-m-d H:i', $shiftDate . ' ' . $clockInTime, 'UTC');
-            $clockOutDateTime = Carbon::createFromFormat('Y-m-d H:i', $shiftDate . ' ' . $clockOutTime, 'UTC');
-        } catch (\Exception $e) {
-            \Log::error('StoreTimesheet - Carbon parsing error', [
-                'error' => $e->getMessage(),
-                'shift_date' => $shift->shift_date,
-                'extracted_date' => $shiftDate,
-                'clock_in_time' => $clockInTime,
-                'clock_out_time' => $clockOutTime,
-                'full_clock_in_string' => $shiftDate . ' ' . $clockInTime,
-                'full_clock_out_string' => $shiftDate . ' ' . $clockOutTime,
-            ]);
-            throw $e;
-        }
+        $clockInDateTime = Carbon::createFromFormat('Y-m-d H:i', $shiftDate . ' ' . $clockInTime, 'UTC');
+        $clockOutDateTime = Carbon::createFromFormat('Y-m-d H:i', $shiftDate . ' ' . $clockOutTime, 'UTC');
         
         // Handle overnight shifts
         if ($clockOutDateTime <= $clockInDateTime) {
             $clockOutDateTime->addDay();
         }
-
-        \Log::info('StoreTimesheet - Using frontend calculated values', [
-            'calculated_hours' => $totalHours,
-            'calculated_pay' => $totalPay,
-            'has_overtime' => $hasOvertime,
-            'overtime_hours' => $overtimeHours,
-            'clock_in_datetime' => $clockInDateTime->toDateTimeString(),
-            'clock_out_datetime' => $clockOutDateTime->toDateTimeString(),
-        ]);
 
         Timesheet::create([
             'shift_id' => $shift->id,
@@ -465,7 +423,6 @@ class WorkerController extends Controller
             'break_duration_minutes' => 'required|integer|min:0|max:480',
             'worker_notes' => 'nullable|string|max:1000',
             'submit_for_approval' => 'boolean',
-            // Accept calculated values from frontend
             'calculated_hours' => 'required|numeric|min:0',
             'calculated_pay' => 'required|numeric|min:0',
             'has_overtime' => 'required|boolean',
@@ -480,58 +437,27 @@ class WorkerController extends Controller
         $overtimeRate = $hasOvertime ? ($timesheet->shift->hourly_rate * 1.5) : null;
 
         // Create proper datetime objects using shift date + times
-        // Clean the time inputs to ensure they're in H:i format
         $clockInTime = trim($request->clock_in_time);
         $clockOutTime = trim($request->clock_out_time);
         
         // Ensure times are in HH:MM format (pad with zero if needed)
         if (strlen($clockInTime) === 4 && strpos($clockInTime, ':') === 1) {
-            $clockInTime = '0' . $clockInTime; // Convert "8:00" to "08:00"
+            $clockInTime = '0' . $clockInTime;
         }
         if (strlen($clockOutTime) === 4 && strpos($clockOutTime, ':') === 1) {
-            $clockOutTime = '0' . $clockOutTime; // Convert "8:00" to "08:00"
+            $clockOutTime = '0' . $clockOutTime;
         }
         
-        \Log::info('UpdateTimesheet - Time parsing debug', [
-            'original_clock_in' => $request->clock_in_time,
-            'original_clock_out' => $request->clock_out_time,
-            'cleaned_clock_in' => $clockInTime,
-            'cleaned_clock_out' => $clockOutTime,
-            'shift_date' => $timesheet->shift->shift_date,
-        ]);
-        
-        // Extract just the date part from shift_date (in case it's a datetime string)
+        // Extract just the date part from shift_date
         $shiftDate = Carbon::parse($timesheet->shift->shift_date)->format('Y-m-d');
         
-        try {
-            $clockInDateTime = Carbon::createFromFormat('Y-m-d H:i', $shiftDate . ' ' . $clockInTime, 'UTC');
-            $clockOutDateTime = Carbon::createFromFormat('Y-m-d H:i', $shiftDate . ' ' . $clockOutTime, 'UTC');
-        } catch (\Exception $e) {
-            \Log::error('UpdateTimesheet - Carbon parsing error', [
-                'error' => $e->getMessage(),
-                'shift_date' => $timesheet->shift->shift_date,
-                'extracted_date' => $shiftDate,
-                'clock_in_time' => $clockInTime,
-                'clock_out_time' => $clockOutTime,
-                'full_clock_in_string' => $shiftDate . ' ' . $clockInTime,
-                'full_clock_out_string' => $shiftDate . ' ' . $clockOutTime,
-            ]);
-            throw $e;
-        }
+        $clockInDateTime = Carbon::createFromFormat('Y-m-d H:i', $shiftDate . ' ' . $clockInTime, 'UTC');
+        $clockOutDateTime = Carbon::createFromFormat('Y-m-d H:i', $shiftDate . ' ' . $clockOutTime, 'UTC');
         
         // Handle overnight shifts
         if ($clockOutDateTime <= $clockInDateTime) {
             $clockOutDateTime->addDay();
         }
-
-        \Log::info('UpdateTimesheet - Using frontend calculated values', [
-            'calculated_hours' => $totalHours,
-            'calculated_pay' => $totalPay,
-            'has_overtime' => $hasOvertime,
-            'overtime_hours' => $overtimeHours,
-            'clock_in_datetime' => $clockInDateTime->toDateTimeString(),
-            'clock_out_datetime' => $clockOutDateTime->toDateTimeString(),
-        ]);
 
         $updateData = [
             'clock_in_time' => $clockInDateTime,

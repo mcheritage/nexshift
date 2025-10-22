@@ -90,44 +90,20 @@ export default function EditTimesheet({ timesheet }: EditTimesheetPageProps) {
 
     // Calculate hours and pay when times change
     useEffect(() => {
-        console.log('EditTimesheet calculation useEffect triggered:', {
-            clock_in: data.clock_in_time,
-            clock_out: data.clock_out_time,
-            break_minutes: data.break_duration_minutes,
-            shift_date: timesheet.shift.shift_date,
-            hourly_rate: timesheet.shift.hourly_rate
-        });
-
         if (data.clock_in_time && data.clock_out_time) {
             // Create proper timestamps using shift date + times
             const clockInTimestamp = new Date(`${timesheet.shift.shift_date}T${data.clock_in_time}`);
             let clockOutTimestamp = new Date(`${timesheet.shift.shift_date}T${data.clock_out_time}`);
             
-            console.log('EditTimesheet time parsing:', {
-                clockIn: clockInTimestamp.toString(),
-                clockOut: clockOutTimestamp.toString(),
-                clockInTime: clockInTimestamp.getTime(),
-                clockOutTime: clockOutTimestamp.getTime()
-            });
-            
             // If clock out time is less than or equal to clock in time, it's overnight
-            // This matches the backend logic for consistency
             if (clockOutTimestamp <= clockInTimestamp) {
                 clockOutTimestamp.setDate(clockOutTimestamp.getDate() + 1);
-                console.log('EditTimesheet overnight shift detected, adjusted clockOut:', clockOutTimestamp.toString());
             }
             
             // Calculate work duration using timestamps
             const totalWorkMinutes = (clockOutTimestamp.getTime() - clockInTimestamp.getTime()) / (1000 * 60);
             const workMinutesAfterBreak = totalWorkMinutes - data.break_duration_minutes;
             const totalHours = Math.max(0, workMinutesAfterBreak / 60);
-            
-            console.log('EditTimesheet time calculations:', {
-                totalWorkMinutes,
-                breakMinutes: data.break_duration_minutes,
-                workMinutesAfterBreak,
-                totalHours
-            });
             
             setCalculatedHours(parseFloat(totalHours.toFixed(2)));
             
@@ -139,14 +115,6 @@ export default function EditTimesheet({ timesheet }: EditTimesheetPageProps) {
                 const scheduledEnd = new Date(timesheet.shift.end_datetime);
                 const scheduledMinutes = (scheduledEnd.getTime() - scheduledStart.getTime()) / (1000 * 60);
                 scheduledHours = scheduledMinutes / 60;
-                console.log('EditTimesheet scheduled hours from datetime:', {
-                    start: scheduledStart.toString(),
-                    end: scheduledEnd.toString(),
-                    scheduledMinutes,
-                    scheduledHours
-                });
-            } else {
-                console.log('EditTimesheet using fallback scheduled hours:', scheduledHours);
             }
             
             // Calculate overtime (only if worked more than scheduled hours)
@@ -154,43 +122,17 @@ export default function EditTimesheet({ timesheet }: EditTimesheetPageProps) {
             setHasOvertime(overtime > 0);
             setOvertimeHours(parseFloat(overtime.toFixed(2)));
             
-            console.log('EditTimesheet overtime calculation:', {
-                scheduledHours,
-                totalHours,
-                overtime,
-                hasOvertime: overtime > 0
-            });
-            
             // Calculate pay
             let pay = 0;
             if (overtime > 0) {
                 const regularPay = scheduledHours * timesheet.shift.hourly_rate;
                 const overtimePay = overtime * (timesheet.shift.hourly_rate * 1.5);
                 pay = regularPay + overtimePay;
-                console.log('EditTimesheet pay calculation (with overtime):', {
-                    regularPay,
-                    overtimePay,
-                    totalPay: pay
-                });
             } else {
                 pay = totalHours * timesheet.shift.hourly_rate;
-                console.log('EditTimesheet pay calculation (no overtime):', {
-                    totalHours,
-                    hourlyRate: timesheet.shift.hourly_rate,
-                    totalPay: pay
-                });
             }
             
             setCalculatedPay(parseFloat(pay.toFixed(2)));
-            
-            console.log('EditTimesheet final calculated values set:', {
-                calculatedHours: parseFloat(totalHours.toFixed(2)),
-                calculatedPay: parseFloat(pay.toFixed(2)),
-                hasOvertime: overtime > 0,
-                overtimeHours: parseFloat(overtime.toFixed(2))
-            });
-        } else {
-            console.log('EditTimesheet missing clock in or clock out time');
         }
     }, [data.clock_in_time, data.clock_out_time, data.break_duration_minutes, timesheet.shift.hourly_rate, timesheet.shift.shift_date]);
 
@@ -212,15 +154,6 @@ export default function EditTimesheet({ timesheet }: EditTimesheetPageProps) {
     };
 
     const handleSubmit = (submitForApproval = false) => {
-        console.log('Edit handleSubmit clicked, submitForApproval:', submitForApproval);
-        console.log('Processing state:', processing);
-        console.log('Current calculated values:', {
-            calculatedHours,
-            calculatedPay,
-            hasOvertime,
-            overtimeHours
-        });
-        
         const submitData = {
             ...data,
             submit_for_approval: submitForApproval,
@@ -231,21 +164,9 @@ export default function EditTimesheet({ timesheet }: EditTimesheetPageProps) {
             overtime_hours: overtimeHours
         };
         
-        console.log('Submitting edit with values:', submitData);
-        
-        // Try using router.patch instead of the form patch method
         router.patch(`/worker/timesheets/${timesheet.id}`, submitData, {
-            onStart: () => {
-                console.log('Edit form submission started via router.patch');
-            },
             onError: (errors) => {
                 console.log('Edit validation errors:', errors);
-            },
-            onSuccess: (page) => {
-                console.log('Edit submission successful:', page);
-            },
-            onFinish: () => {
-                console.log('Edit form submission finished');
             }
         });
     };

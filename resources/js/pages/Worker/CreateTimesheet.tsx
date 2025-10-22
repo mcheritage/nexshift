@@ -64,44 +64,20 @@ export default function CreateTimesheet({ shift }: CreateTimesheetPageProps) {
 
     // Calculate hours and pay when times change
     useEffect(() => {
-        console.log('Calculation useEffect triggered:', {
-            clock_in: data.clock_in_time,
-            clock_out: data.clock_out_time,
-            break_minutes: data.break_duration_minutes,
-            shift_date: shift.shift_date,
-            hourly_rate: shift.hourly_rate
-        });
-
         if (data.clock_in_time && data.clock_out_time) {
             // Create proper timestamps using shift date + times
             const clockInTimestamp = new Date(`${shift.shift_date}T${data.clock_in_time}`);
             let clockOutTimestamp = new Date(`${shift.shift_date}T${data.clock_out_time}`);
             
-            console.log('Time parsing:', {
-                clockIn: clockInTimestamp.toString(),
-                clockOut: clockOutTimestamp.toString(),
-                clockInTime: clockInTimestamp.getTime(),
-                clockOutTime: clockOutTimestamp.getTime()
-            });
-            
             // If clock out time is less than or equal to clock in time, it's overnight
-            // This matches the backend logic for consistency
             if (clockOutTimestamp <= clockInTimestamp) {
                 clockOutTimestamp.setDate(clockOutTimestamp.getDate() + 1);
-                console.log('Overnight shift detected, adjusted clockOut:', clockOutTimestamp.toString());
             }
             
             // Calculate work duration using timestamps
             const totalWorkMinutes = (clockOutTimestamp.getTime() - clockInTimestamp.getTime()) / (1000 * 60);
             const workMinutesAfterBreak = totalWorkMinutes - data.break_duration_minutes;
             const totalHours = Math.max(0, workMinutesAfterBreak / 60);
-            
-            console.log('Time calculations:', {
-                totalWorkMinutes,
-                breakMinutes: data.break_duration_minutes,
-                workMinutesAfterBreak,
-                totalHours
-            });
             
             setCalculatedHours(parseFloat(totalHours.toFixed(2)));
             
@@ -113,14 +89,6 @@ export default function CreateTimesheet({ shift }: CreateTimesheetPageProps) {
                 const scheduledEnd = new Date(shift.end_datetime);
                 const scheduledMinutes = (scheduledEnd.getTime() - scheduledStart.getTime()) / (1000 * 60);
                 scheduledHours = scheduledMinutes / 60;
-                console.log('Scheduled hours from datetime:', {
-                    start: scheduledStart.toString(),
-                    end: scheduledEnd.toString(),
-                    scheduledMinutes,
-                    scheduledHours
-                });
-            } else {
-                console.log('Using fallback scheduled hours:', scheduledHours);
             }
             
             // Calculate overtime (only if worked more than scheduled hours)
@@ -128,43 +96,17 @@ export default function CreateTimesheet({ shift }: CreateTimesheetPageProps) {
             setHasOvertime(overtime > 0);
             setOvertimeHours(parseFloat(overtime.toFixed(2)));
             
-            console.log('Overtime calculation:', {
-                scheduledHours,
-                totalHours,
-                overtime,
-                hasOvertime: overtime > 0
-            });
-            
             // Calculate pay
             let pay = 0;
             if (overtime > 0) {
                 const regularPay = scheduledHours * shift.hourly_rate;
                 const overtimePay = overtime * (shift.hourly_rate * 1.5);
                 pay = regularPay + overtimePay;
-                console.log('Pay calculation (with overtime):', {
-                    regularPay,
-                    overtimePay,
-                    totalPay: pay
-                });
             } else {
                 pay = totalHours * shift.hourly_rate;
-                console.log('Pay calculation (no overtime):', {
-                    totalHours,
-                    hourlyRate: shift.hourly_rate,
-                    totalPay: pay
-                });
             }
             
             setCalculatedPay(parseFloat(pay.toFixed(2)));
-            
-            console.log('Final calculated values set:', {
-                calculatedHours: parseFloat(totalHours.toFixed(2)),
-                calculatedPay: parseFloat(pay.toFixed(2)),
-                hasOvertime: overtime > 0,
-                overtimeHours: parseFloat(overtime.toFixed(2))
-            });
-        } else {
-            console.log('Missing clock in or clock out time');
         }
     }, [data.clock_in_time, data.clock_out_time, data.break_duration_minutes, shift.hourly_rate, shift.shift_date]);
 
@@ -196,25 +138,9 @@ export default function CreateTimesheet({ shift }: CreateTimesheetPageProps) {
             overtime_hours: overtimeHours
         };
         
-        console.log('=== SUBMIT DEBUG ===');
-        console.log('Submit button clicked, submitForApproval:', submitForApproval);
-        console.log('Processing state:', processing);
-        console.log('Calculated hours:', calculatedHours);
-        console.log('Submit data:', submitData);
-        console.log('====================');
-        
-        post(`/worker/timesheets/${shift.id}`, submitData, {
+                post(`/worker/shifts/${shift.id}/timesheets`, submitData, {
             onError: (errors) => {
-                console.log('❌ Validation errors:', errors);
-            },
-            onSuccess: (page) => {
-                console.log('✅ Success:', page);
-            },
-            onStart: () => {
-                console.log('🚀 Request started...');
-            },
-            onFinish: () => {
-                console.log('🏁 Request finished');
+                console.log('Create validation errors:', errors);
             }
         });
     };
