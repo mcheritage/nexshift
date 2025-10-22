@@ -70,6 +70,17 @@ Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worke
     Route::post('/shifts/{shift}/apply', [App\Http\Controllers\WorkerController::class, 'apply'])->name('apply');
     Route::get('/applications', [App\Http\Controllers\WorkerController::class, 'applications'])->name('applications');
     Route::patch('/applications/{application}/withdraw', [App\Http\Controllers\WorkerController::class, 'withdrawApplication'])->name('applications.withdraw');
+    
+    // My Shifts page for workers
+    Route::get('/my-shifts', [App\Http\Controllers\WorkerController::class, 'myShifts'])->name('my-shifts');
+    
+    // Timesheet routes for workers
+    Route::get('/timesheets', [App\Http\Controllers\WorkerController::class, 'timesheets'])->name('timesheets');
+    Route::get('/timesheets/{shift}/create', [App\Http\Controllers\WorkerController::class, 'createTimesheet'])->name('timesheets.create');
+    Route::post('/timesheets/{shift}', [App\Http\Controllers\WorkerController::class, 'storeTimesheet'])->name('timesheets.store');
+    Route::get('/timesheets/{timesheet}/edit', [App\Http\Controllers\WorkerController::class, 'editTimesheet'])->name('timesheets.edit');
+    Route::patch('/timesheets/{timesheet}', [App\Http\Controllers\WorkerController::class, 'updateTimesheet'])->name('timesheets.update');
+    Route::patch('/timesheets/{timesheet}/submit', [App\Http\Controllers\WorkerController::class, 'submitTimesheet'])->name('timesheets.submit');
 });
 
 Route::middleware(['auth'])->group(function () {

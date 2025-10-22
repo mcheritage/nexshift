@@ -9,6 +9,7 @@ import {
   Building2,
   UserCheck,
   Calendar,
+  CalendarCheck,
   Shield,
   Users,
   Settings,
@@ -76,9 +77,19 @@ const healthCareWorkerNavItems: NavItem[] = [
     icon: Calendar,
   },
   {
+    title: "My Shifts",
+    href: "/worker/my-shifts",
+    icon: CalendarCheck,
+  },
+  {
     title: "My Applications",
     href: "/worker/applications",
     icon: FileText,
+  },
+  {
+    title: "Timesheets",
+    href: "/worker/timesheets",
+    icon: Clock,
   },
 ];
 

@@ -1,0 +1,435 @@
+import { Head, Link, useForm } from '@inertiajs/react';
+import { SharedData } from '@/types';
+import AppLayout from '@/layouts/app-layout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+    ArrowLeft, 
+    Calendar, 
+    Clock, 
+    Coins, 
+    Building2,
+    Save,
+    Send
+} from 'lucide-react';
+import { useState, useEffect } from 'react';
+
+interface Shift {
+    id: string;
+    title: string;
+    role: string;
+    shift_date: string;
+    start_time: string;
+    end_time: string;
+    hourly_rate: number;
+    ends_next_day?: boolean;
+    start_date_time?: string;
+    end_date_time?: string;
+    care_home: {
+        id: string;
+        name: string;
+    };
+}
+
+interface CreateTimesheetPageProps extends SharedData {
+    shift: Shift;
+}
+
+const roleLabels = {
+    'registered_nurse': 'Registered Nurse',
+    'healthcare_assistant': 'Healthcare Assistant',
+    'support_worker': 'Support Worker',
+    'senior_care_worker': 'Senior Care Worker',
+    'night_shift_worker': 'Night Shift Worker',
+    'domestic_staff': 'Domestic Staff',
+    'kitchen_staff': 'Kitchen Staff',
+    'maintenance_staff': 'Maintenance Staff'
+};
+
+export default function CreateTimesheet({ shift }: CreateTimesheetPageProps) {
+    const { data, setData, post, processing, errors } = useForm({
+        clock_in_time: shift.start_time,
+        clock_out_time: shift.end_time,
+        break_duration_minutes: 30,
+        worker_notes: '',
+    });
+
+    const [calculatedHours, setCalculatedHours] = useState<number>(0);
+    const [calculatedPay, setCalculatedPay] = useState<number>(0);
+    const [hasOvertime, setHasOvertime] = useState<boolean>(false);
+    const [overtimeHours, setOvertimeHours] = useState<number>(0);
+
+    // Calculate hours and pay when times change
+    useEffect(() => {
+        console.log('Calculation useEffect triggered:', {
+            clock_in: data.clock_in_time,
+            clock_out: data.clock_out_time,
+            break_minutes: data.break_duration_minutes,
+            shift_date: shift.shift_date,
+            hourly_rate: shift.hourly_rate
+        });
+
+        if (data.clock_in_time && data.clock_out_time) {
+            // Create proper timestamps using shift date + times
+            const clockInTimestamp = new Date(`${shift.shift_date}T${data.clock_in_time}`);
+            let clockOutTimestamp = new Date(`${shift.shift_date}T${data.clock_out_time}`);
+            
+            console.log('Time parsing:', {
+                clockIn: clockInTimestamp.toString(),
+                clockOut: clockOutTimestamp.toString(),
+                clockInTime: clockInTimestamp.getTime(),
+                clockOutTime: clockOutTimestamp.getTime()
+            });
+            
+            // If clock out time is less than or equal to clock in time, it's overnight
+            // This matches the backend logic for consistency
+            if (clockOutTimestamp <= clockInTimestamp) {
+                clockOutTimestamp.setDate(clockOutTimestamp.getDate() + 1);
+                console.log('Overnight shift detected, adjusted clockOut:', clockOutTimestamp.toString());
+            }
+            
+            // Calculate work duration using timestamps
+            const totalWorkMinutes = (clockOutTimestamp.getTime() - clockInTimestamp.getTime()) / (1000 * 60);
+            const workMinutesAfterBreak = totalWorkMinutes - data.break_duration_minutes;
+            const totalHours = Math.max(0, workMinutesAfterBreak / 60);
+            
+            console.log('Time calculations:', {
+                totalWorkMinutes,
+                breakMinutes: data.break_duration_minutes,
+                workMinutesAfterBreak,
+                totalHours
+            });
+            
+            setCalculatedHours(parseFloat(totalHours.toFixed(2)));
+            
+            // Calculate scheduled shift duration using the datetime fields directly
+            let scheduledHours = shift.duration_hours || 8; // fallback
+            
+            if (shift.start_datetime && shift.end_datetime) {
+                const scheduledStart = new Date(shift.start_datetime);
+                const scheduledEnd = new Date(shift.end_datetime);
+                const scheduledMinutes = (scheduledEnd.getTime() - scheduledStart.getTime()) / (1000 * 60);
+                scheduledHours = scheduledMinutes / 60;
+                console.log('Scheduled hours from datetime:', {
+                    start: scheduledStart.toString(),
+                    end: scheduledEnd.toString(),
+                    scheduledMinutes,
+                    scheduledHours
+                });
+            } else {
+                console.log('Using fallback scheduled hours:', scheduledHours);
+            }
+            
+            // Calculate overtime (only if worked more than scheduled hours)
+            const overtime = Math.max(0, totalHours - scheduledHours);
+            setHasOvertime(overtime > 0);
+            setOvertimeHours(parseFloat(overtime.toFixed(2)));
+            
+            console.log('Overtime calculation:', {
+                scheduledHours,
+                totalHours,
+                overtime,
+                hasOvertime: overtime > 0
+            });
+            
+            // Calculate pay
+            let pay = 0;
+            if (overtime > 0) {
+                const regularPay = scheduledHours * shift.hourly_rate;
+                const overtimePay = overtime * (shift.hourly_rate * 1.5);
+                pay = regularPay + overtimePay;
+                console.log('Pay calculation (with overtime):', {
+                    regularPay,
+                    overtimePay,
+                    totalPay: pay
+                });
+            } else {
+                pay = totalHours * shift.hourly_rate;
+                console.log('Pay calculation (no overtime):', {
+                    totalHours,
+                    hourlyRate: shift.hourly_rate,
+                    totalPay: pay
+                });
+            }
+            
+            setCalculatedPay(parseFloat(pay.toFixed(2)));
+            
+            console.log('Final calculated values set:', {
+                calculatedHours: parseFloat(totalHours.toFixed(2)),
+                calculatedPay: parseFloat(pay.toFixed(2)),
+                hasOvertime: overtime > 0,
+                overtimeHours: parseFloat(overtime.toFixed(2))
+            });
+        } else {
+            console.log('Missing clock in or clock out time');
+        }
+    }, [data.clock_in_time, data.clock_out_time, data.break_duration_minutes, shift.hourly_rate, shift.shift_date]);
+
+    const formatDate = (date: string) => {
+        return new Date(date).toLocaleDateString('en-GB', {
+            weekday: 'long',
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric'
+        });
+    };
+
+    const formatTime = (time: string) => {
+        return new Date(`2000-01-01T${time}`).toLocaleTimeString('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+    };
+
+    const handleSubmit = (submitForApproval = false) => {
+        const submitData = {
+            ...data,
+            submit_for_approval: submitForApproval,
+            // Send calculated values from frontend
+            calculated_hours: calculatedHours,
+            calculated_pay: calculatedPay,
+            has_overtime: hasOvertime,
+            overtime_hours: overtimeHours
+        };
+        
+        console.log('=== SUBMIT DEBUG ===');
+        console.log('Submit button clicked, submitForApproval:', submitForApproval);
+        console.log('Processing state:', processing);
+        console.log('Calculated hours:', calculatedHours);
+        console.log('Submit data:', submitData);
+        console.log('====================');
+        
+        post(`/worker/timesheets/${shift.id}`, submitData, {
+            onError: (errors) => {
+                console.log('❌ Validation errors:', errors);
+            },
+            onSuccess: (page) => {
+                console.log('✅ Success:', page);
+            },
+            onStart: () => {
+                console.log('🚀 Request started...');
+            },
+            onFinish: () => {
+                console.log('🏁 Request finished');
+            }
+        });
+    };
+
+    return (
+        <AppLayout title="Create Timesheet">
+            <Head title="Create Timesheet" />
+
+            <div className="container mx-auto px-4 py-6">
+                <div className="max-w-4xl mx-auto space-y-6">
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <Link href="/worker/timesheets">
+                                <Button variant="outline" size="sm">
+                                    <ArrowLeft className="h-4 w-4 mr-2" />
+                                    Back to Timesheets
+                                </Button>
+                            </Link>
+                            <div>
+                                <h1 className="text-3xl font-bold tracking-tight">Create Timesheet</h1>
+                                <p className="text-muted-foreground">
+                                    Submit your working hours for approval
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Shift Information */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Calendar className="h-5 w-5" />
+                                Shift Details
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div>
+                                    <div className="text-sm text-muted-foreground">Role</div>
+                                    <div className="font-medium">
+                                        {roleLabels[shift.role as keyof typeof roleLabels] || shift.role}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="text-sm text-muted-foreground">Care Home</div>
+                                    <div className="font-medium flex items-center gap-1">
+                                        <Building2 className="h-3 w-3" />
+                                        {shift.care_home.name}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="text-sm text-muted-foreground">Date</div>
+                                    <div className="font-medium">
+                                        {formatDate(shift.shift_date)}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="text-sm text-muted-foreground">Scheduled Time</div>
+                                    <div className="font-medium flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        {formatTime(shift.start_time)} - {formatTime(shift.end_time)}
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Timesheet Form */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Working Hours</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {/* Clock In Time */}
+                                <div>
+                                    <Label htmlFor="clock_in_time">Clock In Time *</Label>
+                                    <p className="text-xs text-muted-foreground mb-2">
+                                        Pre-filled with scheduled start time. Adjust if different.
+                                    </p>
+                                    <Input
+                                        id="clock_in_time"
+                                        type="time"
+                                        value={data.clock_in_time}
+                                        onChange={(e) => setData('clock_in_time', e.target.value)}
+                                        className={errors.clock_in_time ? 'border-red-500' : ''}
+                                    />
+                                    {errors.clock_in_time && (
+                                        <p className="text-sm text-red-500 mt-1">{errors.clock_in_time}</p>
+                                    )}
+                                </div>
+
+                                {/* Clock Out Time */}
+                                <div>
+                                    <Label htmlFor="clock_out_time">Clock Out Time *</Label>
+                                    <p className="text-xs text-muted-foreground mb-2">
+                                        Pre-filled with scheduled end time. Adjust if different.
+                                    </p>
+                                    <Input
+                                        id="clock_out_time"
+                                        type="time"
+                                        value={data.clock_out_time}
+                                        onChange={(e) => setData('clock_out_time', e.target.value)}
+                                        className={errors.clock_out_time ? 'border-red-500' : ''}
+                                    />
+                                    {errors.clock_out_time && (
+                                        <p className="text-sm text-red-500 mt-1">{errors.clock_out_time}</p>
+                                    )}
+                                </div>
+
+                                {/* Break Duration */}
+                                <div>
+                                    <Label htmlFor="break_duration_minutes">Break Duration (minutes) *</Label>
+                                    <Input
+                                        id="break_duration_minutes"
+                                        type="number"
+                                        min="0"
+                                        max="480"
+                                        value={data.break_duration_minutes}
+                                        onChange={(e) => setData('break_duration_minutes', parseInt(e.target.value) || 0)}
+                                        className={errors.break_duration_minutes ? 'border-red-500' : ''}
+                                    />
+                                    {errors.break_duration_minutes && (
+                                        <p className="text-sm text-red-500 mt-1">{errors.break_duration_minutes}</p>
+                                    )}
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Standard break is 30 minutes
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Calculated Summary */}
+                            {calculatedHours > 0 && (
+                                <div className="bg-muted/50 rounded-lg p-4">
+                                    <h3 className="font-medium mb-3">Calculated Summary</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                        <div>
+                                            <div className="text-muted-foreground">Total Hours</div>
+                                            <div className="font-medium text-lg flex items-center gap-1">
+                                                <Clock className="h-4 w-4" />
+                                                {calculatedHours}h
+                                                {hasOvertime && (
+                                                    <span className="text-orange-600 text-sm ml-2">
+                                                        (includes {overtimeHours}h overtime)
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="text-muted-foreground">Hourly Rate</div>
+                                            <div className="font-medium text-lg flex items-center gap-1">
+                                                <Coins className="h-4 w-4" />
+                                                £{shift.hourly_rate}
+                                                {hasOvertime && (
+                                                    <span className="text-orange-600 text-sm ml-2">
+                                                        (£{(shift.hourly_rate * 1.5).toFixed(2)} OT)
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="text-muted-foreground">Total Pay</div>
+                                            <div className="font-bold text-xl text-green-600 flex items-center gap-1">
+                                                <Coins className="h-5 w-5" />
+                                                £{calculatedPay}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Worker Notes */}
+                            <div>
+                                <Label htmlFor="worker_notes">Additional Notes (Optional)</Label>
+                                <Textarea
+                                    id="worker_notes"
+                                    placeholder="Add any additional notes about your shift..."
+                                    value={data.worker_notes}
+                                    onChange={(e) => setData('worker_notes', e.target.value)}
+                                    className={errors.worker_notes ? 'border-red-500' : ''}
+                                    rows={3}
+                                />
+                                {errors.worker_notes && (
+                                    <p className="text-sm text-red-500 mt-1">{errors.worker_notes}</p>
+                                )}
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Maximum 1000 characters
+                                </p>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-4 pt-4">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => handleSubmit(false)}
+                                    disabled={processing}
+                                >
+                                    <Save className="h-4 w-4 mr-2" />
+                                    Save as Draft
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={() => handleSubmit(true)}
+                                    disabled={processing}
+                                >
+                                    <Send className="h-4 w-4 mr-2" />
+                                    Submit for Approval
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </AppLayout>
+    );
+}
