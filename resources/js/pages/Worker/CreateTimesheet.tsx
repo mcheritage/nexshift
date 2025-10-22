@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { SharedData } from '@/types';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
@@ -50,7 +50,7 @@ const roleLabels = {
 };
 
 export default function CreateTimesheet({ shift }: CreateTimesheetPageProps) {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, processing, errors } = useForm({
         clock_in_time: shift.start_time,
         clock_out_time: shift.end_time,
         break_duration_minutes: 30,
@@ -138,7 +138,7 @@ export default function CreateTimesheet({ shift }: CreateTimesheetPageProps) {
             overtime_hours: overtimeHours
         };
         
-                post(`/worker/shifts/${shift.id}/timesheets`, submitData, {
+        router.post(`/worker/shifts/${shift.id}/timesheets`, submitData, {
             onError: (errors) => {
                 console.log('Create validation errors:', errors);
             }

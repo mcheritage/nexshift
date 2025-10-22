@@ -76,8 +76,8 @@ Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worke
     
     // Timesheet routes for workers
     Route::get('/timesheets', [App\Http\Controllers\WorkerController::class, 'timesheets'])->name('timesheets');
-    Route::get('/timesheets/{shift}/create', [App\Http\Controllers\WorkerController::class, 'createTimesheet'])->name('timesheets.create');
-    Route::post('/timesheets/{shift}', [App\Http\Controllers\WorkerController::class, 'storeTimesheet'])->name('timesheets.store');
+    Route::get('/shifts/{shift}/timesheets/create', [App\Http\Controllers\WorkerController::class, 'createTimesheet'])->name('timesheets.create');
+    Route::post('/shifts/{shift}/timesheets', [App\Http\Controllers\WorkerController::class, 'storeTimesheet'])->name('timesheets.store');
     Route::get('/timesheets/{timesheet}/edit', [App\Http\Controllers\WorkerController::class, 'editTimesheet'])->name('timesheets.edit');
     Route::patch('/timesheets/{timesheet}', [App\Http\Controllers\WorkerController::class, 'updateTimesheet'])->name('timesheets.update');
     Route::patch('/timesheets/{timesheet}/submit', [App\Http\Controllers\WorkerController::class, 'submitTimesheet'])->name('timesheets.submit');

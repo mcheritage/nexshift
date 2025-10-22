@@ -169,13 +169,15 @@ class Timesheet extends Model
             // Only auto-calculate if the values are not already set (for backward compatibility)
             // If total_hours and total_pay are already set (from frontend), don't recalculate
             if ($timesheet->clock_in_time && $timesheet->clock_out_time) {
-                // Only calculate if total_hours is not already set or is 0
-                if (!$timesheet->total_hours || $timesheet->total_hours == 0) {
+                // Only calculate if total_hours is not already set (null) 
+                // Don't recalculate if it's 0 - frontend might have sent 0 as a valid value
+                if (is_null($timesheet->total_hours)) {
                     $timesheet->total_hours = $timesheet->calculateTotalHours();
                 }
                 
-                // Only calculate if total_pay is not already set or is 0
-                if (!$timesheet->total_pay || $timesheet->total_pay == 0) {
+                // Only calculate if total_pay is not already set (null)
+                // Don't recalculate if it's 0 - frontend might have sent 0 as a valid value
+                if (is_null($timesheet->total_pay)) {
                     $timesheet->total_pay = $timesheet->calculateTotalPay();
                 }
             }

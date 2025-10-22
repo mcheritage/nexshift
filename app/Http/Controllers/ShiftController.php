@@ -51,7 +51,7 @@ class ShiftController extends Controller
 
         // Order by shift date and start time
         $shifts = $query->orderBy('shift_date', 'desc')
-            ->orderBy('start_time', 'desc')
+            ->orderBy('start_datetime', 'desc')
             ->paginate(20);
 
         // Get summary statistics
@@ -90,11 +90,6 @@ class ShiftController extends Controller
         if (!$careHome) {
             abort(403, 'Access denied: No care home associated');
         }
-
-        // Debug: Log the incoming request data
-        \Log::info('Shift creation request data:', $request->all());
-        \Log::info('Start time value:', ['start_time' => $request->get('start_time')]);
-        \Log::info('End time value:', ['end_time' => $request->get('end_time')]);
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -135,8 +130,8 @@ class ShiftController extends Controller
             'role' => $validated['role'],
             'location' => $validated['location'],
             'shift_date' => $validated['shift_date'],
-            'start_time' => $validated['start_time'],
-            'end_time' => $validated['end_time'],
+            'start_datetime' => $startDateTime,
+            'end_datetime' => $endDateTime,
             'ends_next_day' => $validated['ends_next_day'] ?? false,
             'duration_hours' => $durationHours,
             'hourly_rate' => $validated['hourly_rate'],
@@ -236,12 +231,27 @@ class ShiftController extends Controller
         $durationHours = $endTime->diffInHours($startTime, true);
         $totalPay = $durationHours * $validated['hourly_rate'];
 
-        $shift->update([
-            'duration_hours' => $durationHours,
-            'total_pay' => $totalPay,
-            'published_at' => $validated['status'] === Shift::STATUS_PUBLISHED && !$shift->published_at ? now() : $shift->published_at,
-            ...$validated,
-        ]);
+        // Create datetime objects from separate date and time fields
+        $startDateTime = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', 
+            $validated['shift_date'] . ' ' . $validated['start_time'] . ':00');
+        $endDateTime = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', 
+            $validated['shift_date'] . ' ' . $validated['end_time'] . ':00');
+        
+        // Handle shifts that end the next day
+        if ($endTime->lessThan($startTime)) {
+            $endDateTime->addDay();
+        }
+
+        // Remove old column names from validated data and add new datetime columns
+        $updateData = $validated;
+        unset($updateData['start_time'], $updateData['end_time']);
+        $updateData['start_datetime'] = $startDateTime;
+        $updateData['end_datetime'] = $endDateTime;
+        $updateData['duration_hours'] = $durationHours;
+        $updateData['total_pay'] = $totalPay;
+        $updateData['published_at'] = $validated['status'] === Shift::STATUS_PUBLISHED && !$shift->published_at ? now() : $shift->published_at;
+
+        $shift->update($updateData);
 
         return redirect()->route('shifts.show', $shift)
             ->with('success', 'Shift updated successfully.');

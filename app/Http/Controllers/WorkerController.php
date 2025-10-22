@@ -30,7 +30,7 @@ class WorkerController extends Controller
                 $query->where('worker_id', $user->id);
             })
             ->orderBy('shift_date')
-            ->orderBy('start_time')
+            ->orderBy('start_datetime')
             ->limit(10)
             ->get();
 
@@ -93,7 +93,7 @@ class WorkerController extends Controller
 
         // Order by date and time
         $shifts = $query->orderBy('shift_date')
-            ->orderBy('start_time')
+            ->orderBy('start_datetime')
             ->paginate(15);
 
         // Add application status for each shift
@@ -195,7 +195,7 @@ class WorkerController extends Controller
                 $query->where('worker_id', $user->id);
             }])
             ->orderBy('shift_date', 'desc')
-            ->orderBy('start_time')
+            ->orderBy('start_datetime')
             ->paginate(15);
 
         // Add timesheet status for each shift

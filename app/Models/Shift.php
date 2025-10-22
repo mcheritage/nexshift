@@ -246,7 +246,7 @@ class Shift extends Model
     }
 
     /**
-     * Check if shift is urgent (within 24 hours)
+     * Check if this shift is urgent (within 24 hours)
      */
     public function isUrgent(): bool
     {
@@ -254,8 +254,7 @@ class Shift extends Model
             return true;
         }
         
-        $shiftDateTime = \Carbon\Carbon::parse($this->shift_date->format('Y-m-d') . ' ' . $this->start_time);
-        return now()->diffInHours($shiftDateTime) <= 24;
+        return now()->diffInHours($this->start_datetime) <= 24;
     }
 
     /**

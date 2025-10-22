@@ -108,7 +108,7 @@ const MyShifts = ({ shifts }: Props) => {
             );
         } else if (shift.can_create_timesheet) {
             return (
-                <Link href={`/worker/timesheets/${shift.id}/create`}>
+                <Link href={`/worker/shifts/${shift.id}/timesheets/create`}>
                     <Button size="sm">
                         <Plus className="h-4 w-4 mr-1" />
                         Create Timesheet

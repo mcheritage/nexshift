@@ -191,7 +191,7 @@ export default function WorkerTimesheets({ timesheets, shiftsNeedingTimesheets }
                                                     </div>
                                                 </div>
                                             </div>
-                                            <Link href={`/worker/timesheets/${shift.id}/create`}>
+                                            <Link href={`/worker/shifts/${shift.id}/timesheets/create`}>
                                                 <Button>
                                                     <Plus className="h-4 w-4 mr-2" />
                                                     Create Timesheet
