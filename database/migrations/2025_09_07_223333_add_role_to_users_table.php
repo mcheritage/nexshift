@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('role')->default('care_home_admin')->after('email');
+            $table->string('role')->default(\App\UserRoles::CARE_HOME_ADMIN)->after('email');
         });
     }
 
