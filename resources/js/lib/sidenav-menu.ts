@@ -64,7 +64,7 @@ const adminNavItems: NavItem[] = [
     icon: UserCheck,
   },
   {
-    title: "Care Home Documents",
+    title: "Documents",
     href: "/admin/documents",
     icon: FileText,
   },

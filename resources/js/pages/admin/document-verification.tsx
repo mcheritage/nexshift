@@ -11,9 +11,8 @@ import {
     XCircle, 
     AlertTriangle, 
     FileText, 
-    Users,
-    Eye,
-    Download
+    Building2,
+    UserCheck
 } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -22,7 +21,7 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: '/admin',
     },
     {
-        title: 'Document Verification',
+        title: 'Documents',
         href: '/admin/documents',
     },
 ];
@@ -100,15 +99,15 @@ export default function AdminDocumentVerification({ careHomes, documentStats, ve
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Document Verification - Admin" />
+            <Head title="Documents - Admin" />
             
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Document Verification</h1>
+                        <h1 className="text-3xl font-bold tracking-tight">Documents</h1>
                         <p className="text-muted-foreground">
-                            Manage and review care home document submissions
+                            Overview of all document submissions and verification status
                         </p>
                     </div>
                 </div>
@@ -166,74 +165,48 @@ export default function AdminDocumentVerification({ careHomes, documentStats, ve
                     </Card>
                 </div>
 
-                {/* Care Homes List */}
-                <div className="space-y-4">
-                    <h2 className="text-xl font-semibold">Care Homes</h2>
-                    
-                    <div className="grid gap-4">
-                        {careHomes.map((careHome) => (
-                            <Card key={careHome.id}>
-                                <CardHeader>
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <CardTitle className="flex items-center gap-2">
-                                                <Users className="h-5 w-5" />
-                                                {careHome.name}
-                                            </CardTitle>
-                                            <CardDescription>
-                                                Administrator: {careHome.user.name} ({careHome.user.email})
-                                            </CardDescription>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-sm font-medium">
-                                                {getCompletionPercentage(careHome)}% Complete
-                                            </div>
-                                            <Progress 
-                                                value={getCompletionPercentage(careHome)} 
-                                                className="w-24 mt-1" 
-                                            />
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-3">
-                                        {/* Document Status Summary */}
-                                        <div className="flex flex-wrap gap-2">
-                                            {verificationStatuses.map((status) => {
-                                                const count = careHome.documents.filter(
-                                                    doc => doc.status === status.value
-                                                ).length;
-                                                
-                                                if (count === 0) return null;
-                                                
-                                                return (
-                                                    <Badge 
-                                                        key={status.value}
-                                                        variant="secondary"
-                                                        className={`${getStatusColor(status.value)} flex items-center gap-1`}
-                                                    >
-                                                        {getStatusIcon(status.value)}
-                                                        {status.displayName}: {count}
-                                                    </Badge>
-                                                );
-                                            })}
-                                        </div>
-                                        
-                                        {/* Action Buttons */}
-                                        <div className="flex gap-2">
-                                            <Button asChild variant="outline" size="sm">
-                                                <Link href={`/admin/carehomes/${careHome.id}/documents`}>
-                                                    <Eye className="h-4 w-4 mr-2" />
-                                                    View Documents
-                                                </Link>
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                </div>
+                {/* Information Card */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Document Management</CardTitle>
+                        <CardDescription>
+                            Review and manage all document submissions from care homes and healthcare workers
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                                <h3 className="font-semibold flex items-center gap-2">
+                                    <Building2 className="h-4 w-4" />
+                                    Care Home Documents
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Access care home documents through the Care Homes page. Each care home's documents can be reviewed from their profile.
+                                </p>
+                                <Button asChild variant="outline" size="sm">
+                                    <Link href="/admin/carehomes">
+                                        View Care Homes
+                                    </Link>
+                                </Button>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <h3 className="font-semibold flex items-center gap-2">
+                                    <UserCheck className="h-4 w-4" />
+                                    Healthcare Worker Documents
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Access healthcare worker documents through the Healthcare Workers page. Each worker's documents can be reviewed from their profile.
+                                </p>
+                                <Button asChild variant="outline" size="sm">
+                                    <Link href="/admin/healthcare-workers">
+                                        View Healthcare Workers
+                                    </Link>
+                                </Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </AppLayout>
     );

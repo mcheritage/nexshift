@@ -150,8 +150,9 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
         const total = requiredDocuments.length;
         const uploaded = requiredDocuments.filter(rd => rd.document).length;
         const approved = requiredDocuments.filter(rd => rd.document?.status === 'approved').length;
+        const rejected = requiredDocuments.filter(rd => rd.document?.status === 'rejected').length;
         
-        return { total, uploaded, approved };
+        return { total, uploaded, approved, rejected };
     };
 
     const stats = getCompletionStats();
@@ -265,7 +266,7 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                 </div>
 
                 {/* Stats */}
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Total Required</CardTitle>
@@ -293,6 +294,16 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
+                        </CardContent>
+                    </Card>
+                    
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Rejected</CardTitle>
+                            <XCircle className="h-4 w-4 text-red-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
                         </CardContent>
                     </Card>
                 </div>

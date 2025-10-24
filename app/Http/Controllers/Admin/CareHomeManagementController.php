@@ -36,7 +36,7 @@ class CareHomeManagementController extends Controller
      */
     public function show(CareHome $careHome): Response
     {
-        $careHome->load(['user', 'documents.reviewer']);
+        $careHome->load(['user', 'documents']);
         
         $documentStats = [
             'total' => $careHome->documents()->count(),

@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +15,13 @@ import {
     Trash2,
     Download,
     FileText,
-    Search
+    Search,
+    Clock,
+    CheckCircle,
+    XCircle,
+    ChevronUp,
+    ChevronDown,
+    ChevronsUpDown
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
@@ -68,6 +74,10 @@ const genderOptions = [
 export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }: Props) {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [sortColumn, setSortColumn] = useState<string>('');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
@@ -76,6 +86,25 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
         care_home_id: '',
         gender: '',
     });
+
+    const handleSort = (column: string) => {
+        if (sortColumn === column) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortColumn(column);
+            setSortDirection('asc');
+        }
+        setCurrentPage(1);
+    };
+
+    const getSortIcon = (column: string) => {
+        if (sortColumn !== column) {
+            return <ChevronsUpDown className="h-4 w-4" />;
+        }
+        return sortDirection === 'asc' 
+            ? <ChevronUp className="h-4 w-4" /> 
+            : <ChevronDown className="h-4 w-4" />;
+    };
 
     const filteredWorkers = useMemo(() => {
         return healthCareWorkers.filter(worker => {
@@ -87,6 +116,51 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
             );
         });
     }, [healthCareWorkers, searchTerm]);
+
+    const sortedWorkers = useMemo(() => {
+        if (!sortColumn) return filteredWorkers;
+
+        return [...filteredWorkers].sort((a, b) => {
+            let aValue: any;
+            let bValue: any;
+
+            switch (sortColumn) {
+                case 'name':
+                    aValue = `${a.first_name} ${a.last_name}`.toLowerCase();
+                    bValue = `${b.first_name} ${b.last_name}`.toLowerCase();
+                    break;
+                case 'email':
+                    aValue = a.email.toLowerCase();
+                    bValue = b.email.toLowerCase();
+                    break;
+                case 'gender':
+                    aValue = a.gender.toLowerCase();
+                    bValue = b.gender.toLowerCase();
+                    break;
+                case 'documents':
+                    aValue = a.documents_count;
+                    bValue = b.documents_count;
+                    break;
+                case 'joined':
+                    aValue = new Date(a.created_at).getTime();
+                    bValue = new Date(b.created_at).getTime();
+                    break;
+                default:
+                    return 0;
+            }
+
+            if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [filteredWorkers, sortColumn, sortDirection]);
+
+    const paginatedWorkers = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return sortedWorkers.slice(startIndex, startIndex + itemsPerPage);
+    }, [sortedWorkers, currentPage]);
+
+    const totalPages = Math.ceil(sortedWorkers.length / itemsPerPage);
 
     const handleCreate = () => {
         router.post('/admin/healthcare-workers', formData, {
@@ -135,6 +209,20 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
         a.click();
         window.URL.revokeObjectURL(url);
     };
+
+    const stats = useMemo(() => {
+        const totalWorkers = healthCareWorkers.length;
+        const totalPending = healthCareWorkers.reduce((sum, worker) => sum + worker.pending_documents_count, 0);
+        const totalApproved = healthCareWorkers.reduce((sum, worker) => sum + worker.approved_documents_count, 0);
+        const totalRejected = healthCareWorkers.reduce((sum, worker) => sum + worker.rejected_documents_count, 0);
+        
+        return {
+            totalWorkers,
+            totalPending,
+            totalApproved,
+            totalRejected,
+        };
+    }, [healthCareWorkers]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -236,6 +324,49 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                     </div>
                 </div>
 
+                {/* Stats Cards */}
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Workers</CardTitle>
+                            <UserCheck className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.totalWorkers}</div>
+                        </CardContent>
+                    </Card>
+                    
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Pending Documents</CardTitle>
+                            <Clock className="h-4 w-4 text-yellow-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-yellow-600">{stats.totalPending}</div>
+                        </CardContent>
+                    </Card>
+                    
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Approved Documents</CardTitle>
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-green-600">{stats.totalApproved}</div>
+                        </CardContent>
+                    </Card>
+                    
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Rejected Documents</CardTitle>
+                            <XCircle className="h-4 w-4 text-red-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-red-600">{stats.totalRejected}</div>
+                        </CardContent>
+                    </Card>
+                </div>
+
                 {/* Search */}
                 <div className="flex items-center gap-2">
                     <div className="relative flex-1 max-w-sm">
@@ -255,20 +386,60 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                         <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Email</TableHead>
-                                        <TableHead>Gender</TableHead>
-                                        <TableHead>Documents</TableHead>
-                                        <TableHead>Joined</TableHead>
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead 
+                                            className="cursor-pointer select-none"
+                                            onClick={() => handleSort('name')}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                Name
+                                                {getSortIcon('name')}
+                                            </div>
+                                        </TableHead>
+                                        <TableHead 
+                                            className="cursor-pointer select-none"
+                                            onClick={() => handleSort('email')}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                Email
+                                                {getSortIcon('email')}
+                                            </div>
+                                        </TableHead>
+                                        <TableHead 
+                                            className="cursor-pointer select-none"
+                                            onClick={() => handleSort('gender')}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                Gender
+                                                {getSortIcon('gender')}
+                                            </div>
+                                        </TableHead>
+                                        <TableHead 
+                                            className="cursor-pointer select-none"
+                                            onClick={() => handleSort('documents')}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                Documents
+                                                {getSortIcon('documents')}
+                                            </div>
+                                        </TableHead>
+                                        <TableHead 
+                                            className="cursor-pointer select-none"
+                                            onClick={() => handleSort('joined')}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                Joined
+                                                {getSortIcon('joined')}
+                                            </div>
+                                        </TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredWorkers.length > 0 ? (
-                                        filteredWorkers.map((worker) => (
-                                            <TableRow key={worker.id}>
-                                                <TableCell>
+                                    {paginatedWorkers.length > 0 ? (
+                                        paginatedWorkers.map((worker) => (
+                                            <TableRow key={worker.id} className="h-12">
+                                                <TableCell className="py-2">
                                                     <a 
                                                         href={`/admin/healthcare-workers/${worker.id}`}
                                                         className="flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
@@ -279,29 +450,30 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                                         </span>
                                                     </a>
                                                 </TableCell>
-                                                <TableCell>{worker.email}</TableCell>
-                                                <TableCell className="capitalize">{worker.gender}</TableCell>
-                                                <TableCell>
-                                                    <div className="flex flex-col gap-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <FileText className="h-4 w-4 text-muted-foreground" />
-                                                            <span className="font-medium">{worker.documents_count} Total</span>
+                                                <TableCell className="py-2">{worker.email}</TableCell>
+                                                <TableCell className="py-2 capitalize">{worker.gender}</TableCell>
+                                                <TableCell className="py-2">
+                                                    <div className="inline-flex flex-col border rounded-md overflow-hidden min-w-[140px]">
+                                                        <div className="flex items-center justify-between px-2 py-1 bg-muted border-b">
+                                                            <span className="font-medium text-xs">Total</span>
+                                                            <span className="font-bold text-xs">{worker.documents_count}</span>
                                                         </div>
-                                                        <div className="flex flex-wrap gap-1 text-xs">
-                                                            <Badge variant="secondary" className="text-xs">
-                                                                {worker.pending_documents_count} Pending
-                                                            </Badge>
-                                                            <Badge className="bg-green-500 hover:bg-green-600 text-xs">
-                                                                {worker.approved_documents_count} Approved
-                                                            </Badge>
-                                                            <Badge variant="destructive" className="text-xs">
-                                                                {worker.rejected_documents_count} Rejected
-                                                            </Badge>
+                                                        <div className="flex items-center justify-between px-2 py-0.5 border-b">
+                                                            <span className="text-xs text-muted-foreground">Pending</span>
+                                                            <span className="text-xs font-medium tabular-nums">{worker.pending_documents_count}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between px-2 py-0.5 border-b bg-green-50 dark:bg-green-950/20">
+                                                            <span className="text-xs text-green-700 dark:text-green-400">Approved</span>
+                                                            <span className="text-xs font-medium text-green-700 dark:text-green-400 tabular-nums">{worker.approved_documents_count}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between px-2 py-0.5 bg-red-50 dark:bg-red-950/20">
+                                                            <span className="text-xs text-red-700 dark:text-red-400">Rejected</span>
+                                                            <span className="text-xs font-medium text-red-700 dark:text-red-400 tabular-nums">{worker.rejected_documents_count}</span>
                                                         </div>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell>{new Date(worker.created_at).toLocaleDateString()}</TableCell>
-                                                <TableCell>
+                                                <TableCell className="py-2">{new Date(worker.created_at).toLocaleDateString()}</TableCell>
+                                                <TableCell className="py-2">
                                                     <div className="flex gap-2 justify-end">
                                                         <Button asChild variant="outline" size="sm">
                                                             <a href={`/admin/workers/${worker.id}/documents`}>
@@ -331,6 +503,57 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                 </TableBody>
                             </Table>
                         </div>
+
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-between border-t px-6 py-4">
+                                <div className="text-sm text-muted-foreground">
+                                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, sortedWorkers.length)} of {sortedWorkers.length} workers
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        disabled={currentPage === 1}
+                                    >
+                                        Previous
+                                    </Button>
+                                    <div className="flex items-center gap-1">
+                                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                            .filter(page => {
+                                                return page === 1 || 
+                                                       page === totalPages || 
+                                                       (page >= currentPage - 1 && page <= currentPage + 1);
+                                            })
+                                            .map((page, index, array) => (
+                                                <div key={page} className="flex items-center">
+                                                    {index > 0 && array[index - 1] !== page - 1 && (
+                                                        <span className="px-2">...</span>
+                                                    )}
+                                                    <Button
+                                                        variant={currentPage === page ? "default" : "outline"}
+                                                        size="sm"
+                                                        onClick={() => setCurrentPage(page)}
+                                                        className="w-10"
+                                                    >
+                                                        {page}
+                                                    </Button>
+                                                </div>
+                                            ))
+                                        }
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={currentPage === totalPages}
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

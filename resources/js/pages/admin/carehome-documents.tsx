@@ -123,7 +123,7 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
     const handleStatusUpdate = () => {
         if (!selectedDocument) return;
 
-        router.patch(`/admin/documents/${selectedDocument.id}/status`, {
+        router.post(`/admin/documents/${selectedDocument.id}/update-status`, {
             status: newStatus,
             rejection_reason: rejectionReason || null,
             action_required: actionRequired || null,
@@ -162,21 +162,17 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
             
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-6">
                 {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Button asChild variant="outline" size="sm">
-                            <Link href="/admin/documents">
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Back to Documents
-                            </Link>
-                        </Button>
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight">{careHome.name}</h1>
-                            <p className="text-muted-foreground">
-                                Administrator: {careHome.user.name} ({careHome.user.email})
-                            </p>
-                        </div>
-                    </div>
+                <div>
+                    <Button asChild variant="outline" size="sm" className="mb-2">
+                        <Link href={`/admin/carehomes/${careHome.id}`}>
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Back to Care Home Profile
+                        </Link>
+                    </Button>
+                    <h1 className="text-3xl font-bold tracking-tight">{careHome.name}</h1>
+                    <p className="text-muted-foreground">
+                        Administrator: {careHome.user.name} ({careHome.user.email})
+                    </p>
                 </div>
 
                 {/* Stats */}

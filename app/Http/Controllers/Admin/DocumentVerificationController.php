@@ -10,7 +10,6 @@ use App\Models\Document;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -104,7 +103,7 @@ class DocumentVerificationController extends Controller
     /**
      * Update document verification status
      */
-    public function updateStatus(Request $request, Document $document): JsonResponse
+    public function updateStatus(Request $request, Document $document)
     {
         $request->validate([
             'status' => 'required|string|in:' . implode(',', array_column(DocumentVerificationStatus::cases(), 'value')),
@@ -126,11 +125,7 @@ class DocumentVerificationController extends Controller
         // Send notification to care home administrator
         $this->sendStatusChangeNotification($document, $oldStatus, $newStatus);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Document status updated successfully',
-            'document' => $document->fresh(['reviewer']),
-        ]);
+        return redirect()->back()->with('success', 'Document status updated successfully');
     }
 
     /**
