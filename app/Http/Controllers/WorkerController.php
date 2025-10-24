@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Mail\NewShiftApplication;
 use App\Models\Application;
+use App\Models\Notification;
 use App\Models\Shift;
 use App\Models\Timesheet;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -117,6 +121,12 @@ class WorkerController extends Controller
     {
         $user = Auth::user();
 
+        \Log::info('Worker apply method called', [
+            'user_id' => $user->id,
+            'shift_id' => $shift->id,
+            'user_role' => $user->role,
+        ]);
+
         // Validate that user is a healthcare worker
         if (!$user->isHealthCareWorker()) {
             abort(403, 'Only healthcare workers can apply for shifts');
@@ -142,13 +152,54 @@ class WorkerController extends Controller
         ]);
 
         // Create application
-        Application::create([
+        $application = Application::create([
             'shift_id' => $shift->id,
             'worker_id' => $user->id,
             'status' => Application::STATUS_PENDING,
             'message' => $validated['message'] ?? null,
             'applied_at' => now(),
         ]);
+
+        \Log::info('Application created', ['application_id' => $application->id]);
+
+        // Notify ALL care home admins about new application
+        $careHomeAdmins = User::where('care_home_id', $shift->care_home_id)
+            ->where('role', 'care_home_admin')
+            ->get();
+        
+        \Log::info('Care home admins loaded', [
+            'care_home_id' => $shift->care_home_id,
+            'admin_count' => $careHomeAdmins->count(),
+            'admin_emails' => $careHomeAdmins->pluck('email')->toArray(),
+        ]);
+
+        foreach ($careHomeAdmins as $admin) {
+            // In-app notification
+            $notification = Notification::create([
+                'user_id' => $admin->id,
+                'type' => 'shift_application',
+                'title' => 'New Shift Application',
+                'message' => "{$user->first_name} {$user->last_name} has applied for the {$shift->title} shift on " . date('M d, Y', strtotime($shift->shift_date)),
+                'data' => [
+                    'shift_id' => $shift->id,
+                    'application_id' => $application->id,
+                    'worker_id' => $user->id,
+                    'worker_name' => "{$user->first_name} {$user->last_name}",
+                ],
+            ]);
+            \Log::info('Notification created', [
+                'notification_id' => $notification->id,
+                'for_admin' => $admin->email,
+            ]);
+
+            // Send email notification
+            try {
+                Mail::to($admin->email)->send(new NewShiftApplication($application));
+                \Log::info('Email sent successfully to ' . $admin->email);
+            } catch (\Exception $e) {
+                \Log::error('Email sending failed to ' . $admin->email . ': ' . $e->getMessage());
+            }
+        }
 
         return redirect()->back()->with('success', 'Application submitted successfully');
     }

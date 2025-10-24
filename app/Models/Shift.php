@@ -96,6 +96,21 @@ class Shift extends Model
         'end_time',
     ];
 
+    /**
+     * Boot the model
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Automatically calculate total_pay when creating or updating
+        static::saving(function ($shift) {
+            if ($shift->duration_hours && $shift->hourly_rate) {
+                $shift->total_pay = $shift->duration_hours * $shift->hourly_rate;
+            }
+        });
+    }
+
     // Role constants
     public const ROLE_REGISTERED_NURSE = 'registered_nurse';
     public const ROLE_HEALTHCARE_ASSISTANT = 'healthcare_assistant';

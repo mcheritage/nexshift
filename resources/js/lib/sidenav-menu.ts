@@ -14,6 +14,7 @@ import {
   Users,
   Settings,
   Clock,
+  Receipt,
 } from "lucide-react";
 
 // Care Home Admin Navigation Items
@@ -32,6 +33,11 @@ const careHomeAdminNavItems: NavItem[] = [
     title: "Timesheets",
     href: "/timesheets",
     icon: Clock,
+  },
+  {
+    title: "Invoices",
+    href: "/invoices",
+    icon: Receipt,
   },
   {
     title: "Documents",
