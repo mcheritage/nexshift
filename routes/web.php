@@ -100,6 +100,14 @@ Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worke
     Route::get('/timesheets/{timesheet}/edit', [App\Http\Controllers\WorkerController::class, 'editTimesheet'])->name('timesheets.edit');
     Route::patch('/timesheets/{timesheet}', [App\Http\Controllers\WorkerController::class, 'updateTimesheet'])->name('timesheets.update');
     Route::patch('/timesheets/{timesheet}/submit', [App\Http\Controllers\WorkerController::class, 'submitTimesheet'])->name('timesheets.submit');
+
+    // Document routes for workers
+    Route::prefix('documents')->name('documents.')->group(function () {
+        Route::get('/', [App\Http\Controllers\WorkerDocumentController::class, 'index'])->name('index');
+        Route::post('/upload', [App\Http\Controllers\WorkerDocumentController::class, 'store'])->name('store');
+        Route::get('/{document}/download', [App\Http\Controllers\WorkerDocumentController::class, 'download'])->name('download');
+        Route::delete('/{document}', [App\Http\Controllers\WorkerDocumentController::class, 'destroy'])->name('destroy');
+    });
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -111,8 +119,11 @@ Route::middleware(['auth'])->group(function () {
         // Document Verification
         Route::get('/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'index'])->name('main.documents.index');
         Route::get('/carehomes/{careHome}/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'showCareHome'])->name('main.carehomes.documents');
-        Route::patch('/documents/{document}/status', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'updateStatus'])->name('main.documents.update-status');
+        Route::post('/documents/{document}/update-status', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'updateStatus'])->name('main.documents.update-status');
         Route::get('/documents/{document}/download', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'download'])->name('main.documents.download');
+        
+        // Worker Document Verification
+        Route::get('/workers/{worker}/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'showWorker'])->name('workers.documents.show');
         
         // Care Home Management
         Route::get('/carehomes', [App\Http\Controllers\Admin\CareHomeManagementController::class, 'index'])->name('carehomes.index');

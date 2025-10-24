@@ -127,17 +127,16 @@ export default function WorkerTimesheets({ timesheets, shiftsNeedingTimesheets }
         <AppLayout title="My Timesheets">
             <Head title="My Timesheets" />
 
-            <div className="container mx-auto px-4 py-6">
-                <div className="space-y-6">
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight">My Timesheets</h1>
-                            <p className="text-muted-foreground">
-                                Submit and track your working hours
-                            </p>
-                        </div>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Timesheets</h1>
+                        <p className="text-gray-600 dark:text-gray-400 mt-1">
+                            Submit and track your working hours
+                        </p>
                     </div>
+                </div>
 
                     {/* Info Box */}
                     {shiftsNeedingTimesheets.length === 0 && (
@@ -360,7 +359,6 @@ export default function WorkerTimesheets({ timesheets, shiftsNeedingTimesheets }
                             )}
                         </CardContent>
                     </Card>
-                </div>
             </div>
         </AppLayout>
     );

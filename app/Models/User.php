@@ -112,6 +112,11 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\Application::class, 'worker_id');
     }
 
+    public function documents()
+    {
+        return $this->hasMany(Document::class);
+    }
+
     public function getNameAttribute(): string {
         if($care_home = $this->care_home) {
             return $care_home->name;

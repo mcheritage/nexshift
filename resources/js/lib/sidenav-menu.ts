@@ -64,7 +64,7 @@ const adminNavItems: NavItem[] = [
     icon: UserCheck,
   },
   {
-    title: "Document Verification",
+    title: "Care Home Documents",
     href: "/admin/documents",
     icon: FileText,
   },
@@ -91,6 +91,11 @@ const healthCareWorkerNavItems: NavItem[] = [
     title: "My Applications",
     href: "/worker/applications",
     icon: FileText,
+  },
+  {
+    title: "My Documents",
+    href: "/worker/documents",
+    icon: Folder,
   },
   {
     title: "Timesheets",

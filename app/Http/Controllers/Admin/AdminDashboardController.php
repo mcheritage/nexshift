@@ -33,7 +33,7 @@ class AdminDashboardController extends Controller
         ];
 
         // Get recent activity
-        $recentDocuments = Document::with(['careHome', 'reviewer'])
+        $recentDocuments = Document::with(['careHome', 'user', 'reviewer'])
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();

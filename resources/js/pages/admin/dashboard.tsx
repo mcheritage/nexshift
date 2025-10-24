@@ -43,10 +43,15 @@ interface RecentDocument {
     original_name: string;
     status: string;
     created_at: string;
-    care_home: {
+    care_home?: {
         id: string;
         name: string;
-    };
+    } | null;
+    user?: {
+        id: string;
+        first_name: string;
+        last_name: string;
+    } | null;
     reviewer?: {
         id: string;
         name: string;
@@ -102,15 +107,13 @@ export default function AdminDashboard({ stats, recentDocuments, recentCareHomes
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Admin Dashboard" />
             
-            <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
                 {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-                        <p className="text-muted-foreground">
-                            Manage care homes, health care workers, and document verification
-                        </p>
-                    </div>
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">
+                        Manage care homes, health care workers, and document verification
+                    </p>
                 </div>
 
                 {/* Stats Cards */}
@@ -296,7 +299,9 @@ export default function AdminDashboard({ stats, recentDocuments, recentCareHomes
                                     <div key={doc.id} className="flex items-center justify-between">
                                         <div className="space-y-1">
                                             <p className="text-sm font-medium">{doc.original_name}</p>
-                                            <p className="text-xs text-muted-foreground">{doc.care_home.name}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {doc.care_home?.name || (doc.user ? `${doc.user.first_name} ${doc.user.last_name}` : 'Unknown')}
+                                            </p>
                                         </div>
                                         <Badge className={statusColors[doc.status as keyof typeof statusColors]}>
                                             {doc.status}
@@ -346,7 +351,7 @@ export default function AdminDashboard({ stats, recentDocuments, recentCareHomes
                                             <Badge className={roleColors[user.role as keyof typeof roleColors]}>
                                                 {user.role.replace('_', ' ')}
                                             </Badge>
-                                            {user.care_home && (
+                                            {user.care_home?.name && (
                                                 <span className="text-xs text-muted-foreground">
                                                     {user.care_home.name}
                                                 </span>
