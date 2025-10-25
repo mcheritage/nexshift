@@ -55,7 +55,7 @@ class DocumentVerificationController extends Controller
      */
     public function showCareHome(CareHome $careHome): Response
     {
-        $careHome->load(['user', 'documents.reviewer']);
+        $careHome->load(['users', 'documents.reviewer']);
         
         $requiredDocuments = collect(DocumentType::getAllRequired())->map(function ($docType) use ($careHome) {
             $document = $careHome->documents->where('document_type', $docType->value)->first();

@@ -19,7 +19,7 @@ class CareHomeManagementController extends Controller
      */
     public function index(): Response
     {
-        $careHomes = CareHome::with(['user', 'documents'])
+        $careHomes = CareHome::with(['users', 'documents'])
             ->withCount(['documents', 'documents as approved_documents_count' => function ($query) {
                 $query->where('status', 'approved');
             }])
@@ -36,7 +36,9 @@ class CareHomeManagementController extends Controller
      */
     public function show(CareHome $careHome): Response
     {
-        $careHome->load(['user', 'documents']);
+        $careHome->load(['users', 'documents']);
+        
+        $totalRequired = 18; // Based on DocumentType::getAllRequired()
         
         $documentStats = [
             'total' => $careHome->documents()->count(),
@@ -49,6 +51,7 @@ class CareHomeManagementController extends Controller
         return Inertia::render('admin/carehomes/show', [
             'careHome' => $careHome,
             'documentStats' => $documentStats,
+            'totalRequired' => $totalRequired,
         ]);
     }
 

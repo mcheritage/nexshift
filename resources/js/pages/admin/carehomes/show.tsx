@@ -38,14 +38,14 @@ interface CareHome {
     id: string;
     name: string;
     created_at: string;
-    user: {
+    users: {
         id: string;
         first_name: string;
         last_name: string;
         email: string;
         phone: string;
         created_at: string;
-    } | null;
+    }[];
 }
 
 interface DocumentStats {
@@ -59,11 +59,12 @@ interface DocumentStats {
 interface Props {
     careHome: CareHome;
     documentStats: DocumentStats;
+    totalRequired: number;
 }
 
-export default function CareHomeShow({ careHome, documentStats }: Props) {
-    const completionPercentage = documentStats.total > 0 
-        ? Math.round((documentStats.approved / documentStats.total) * 100) 
+export default function CareHomeShow({ careHome, documentStats, totalRequired }: Props) {
+    const completionPercentage = totalRequired > 0 
+        ? Math.round((documentStats.approved / totalRequired) * 100) 
         : 0;
 
     return (
@@ -189,47 +190,51 @@ export default function CareHomeShow({ careHome, documentStats }: Props) {
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Administrator Details</CardTitle>
-                            <CardDescription>Primary contact and administrator</CardDescription>
+                            <CardTitle>Administrators</CardTitle>
+                            <CardDescription>Care home administrators and contacts ({careHome.users.length})</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            {careHome.user ? (
-                                <>
-                                    <div className="flex items-center gap-3">
-                                        <User className="h-5 w-5 text-muted-foreground" />
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">Full Name</p>
-                                            <p className="font-medium">
-                                                {careHome.user.first_name} {careHome.user.last_name}
-                                            </p>
+                        <CardContent className="space-y-6">
+                            {careHome.users.length > 0 ? (
+                                careHome.users.map((admin, index) => (
+                                    <div key={admin.id} className={index > 0 ? 'pt-6 border-t' : ''}>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-3">
+                                                <User className="h-5 w-5 text-muted-foreground" />
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">Full Name</p>
+                                                    <p className="font-medium">
+                                                        {admin.first_name} {admin.last_name}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <Mail className="h-5 w-5 text-muted-foreground" />
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">Email</p>
+                                                    <p className="font-medium">{admin.email}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <Phone className="h-5 w-5 text-muted-foreground" />
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">Phone</p>
+                                                    <p className="font-medium">{admin.phone || 'Not provided'}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <Calendar className="h-5 w-5 text-muted-foreground" />
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">Account Created</p>
+                                                    <p className="font-medium">
+                                                        {new Date(admin.created_at).toLocaleDateString()}
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        <Mail className="h-5 w-5 text-muted-foreground" />
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">Email</p>
-                                            <p className="font-medium">{careHome.user.email}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <Phone className="h-5 w-5 text-muted-foreground" />
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">Phone</p>
-                                            <p className="font-medium">{careHome.user.phone || 'Not provided'}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <Calendar className="h-5 w-5 text-muted-foreground" />
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">Account Created</p>
-                                            <p className="font-medium">
-                                                {new Date(careHome.user.created_at).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </>
+                                ))
                             ) : (
-                                <p className="text-sm text-muted-foreground">No administrator assigned</p>
+                                <p className="text-sm text-muted-foreground">No administrators assigned</p>
                             )}
                         </CardContent>
                     </Card>

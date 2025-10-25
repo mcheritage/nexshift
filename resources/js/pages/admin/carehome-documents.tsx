@@ -39,11 +39,11 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface CareHome {
     id: string;
     name: string;
-    user: {
+    users: {
         id: string;
         name: string;
         email: string;
-    };
+    }[];
 }
 
 interface Document {
@@ -171,7 +171,7 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
                     </Button>
                     <h1 className="text-3xl font-bold tracking-tight">{careHome.name}</h1>
                     <p className="text-muted-foreground">
-                        Administrator: {careHome.user.name} ({careHome.user.email})
+                        Administrators: {careHome.users.map(u => `${u.name} (${u.email})`).join(', ')}
                     </p>
                 </div>
 

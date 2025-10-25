@@ -34,11 +34,11 @@ interface CareHome {
     id: string;
     name: string;
     created_at: string;
-    user: {
+    users: {
         id: string;
         name: string;
         email: string;
-    };
+    }[];
     documents_count: number;
     approved_documents_count: number;
 }
@@ -63,8 +63,10 @@ export default function CareHomesIndex({ careHomes }: Props) {
             const searchLower = searchTerm.toLowerCase();
             return (
                 careHome.name.toLowerCase().includes(searchLower) ||
-                careHome.user.name.toLowerCase().includes(searchLower) ||
-                careHome.user.email.toLowerCase().includes(searchLower)
+                careHome.users.some(user => 
+                    user.name.toLowerCase().includes(searchLower) ||
+                    user.email.toLowerCase().includes(searchLower)
+                )
             );
         });
     }, [careHomes, searchTerm]);
@@ -97,11 +99,11 @@ export default function CareHomesIndex({ careHomes }: Props) {
 
     const handleExport = () => {
         const csvContent = [
-            ['Care Home Name', 'Administrator', 'Email', 'Total Documents', 'Approved Documents', 'Completion %', 'Created Date'],
+            ['Care Home Name', 'Administrators', 'Emails', 'Total Documents', 'Approved Documents', 'Completion %', 'Created Date'],
             ...careHomes.map(careHome => [
                 careHome.name,
-                careHome.user.name,
-                careHome.user.email,
+                careHome.users.map(u => u.name).join('; '),
+                careHome.users.map(u => u.email).join('; '),
                 careHome.documents_count.toString(),
                 careHome.approved_documents_count.toString(),
                 getCompletionPercentage(careHome).toString() + '%',
@@ -268,9 +270,20 @@ export default function CareHomesIndex({ careHomes }: Props) {
                                                 </a>
                                             </TableCell>
                                             <TableCell>
-                                                <div>
-                                                    <div className="font-medium">{careHome.user.name}</div>
-                                                    <div className="text-sm text-muted-foreground">{careHome.user.email}</div>
+                                                <div className="space-y-1">
+                                                    {careHome.users.length > 0 ? (
+                                                        careHome.users.map((user, index) => (
+                                                            <div key={user.id}>
+                                                                <div className="font-medium">{user.name}</div>
+                                                                <div className="text-sm text-muted-foreground">{user.email}</div>
+                                                                {index < careHome.users.length - 1 && (
+                                                                    <div className="h-2" />
+                                                                )}
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <span className="text-muted-foreground">No administrator</span>
+                                                    )}
                                                 </div>
                                             </TableCell>
                                             <TableCell>{careHome.documents_count}</TableCell>
