@@ -38,7 +38,7 @@ class AdminDashboardController extends Controller
             ->limit(10)
             ->get();
 
-        $recentCareHomes = CareHome::with('user')
+        $recentCareHomes = CareHome::with('users')
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();

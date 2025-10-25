@@ -34,7 +34,7 @@ class HealthCareWorkerController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $careHomes = CareHome::with('user')->get();
+        $careHomes = CareHome::with('users')->get();
 
         return Inertia::render('admin/healthcare-workers/index', [
             'healthCareWorkers' => $healthCareWorkers,

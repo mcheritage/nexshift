@@ -62,11 +62,11 @@ interface RecentCareHome {
     id: string;
     name: string;
     created_at: string;
-    user: {
+    users: Array<{
         id: string;
         name: string;
         email: string;
-    };
+    }>;
 }
 
 interface RecentUser {
@@ -326,7 +326,7 @@ export default function AdminDashboard({ stats, recentDocuments, recentCareHomes
                                     <div key={careHome.id} className="space-y-1">
                                         <p className="text-sm font-medium">{careHome.name}</p>
                                         <p className="text-xs text-muted-foreground">
-                                            Admin: {careHome.user.name}
+                                            Admin{careHome.users?.length > 1 ? 's' : ''}: {careHome.users?.map(u => u.name).join(', ') || 'No admins'}
                                         </p>
                                     </div>
                                 ))}

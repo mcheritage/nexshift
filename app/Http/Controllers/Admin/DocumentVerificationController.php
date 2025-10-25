@@ -23,7 +23,7 @@ class DocumentVerificationController extends Controller
      */
     public function index(): Response
     {
-        $careHomes = CareHome::with(['user', 'documents' => function ($query) {
+        $careHomes = CareHome::with(['users', 'documents' => function ($query) {
             $query->orderBy('created_at', 'desc');
         }])->get();
 

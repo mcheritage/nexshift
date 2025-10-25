@@ -88,7 +88,7 @@ class CareHomeManagementController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Care home created successfully',
-                'careHome' => $careHome->load('user'),
+                'careHome' => $careHome->load('users'),
             ]);
 
         } catch (\Exception $e) {
@@ -116,7 +116,7 @@ class CareHomeManagementController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Care home updated successfully',
-                'careHome' => $careHome->load('user'),
+                'careHome' => $careHome->load('users'),
             ]);
 
         } catch (\Exception $e) {
@@ -134,7 +134,7 @@ class CareHomeManagementController extends Controller
     {
         try {
             // Delete associated users
-            $careHome->user()->delete();
+            $careHome->users()->delete();
             
             // Delete associated documents
             $careHome->documents()->delete();

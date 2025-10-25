@@ -60,7 +60,7 @@ test('care home administrator can view document verification status on dashboard
 
 test('admin can update document verification status', function () {
     // Create admin user
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->admin()->create();
 
     // Create a care home and administrator
     $careHome = CareHome::factory()->create();
@@ -119,7 +119,7 @@ test('care home administrator receives notification when document status changes
     ]);
 
     // Create admin user
-    $systemAdmin = User::factory()->create(['role' => 'admin']);
+    $systemAdmin = User::factory()->admin()->create();
 
     // Login as system admin
     $this->actingAs($systemAdmin);

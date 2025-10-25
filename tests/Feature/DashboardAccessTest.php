@@ -9,7 +9,7 @@ uses(RefreshDatabase::class);
 
 test('admin users are redirected to admin dashboard when accessing main dashboard', function () {
     // Create admin user
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->admin()->create();
 
     // Login as admin
     $this->actingAs($admin);

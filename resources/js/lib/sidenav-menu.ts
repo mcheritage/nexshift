@@ -109,7 +109,7 @@ const footerNavItems: NavItem[] = [];
 // Function to get navigation items based on user role
 export function getMainNavItems(userRole?: string): NavItem[] {
   switch (userRole) {
-    case "admin":
+    case "super_admin":
       return adminNavItems;
     case "health_care_worker":
       return healthCareWorkerNavItems;
