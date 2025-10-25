@@ -553,6 +553,30 @@ class WorkerController extends Controller
             'submitted_at' => Carbon::now(),
         ]);
 
+        // Load the shift with care home
+        $timesheet->load('shift.careHome.users');
+        
+        // Notify all care home admins
+        if ($timesheet->shift && $timesheet->shift->careHome) {
+            $careHome = $timesheet->shift->careHome;
+            $workerName = $user->first_name . ' ' . $user->last_name;
+            
+            foreach ($careHome->users as $admin) {
+                Notification::create([
+                    'user_id' => $admin->id,
+                    'type' => 'timesheet_submitted',
+                    'title' => 'New Timesheet Submitted',
+                    'message' => "{$workerName} has submitted a timesheet for approval",
+                    'data' => [
+                        'timesheet_id' => $timesheet->id,
+                        'worker_id' => $user->id,
+                        'worker_name' => $workerName,
+                        'shift_id' => $timesheet->shift_id,
+                    ],
+                ]);
+            }
+        }
+
         return redirect()->route('worker.timesheets')->with('success', 'Timesheet submitted for approval');
     }
 }

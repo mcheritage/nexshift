@@ -262,10 +262,17 @@ class TimesheetController extends Controller
             abort(403, 'Access denied');
         }
 
-        $timesheet->load(['worker', 'shift', 'approver']);
+        $timesheet->load(['worker.care_home', 'shift.careHome', 'approver', 'careHome']);
 
         return Inertia::render('Timesheets/Show', [
-            'timesheet' => $timesheet
+            'timesheet' => $timesheet,
+            'statusOptions' => [
+                'draft' => 'Draft',
+                'submitted' => 'Submitted',
+                'approved' => 'Approved',
+                'queried' => 'Queried',
+                'rejected' => 'Rejected',
+            ]
         ]);
     }
 

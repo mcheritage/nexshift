@@ -97,12 +97,12 @@ export function NotificationBell() {
         }
 
         // Navigate based on notification type
-        if (notification.data?.shift_id) {
-            if (notification.type === 'shift_application') {
-                router.visit(`/shifts/${notification.data.shift_id}`);
-            } else if (notification.type === 'application_accepted' || notification.type === 'application_rejected') {
-                router.visit('/worker/applications');
-            }
+        if (notification.type === 'shift_application' && notification.data?.shift_id) {
+            router.visit(`/shifts/${notification.data.shift_id}`);
+        } else if (notification.type === 'application_accepted' || notification.type === 'application_rejected') {
+            router.visit('/worker/applications');
+        } else if (notification.type === 'timesheet_submitted' && notification.data?.timesheet_id) {
+            router.visit(`/timesheets/${notification.data.timesheet_id}`);
         }
         setOpen(false);
     };
@@ -130,6 +130,8 @@ export function NotificationBell() {
                 return '✅';
             case 'application_rejected':
                 return '❌';
+            case 'timesheet_submitted':
+                return '⏰';
             default:
                 return '🔔';
         }
