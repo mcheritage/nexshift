@@ -28,9 +28,8 @@ return new class extends Migration
             ]);
             
             // Date and Time
-            $table->date('shift_date');
-            $table->time('start_time');
-            $table->time('end_time');
+            $table->datetime('start_datetime');
+            $table->datetime('end_datetime');
             $table->decimal('duration_hours', 4, 2); // Calculated field
             
             // Compensation
@@ -63,6 +62,9 @@ return new class extends Migration
             $table->datetime('published_at')->nullable();
             $table->datetime('filled_at')->nullable();
             $table->datetime('completed_at')->nullable();
+            $table->timestamp('cancelled_at')->nullable();
+            $table->text('cancellation_reason')->nullable();
+            $table->foreignUuid('cancelled_by')->nullable()->constrained('users')->onDelete('set null');
             
             // Metadata
             $table->foreignUuid('created_by')->constrained('users')->onDelete('cascade');
@@ -70,7 +72,7 @@ return new class extends Migration
             
             // Indexes for better performance
             $table->index(['care_home_id', 'status']);
-            $table->index(['shift_date', 'status']);
+            $table->index(['start_datetime', 'status']);
             $table->index(['role', 'status']);
             $table->index(['published_at', 'status']);
         });
