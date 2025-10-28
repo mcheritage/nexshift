@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
+use App\Models\Notification;
 use App\Models\Shift;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -306,7 +308,7 @@ class ShiftController extends Controller
     /**
      * Cancel a published shift
      */
-    public function cancel(Shift $shift): RedirectResponse
+    public function cancel(Request $request, Shift $shift): RedirectResponse
     {
         $user = Auth::user();
         
@@ -318,9 +320,58 @@ class ShiftController extends Controller
             return redirect()->back()->withErrors(['error' => 'Cannot cancel completed shifts']);
         }
 
-        $shift->update(['status' => Shift::STATUS_CANCELLED]);
+        // Validate cancellation reason
+        $request->validate([
+            'cancellation_reason' => 'required|string|min:10|max:500',
+        ]);
+
+        // Update shift status and cancellation details
+        $shift->update([
+            'status' => Shift::STATUS_CANCELLED,
+            'cancellation_reason' => $request->cancellation_reason,
+            'cancelled_by' => $user->id,
+            'cancelled_at' => now(),
+        ]);
+
+        // Load the selected worker if exists
+        $shift->load('selectedWorker');
+
+        // Create notification for the selected worker
+        if ($shift->selectedWorker) {
+            Notification::create([
+                'user_id' => $shift->selectedWorker->id,
+                'type' => 'shift_cancelled',
+                'title' => 'Shift Cancelled',
+                'message' => "The shift '{$shift->title}' on {$shift->shift_date} has been cancelled. Reason: {$request->cancellation_reason}",
+                'data' => [
+                    'shift_id' => $shift->id,
+                    'shift_title' => $shift->title,
+                    'shift_date' => $shift->shift_date,
+                    'cancellation_reason' => $request->cancellation_reason,
+                    'cancelled_by' => $user->first_name . ' ' . $user->last_name,
+                ],
+            ]);
+        }
+
+        // Log the activity
+        ActivityLog::create([
+            'user_id' => $user->id,
+            'care_home_id' => $shift->care_home_id,
+            'action' => 'shift_cancelled',
+            'subject_type' => Shift::class,
+            'subject_id' => $shift->id,
+            'description' => "{$user->first_name} {$user->last_name} cancelled shift '{$shift->title}' on {$shift->shift_date}",
+            'properties' => [
+                'shift_id' => $shift->id,
+                'shift_title' => $shift->title,
+                'shift_date' => $shift->shift_date,
+                'cancellation_reason' => $request->cancellation_reason,
+                'worker_id' => $shift->selected_worker_id,
+                'worker_name' => $shift->selectedWorker ? $shift->selectedWorker->first_name . ' ' . $shift->selectedWorker->last_name : null,
+            ],
+        ]);
 
         return redirect()->back()
-            ->with('success', 'Shift cancelled successfully');
+            ->with('success', 'Shift cancelled successfully. Worker has been notified.');
     }
 }

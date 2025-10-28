@@ -70,6 +70,9 @@ class Shift extends Model
         'filled_at',
         'completed_at',
         'created_by',
+        'cancellation_reason',
+        'cancelled_by',
+        'cancelled_at',
     ];
 
     protected $casts = [
@@ -87,6 +90,7 @@ class Shift extends Model
         'published_at' => 'datetime',
         'filled_at' => 'datetime',
         'completed_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     protected $appends = [
@@ -187,6 +191,14 @@ class Shift extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Relationship: Shift was cancelled by user
+     */
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     /**

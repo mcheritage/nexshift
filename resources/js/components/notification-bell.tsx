@@ -103,6 +103,8 @@ export function NotificationBell() {
             router.visit('/worker/applications');
         } else if (notification.type === 'timesheet_submitted' && notification.data?.timesheet_id) {
             router.visit(`/timesheets/${notification.data.timesheet_id}`);
+        } else if (notification.type === 'shift_cancelled') {
+            router.visit('/worker/my-shifts');
         }
         setOpen(false);
     };
@@ -132,6 +134,8 @@ export function NotificationBell() {
                 return '❌';
             case 'timesheet_submitted':
                 return '⏰';
+            case 'shift_cancelled':
+                return '🚫';
             default:
                 return '🔔';
         }
