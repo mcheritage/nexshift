@@ -27,4 +27,9 @@ class CareHome extends Model
     {
         return $this->hasMany(Document::class);
     }
+
+    public function shifts()
+    {
+        return $this->hasMany(Shift::class);
+    }
 }

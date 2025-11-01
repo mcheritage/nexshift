@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * @property string first_name
@@ -17,12 +18,15 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
  * @property string email
  * @property string password
  * @property string id
+ * @property string profile_photo
+ * @property string phone_number
+ * @property string bio
  * @property CareHome $care_home
  */
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasUuids;
+    use HasFactory, Notifiable, HasUuids, HasApiTokens;
 
     protected $keyType = 'uuid';
 
@@ -115,6 +119,27 @@ class User extends Authenticatable
     public function documents()
     {
         return $this->hasMany(Document::class);
+    }
+
+    // Healthcare Profile relationships
+    public function healthcareProfile()
+    {
+        return $this->hasOne(HealthcareProfile::class);
+    }
+
+    public function workExperiences()
+    {
+        return $this->hasMany(WorkExperience::class);
+    }
+
+    public function skills()
+    {
+        return $this->hasMany(Skill::class);
+    }
+
+    public function bankDetails()
+    {
+        return $this->hasOne(BankDetails::class);
     }
 
     public function getNameAttribute(): string {
