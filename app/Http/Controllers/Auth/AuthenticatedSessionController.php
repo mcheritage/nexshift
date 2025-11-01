@@ -33,6 +33,16 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        // Redirect based on user role/type
+        $user = $request->user();
+        
+        if ($user->isAdmin()) {
+            return redirect()->intended(route('admin.dashboard', absolute: false));
+        } elseif ($user->role === 'health_care_worker') {
+            return redirect()->intended(route('worker.dashboard', absolute: false));
+        }
+        
+        // Default to care home admin dashboard
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

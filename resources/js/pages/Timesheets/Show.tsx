@@ -173,7 +173,7 @@ export default function TimesheetShow({ timesheet, statusOptions }: TimesheetSho
         <AppLayout>
             <Head title={`Timesheet - ${timesheet.worker.first_name} ${timesheet.worker.last_name}`} />
             
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
@@ -184,10 +184,10 @@ export default function TimesheetShow({ timesheet, statusOptions }: TimesheetSho
                             </Button>
                         </Link>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                            <h1 className="text-3xl font-bold tracking-tight">
                                 Timesheet Details
                             </h1>
-                            <p className="text-gray-600 dark:text-gray-400">
+                            <p className="text-muted-foreground">
                                 #{timesheet.id.substring(0, 8)}
                             </p>
                         </div>

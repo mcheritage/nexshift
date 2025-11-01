@@ -10,7 +10,7 @@ uses(RefreshDatabase::class);
 
 test('admin can access admin dashboard', function () {
     // Create admin user
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->admin()->create();
 
     // Login as admin
     $this->actingAs($admin);
@@ -30,7 +30,7 @@ test('admin can access admin dashboard', function () {
 
 test('admin can view all care homes', function () {
     // Create admin user
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->admin()->create();
 
     // Create some care homes
     $careHome1 = CareHome::factory()->create();
@@ -53,7 +53,7 @@ test('admin can view all care homes', function () {
 
 test('admin can create a new care home', function () {
     // Create admin user
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->admin()->create();
 
     // Login as admin
     $this->actingAs($admin);
@@ -84,7 +84,7 @@ test('admin can create a new care home', function () {
 
 test('admin can view all health care workers', function () {
     // Create admin user
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->admin()->create();
 
     // Create care home
     $careHome = CareHome::factory()->create();
@@ -115,7 +115,7 @@ test('admin can view all health care workers', function () {
 
 test('admin can create a new health care worker', function () {
     // Create admin user
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->admin()->create();
 
     // Create care home
     $careHome = CareHome::factory()->create();
@@ -146,7 +146,7 @@ test('admin can create a new health care worker', function () {
 
 test('admin can access document verification', function () {
     // Create admin user
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->admin()->create();
 
     // Login as admin
     $this->actingAs($admin);

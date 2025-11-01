@@ -9,10 +9,12 @@ import {
   Building2,
   UserCheck,
   Calendar,
+  CalendarCheck,
   Shield,
   Users,
   Settings,
   Clock,
+  Receipt,
 } from "lucide-react";
 
 // Care Home Admin Navigation Items
@@ -31,6 +33,11 @@ const careHomeAdminNavItems: NavItem[] = [
     title: "Timesheets",
     href: "/timesheets",
     icon: Clock,
+  },
+  {
+    title: "Invoices",
+    href: "/invoices",
+    icon: Receipt,
   },
   {
     title: "Documents",
@@ -57,7 +64,7 @@ const adminNavItems: NavItem[] = [
     icon: UserCheck,
   },
   {
-    title: "Document Verification",
+    title: "Documents",
     href: "/admin/documents",
     icon: FileText,
   },
@@ -76,9 +83,24 @@ const healthCareWorkerNavItems: NavItem[] = [
     icon: Calendar,
   },
   {
+    title: "My Shifts",
+    href: "/worker/my-shifts",
+    icon: CalendarCheck,
+  },
+  {
     title: "My Applications",
     href: "/worker/applications",
     icon: FileText,
+  },
+  {
+    title: "My Documents",
+    href: "/worker/documents",
+    icon: Folder,
+  },
+  {
+    title: "Timesheets",
+    href: "/worker/timesheets",
+    icon: Clock,
   },
 ];
 
@@ -87,7 +109,7 @@ const footerNavItems: NavItem[] = [];
 // Function to get navigation items based on user role
 export function getMainNavItems(userRole?: string): NavItem[] {
   switch (userRole) {
-    case "admin":
+    case "super_admin":
       return adminNavItems;
     case "health_care_worker":
       return healthCareWorkerNavItems;

@@ -2,6 +2,20 @@ import { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { SharedData } from '@/types';
 import AppLayout from '@/layouts/app-layout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { 
+    Calendar, 
+    Clock, 
+    MapPin, 
+    Users, 
+    Search, 
+    Filter, 
+    Plus,
+    TrendingUp
+} from 'lucide-react';
 
 interface Shift {
     id: string;
@@ -81,12 +95,12 @@ export default function ShiftsIndex({ shifts, stats, filters }: ShiftsPageProps)
         <AppLayout>
             <Head title="Shift Management" />
             
-            <div className="space-y-6">
+            <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Shift Management</h1>
-                        <p className="text-gray-600 mt-1">Manage your care home shifts and staffing requirements</p>
+                        <h1 className="text-3xl font-bold tracking-tight">Shift Management</h1>
+                        <p className="text-muted-foreground">Manage your care home shifts and staffing requirements</p>
                     </div>
                     <Link href="/shifts/create">
                         <Button className="bg-blue-600 hover:bg-blue-700">

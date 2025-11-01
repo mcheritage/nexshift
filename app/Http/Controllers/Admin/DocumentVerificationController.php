@@ -10,7 +10,6 @@ use App\Models\Document;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -24,7 +23,7 @@ class DocumentVerificationController extends Controller
      */
     public function index(): Response
     {
-        $careHomes = CareHome::with(['user', 'documents' => function ($query) {
+        $careHomes = CareHome::with(['users', 'documents' => function ($query) {
             $query->orderBy('created_at', 'desc');
         }])->get();
 
@@ -56,7 +55,7 @@ class DocumentVerificationController extends Controller
      */
     public function showCareHome(CareHome $careHome): Response
     {
-        $careHome->load(['user', 'documents.reviewer']);
+        $careHome->load(['users', 'documents.reviewer']);
         
         $requiredDocuments = collect(DocumentType::getAllRequired())->map(function ($docType) use ($careHome) {
             $document = $careHome->documents->where('document_type', $docType->value)->first();
@@ -104,7 +103,7 @@ class DocumentVerificationController extends Controller
     /**
      * Update document verification status
      */
-    public function updateStatus(Request $request, Document $document): JsonResponse
+    public function updateStatus(Request $request, Document $document)
     {
         $request->validate([
             'status' => 'required|string|in:' . implode(',', array_column(DocumentVerificationStatus::cases(), 'value')),
@@ -126,11 +125,7 @@ class DocumentVerificationController extends Controller
         // Send notification to care home administrator
         $this->sendStatusChangeNotification($document, $oldStatus, $newStatus);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Document status updated successfully',
-            'document' => $document->fresh(['reviewer']),
-        ]);
+        return redirect()->back()->with('success', 'Document status updated successfully');
     }
 
     /**
@@ -152,6 +147,19 @@ class DocumentVerificationController extends Controller
      * Send notification to care home administrator about status change
      */
     private function sendStatusChangeNotification(Document $document, DocumentVerificationStatus $oldStatus, DocumentVerificationStatus $newStatus): void
+    {
+        // Determine if this is a care home or worker document
+        if ($document->isCareHomeDocument()) {
+            $this->sendCareHomeNotification($document, $oldStatus, $newStatus);
+        } elseif ($document->isWorkerDocument()) {
+            $this->sendWorkerNotification($document, $oldStatus, $newStatus);
+        }
+    }
+
+    /**
+     * Send notification to care home administrator
+     */
+    private function sendCareHomeNotification(Document $document, DocumentVerificationStatus $oldStatus, DocumentVerificationStatus $newStatus): void
     {
         $careHome = $document->careHome;
         $administrator = $careHome->user;
@@ -185,5 +193,183 @@ class DocumentVerificationController extends Controller
                 'administrator_email' => $administrator->email,
             ]);
         }
+    }
+
+    /**
+     * Send notification to worker about status change
+     */
+    private function sendWorkerNotification(Document $document, DocumentVerificationStatus $oldStatus, DocumentVerificationStatus $newStatus): void
+    {
+        $worker = $document->user;
+
+        if (!$worker) {
+            return;
+        }
+
+        // Create in-platform notification
+        $notification = Notification::create([
+            'user_id' => $worker->id,
+            'type' => 'document_status_changed',
+            'title' => 'Document Status Updated',
+            'message' => "Your {$document->document_type} document status has been updated from {$oldStatus->getDisplayName()} to {$newStatus->getDisplayName()}",
+            'data' => [
+                'document_id' => $document->id,
+                'document_type' => $document->document_type,
+                'old_status' => $oldStatus->value,
+                'new_status' => $newStatus->value,
+                'rejection_reason' => $document->rejection_reason,
+                'action_required' => $document->action_required,
+            ],
+        ]);
+
+        // Send email notification
+        try {
+            Mail::to($worker->email)->send(new \App\Mail\DocumentStatusChanged($document, $oldStatus, $newStatus));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send email notification', [
+                'error' => $e->getMessage(),
+                'worker_email' => $worker->email,
+            ]);
+        }
+    }
+
+    /**
+     * Display all healthcare workers for document verification
+     */
+    public function indexWorkers()
+    {
+        $workers = User::where('role', 'health_care_worker')
+            ->withCount([
+                'documents',
+                'documents as pending_documents_count' => function ($query) {
+                    $query->where('status', DocumentVerificationStatus::PENDING);
+                },
+                'documents as approved_documents_count' => function ($query) {
+                    $query->where('status', DocumentVerificationStatus::APPROVED);
+                },
+                'documents as rejected_documents_count' => function ($query) {
+                    $query->where('status', DocumentVerificationStatus::REJECTED);
+                },
+            ])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($worker) {
+                return [
+                    'id' => $worker->id,
+                    'name' => $worker->name,
+                    'email' => $worker->email,
+                    'phone' => $worker->phone,
+                    'total_documents' => $worker->documents_count,
+                    'pending_documents' => $worker->pending_documents_count,
+                    'approved_documents' => $worker->approved_documents_count,
+                    'rejected_documents' => $worker->rejected_documents_count,
+                    'created_at' => $worker->created_at,
+                ];
+            });
+
+        return Inertia::render('admin/worker-verification', [
+            'workers' => $workers,
+        ]);
+    }
+
+    /**
+     * Display documents for a specific healthcare worker
+     */
+    public function showWorker(User $worker)
+    {
+        // Ensure the user is a healthcare worker
+        if ($worker->role !== 'health_care_worker') {
+            abort(403, 'This user is not a healthcare worker');
+        }
+
+        $requiredDocuments = collect(DocumentType::getAllRequiredForWorker())->map(function ($docType) use ($worker) {
+            $document = Document::where('user_id', $worker->id)
+                ->where('document_type', $docType->value)
+                ->with('reviewer')
+                ->first();
+
+            return [
+                'type' => [
+                    'value' => $docType->value,
+                    'displayName' => $docType->getDisplayName(),
+                    'description' => $docType->getDescription(),
+                ],
+                'document' => $document ? [
+                    'id' => $document->id,
+                    'original_name' => $document->original_name,
+                    'file_size' => $document->file_size,
+                    'mime_type' => $document->mime_type,
+                    'status' => $document->status->value,
+                    'status_display' => $document->getStatusDisplayName(),
+                    'status_color' => $document->getStatusColor(),
+                    'status_icon' => $document->getStatusIcon(),
+                    'rejection_reason' => $document->rejection_reason,
+                    'action_required' => $document->action_required,
+                    'uploaded_at' => $document->uploaded_at,
+                    'reviewed_at' => $document->reviewed_at,
+                    'reviewer' => $document->reviewer ? [
+                        'id' => $document->reviewer->id,
+                        'name' => $document->reviewer->name,
+                        'email' => $document->reviewer->email,
+                    ] : null,
+                ] : null,
+            ];
+        });
+
+        $optionalDocuments = collect(DocumentType::getAllOptionalForWorker())->map(function ($docType) use ($worker) {
+            $document = Document::where('user_id', $worker->id)
+                ->where('document_type', $docType->value)
+                ->with('reviewer')
+                ->first();
+
+            return [
+                'type' => [
+                    'value' => $docType->value,
+                    'displayName' => $docType->getDisplayName(),
+                    'description' => $docType->getDescription(),
+                ],
+                'document' => $document ? [
+                    'id' => $document->id,
+                    'original_name' => $document->original_name,
+                    'file_size' => $document->file_size,
+                    'mime_type' => $document->mime_type,
+                    'status' => $document->status->value,
+                    'status_display' => $document->getStatusDisplayName(),
+                    'status_color' => $document->getStatusColor(),
+                    'status_icon' => $document->getStatusIcon(),
+                    'rejection_reason' => $document->rejection_reason,
+                    'action_required' => $document->action_required,
+                    'uploaded_at' => $document->uploaded_at,
+                    'reviewed_at' => $document->reviewed_at,
+                    'reviewer' => $document->reviewer ? [
+                        'id' => $document->reviewer->id,
+                        'name' => $document->reviewer->name,
+                        'email' => $document->reviewer->email,
+                    ] : null,
+                ] : null,
+            ];
+        });
+
+        $verificationStatuses = collect(DocumentVerificationStatus::cases())->map(function ($status) {
+            return [
+                'value' => $status->value,
+                'displayName' => $status->getDisplayName(),
+                'description' => $status->getDescription(),
+                'color' => $status->getColor(),
+                'icon' => $status->getIcon(),
+            ];
+        });
+
+        return Inertia::render('admin/worker-documents', [
+            'worker' => [
+                'id' => $worker->id,
+                'name' => $worker->name,
+                'email' => $worker->email,
+                'phone' => $worker->phone,
+            ],
+            'requiredDocuments' => $requiredDocuments,
+            'optionalDocuments' => $optionalDocuments,
+            'verificationStatuses' => $verificationStatuses,
+        ]);
     }
 }

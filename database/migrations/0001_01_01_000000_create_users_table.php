@@ -18,6 +18,19 @@ return new class extends Migration
             $table->string('other_names')->nullable();
             $table->enum('gender', ['male', 'female', 'other'])->nullable();
             $table->string('email')->unique();
+            $table->string('role')->default('care_home_admin');
+            $table->string('phone_number')->nullable();
+            $table->text('bio')->nullable();
+            $table->json('qualifications')->nullable(); // Store as JSON array
+            $table->json('certifications')->nullable(); // Store as JSON array
+            $table->integer('years_experience')->nullable();
+            $table->json('skills')->nullable(); // Store as JSON array
+            $table->string('profile_photo')->nullable();
+            $table->decimal('hourly_rate_min', 8, 2)->nullable();
+            $table->decimal('hourly_rate_max', 8, 2)->nullable();
+            $table->boolean('available_weekends')->default(false);
+            $table->boolean('available_nights')->default(false);
+            $table->text('additional_notes')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->boolean('is_admin')->default(false);
@@ -33,7 +46,7 @@ return new class extends Migration
 
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
-            $table->foreignUuid('user_id')->nullable()->index();
+            $table->uuid('user_id')->nullable()->index();
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
             $table->longText('payload');
