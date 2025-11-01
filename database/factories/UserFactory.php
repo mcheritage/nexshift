@@ -52,7 +52,9 @@ class UserFactory extends Factory
     public function admin(): static
     {
         return $this->state(fn (array $attributes) => [
-            'is_admin' => true,
+            'role' => 'super_admin',
+            'is_admin' => 1,
+            'care_home_id' => null,
         ]);
     }
 }

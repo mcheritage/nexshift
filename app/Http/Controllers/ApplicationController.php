@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ApplicationAccepted;
+use App\Mail\ApplicationRejected;
 use App\Models\Application;
+use App\Models\Notification;
 use App\Models\Shift;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -78,16 +82,50 @@ class ApplicationController extends Controller
             'selected_worker_id' => $application->worker_id,
         ]);
 
+        // Notify accepted worker (in-app and email)
+        Notification::create([
+            'user_id' => $application->worker_id,
+            'type' => 'application_accepted',
+            'title' => 'Application Accepted! 🎉',
+            'message' => "Your application for {$application->shift->title} on " . date('M d, Y', strtotime($application->shift->shift_date)) . " has been accepted by {$application->shift->careHome->name}.",
+            'data' => [
+                'shift_id' => $application->shift_id,
+                'application_id' => $application->id,
+                'care_home_name' => $application->shift->careHome->name,
+            ],
+        ]);
+
+        Mail::to($application->worker->email)->send(new ApplicationAccepted($application));
+
         // Reject all other pending applications for this shift
-        $application->shift->applications()
+        $rejectedApplications = $application->shift->applications()
             ->where('id', '!=', $application->id)
             ->where('status', Application::STATUS_PENDING)
-            ->update([
+            ->get();
+
+        foreach ($rejectedApplications as $rejectedApp) {
+            $rejectedApp->update([
                 'status' => Application::STATUS_REJECTED,
                 'reviewed_at' => now(),
                 'reviewed_by' => $user->id,
                 'review_notes' => 'Position filled by another applicant',
             ]);
+
+            // Notify rejected workers (in-app and email)
+            Notification::create([
+                'user_id' => $rejectedApp->worker_id,
+                'type' => 'application_rejected',
+                'title' => 'Application Update',
+                'message' => "The position for {$rejectedApp->shift->title} on " . date('M d, Y', strtotime($rejectedApp->shift->shift_date)) . " has been filled by another applicant.",
+                'data' => [
+                    'shift_id' => $rejectedApp->shift_id,
+                    'application_id' => $rejectedApp->id,
+                    'care_home_name' => $rejectedApp->shift->careHome->name,
+                ],
+            ]);
+
+            Mail::to($rejectedApp->worker->email)->send(new ApplicationRejected($rejectedApp, 'Position filled by another applicant'));
+        }
 
         return redirect()->back()->with('success', 'Application accepted successfully');
     }
@@ -121,6 +159,22 @@ class ApplicationController extends Controller
             'reviewed_by' => $user->id,
             'review_notes' => $validated['review_notes'],
         ]);
+
+        // Notify rejected worker (in-app and email)
+        Notification::create([
+            'user_id' => $application->worker_id,
+            'type' => 'application_rejected',
+            'title' => 'Application Update',
+            'message' => "Your application for {$application->shift->title} on " . date('M d, Y', strtotime($application->shift->shift_date)) . " was not accepted.",
+            'data' => [
+                'shift_id' => $application->shift_id,
+                'application_id' => $application->id,
+                'care_home_name' => $application->shift->careHome->name,
+                'review_notes' => $validated['review_notes'],
+            ],
+        ]);
+
+        Mail::to($application->worker->email)->send(new ApplicationRejected($application, $validated['review_notes']));
 
         return redirect()->back()->with('success', 'Application rejected');
     }

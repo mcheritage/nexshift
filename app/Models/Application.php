@@ -36,15 +36,25 @@ class Application extends Model
         'worker_id',
         'status',
         'message',
+        'worker_skills',
         'applied_at',
         'reviewed_at',
         'reviewed_by',
+        'review_notes',
         'rejection_reason',
+        'withdrawn_at',
+        'withdrawal_reason',
     ];
 
     protected $casts = [
         'applied_at' => 'datetime',
         'reviewed_at' => 'datetime',
+        'withdrawn_at' => 'datetime',
+        'worker_skills' => 'array',
+    ];
+
+    protected $appends = [
+        'status_display',
     ];
 
     // Status constants
@@ -136,5 +146,13 @@ class Application extends Model
     public function isRejected(): bool
     {
         return $this->status === self::STATUS_REJECTED;
+    }
+
+    /**
+     * Get the display name for the status
+     */
+    public function getStatusDisplayAttribute(): string
+    {
+        return self::getStatuses()[$this->status] ?? 'Unknown';
     }
 }

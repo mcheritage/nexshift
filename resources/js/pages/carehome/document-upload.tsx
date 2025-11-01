@@ -29,12 +29,12 @@ export default function DocumentUpload({
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Document Upload" />
       
-      <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4 overflow-x-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+      <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-6 overflow-x-auto">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
             Document Upload
           </h1>
-          <p className="text-gray-600 dark:text-gray-300">
+          <p className="text-muted-foreground">
             Upload all required registration, legal, compliance, and financial documents for {careHome.name}.
           </p>
         </div>

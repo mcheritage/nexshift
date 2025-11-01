@@ -1,10 +1,12 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { SharedData } from '@/types';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import WorkerProfileModal from '@/components/WorkerProfileModal';
 import { 
     ArrowLeft, 
@@ -81,9 +83,11 @@ const statusColors: Record<string, string> = {
 };
 
 export default function ShiftShow({ shift }: ShiftShowProps) {
-    const { patch, processing } = useForm();
     const [selectedWorker, setSelectedWorker] = useState<any>(null);
     const [isWorkerModalOpen, setIsWorkerModalOpen] = useState(false);
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+    const [cancellationReason, setCancellationReason] = useState('');
+    const [processing, setProcessing] = useState(false);
 
     const formatDateTime = (dateTime: string) => {
         try {
@@ -121,18 +125,38 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
     };
 
     const handlePublish = () => {
-        patch(`/shifts/${shift.id}/publish`);
+        router.patch(`/shifts/${shift.id}/publish`);
     };
 
     const handleCancel = () => {
-        if (confirm('Are you sure you want to cancel this shift?')) {
-            patch(`/shifts/${shift.id}/cancel`);
+        setIsCancelModalOpen(true);
+    };
+
+    const confirmCancel = () => {
+        if (!cancellationReason.trim()) {
+            alert('Please provide a reason for cancellation');
+            return;
         }
+        
+        setProcessing(true);
+        router.patch(`/shifts/${shift.id}/cancel`, {
+            cancellation_reason: cancellationReason
+        }, {
+            onSuccess: () => {
+                setIsCancelModalOpen(false);
+                setCancellationReason('');
+                setProcessing(false);
+            },
+            onError: (errors) => {
+                console.error('Cancellation failed:', errors);
+                setProcessing(false);
+            }
+        });
     };
 
     const canEdit = ['draft', 'published'].includes(shift.status);
     const canPublish = shift.status === 'draft';
-    const canCancel = ['draft', 'published'].includes(shift.status);
+    const canCancel = ['draft', 'published', 'filled'].includes(shift.status);
 
     return (
         <AppLayout>
@@ -435,6 +459,49 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
                 }}
                 application={selectedWorker}
             />
+
+            {/* Cancel Shift Modal */}
+            <Dialog open={isCancelModalOpen} onOpenChange={setIsCancelModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Cancel Shift</DialogTitle>
+                        <DialogDescription>
+                            Please provide a reason for cancelling this shift. The assigned worker will be notified.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="cancellation_reason">Cancellation Reason *</Label>
+                            <Textarea
+                                id="cancellation_reason"
+                                placeholder="Enter the reason for cancelling this shift..."
+                                value={cancellationReason}
+                                onChange={(e) => setCancellationReason(e.target.value)}
+                                rows={4}
+                                required
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setIsCancelModalOpen(false);
+                                setCancellationReason('');
+                            }}
+                        >
+                            Close
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={confirmCancel}
+                            disabled={processing || !cancellationReason.trim()}
+                        >
+                            {processing ? 'Cancelling...' : 'Cancel Shift'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

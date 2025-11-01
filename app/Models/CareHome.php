@@ -18,13 +18,18 @@ class CareHome extends Model
         'name',
     ];
 
-    public function user()
+    public function users()
     {
-        return $this->hasOne(User::class);
+        return $this->hasMany(User::class);
     }
 
     public function documents()
     {
         return $this->hasMany(Document::class);
+    }
+
+    public function shifts()
+    {
+        return $this->hasMany(Shift::class);
     }
 }

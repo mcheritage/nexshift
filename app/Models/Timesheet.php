@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Carbon\Carbon;
 
 class Timesheet extends Model
@@ -36,8 +37,6 @@ class Timesheet extends Model
     ];
 
     protected $casts = [
-        'clock_in_time' => 'datetime',
-        'clock_out_time' => 'datetime',
         'approved_at' => 'datetime',
         'submitted_at' => 'datetime',
         'has_overtime' => 'boolean',
@@ -76,15 +75,34 @@ class Timesheet extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    // Helper methods
+    public function invoices(): BelongsToMany
+    {
+        return $this->belongsToMany(Invoice::class, 'invoice_timesheet')
+            ->withTimestamps();
+    }
+
+    // Accessors to return just the time part for API responses
+    public function getClockInTimeAttribute($value)
+    {
+        if (!$value) return null;
+        return Carbon::parse($value)->format('H:i');
+    }
+    
+    public function getClockOutTimeAttribute($value)
+    {
+        if (!$value) return null;
+        return Carbon::parse($value)->format('H:i');
+    }
+
+    // Helper methods - use raw attributes to avoid accessor interference
     public function calculateTotalHours(): float
     {
-        if (!$this->clock_in_time || !$this->clock_out_time) {
+        if (!$this->getRawOriginal('clock_in_time') || !$this->getRawOriginal('clock_out_time')) {
             return 0;
         }
 
-        $clockIn = Carbon::parse($this->clock_in_time);
-        $clockOut = Carbon::parse($this->clock_out_time);
+        $clockIn = Carbon::parse($this->getRawOriginal('clock_in_time'));
+        $clockOut = Carbon::parse($this->getRawOriginal('clock_out_time'));
         
         $totalMinutes = $clockOut->diffInMinutes($clockIn);
         $workingMinutes = $totalMinutes - $this->break_duration_minutes;
@@ -155,9 +173,20 @@ class Timesheet extends Model
         parent::boot();
 
         static::saving(function ($timesheet) {
+            // Only auto-calculate if the values are not already set (for backward compatibility)
+            // If total_hours and total_pay are already set (from frontend), don't recalculate
             if ($timesheet->clock_in_time && $timesheet->clock_out_time) {
-                $timesheet->total_hours = $timesheet->calculateTotalHours();
-                $timesheet->total_pay = $timesheet->calculateTotalPay();
+                // Only calculate if total_hours is not already set (null) 
+                // Don't recalculate if it's 0 - frontend might have sent 0 as a valid value
+                if (is_null($timesheet->total_hours)) {
+                    $timesheet->total_hours = $timesheet->calculateTotalHours();
+                }
+                
+                // Only calculate if total_pay is not already set (null)
+                // Don't recalculate if it's 0 - frontend might have sent 0 as a valid value
+                if (is_null($timesheet->total_pay)) {
+                    $timesheet->total_pay = $timesheet->calculateTotalPay();
+                }
             }
         });
     }

@@ -6,6 +6,7 @@ use App\DocumentVerificationStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Storage;
 
 class Document extends Model
 {
@@ -13,6 +14,7 @@ class Document extends Model
     
     protected $fillable = [
         'care_home_id',
+        'user_id',
         'document_type',
         'original_name',
         'file_path',
@@ -32,9 +34,28 @@ class Document extends Model
         'status' => DocumentVerificationStatus::class,
     ];
 
+    protected $appends = [
+        'file_url',
+    ];
+
+    public function getFileUrlAttribute()
+    {
+        return url($this->file_path);
+    }
+
     public function careHome(): BelongsTo
     {
         return $this->belongsTo(CareHome::class);
+    }
+
+    public function healthWorker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function reviewer(): BelongsTo
@@ -60,5 +81,24 @@ class Document extends Model
     public function getStatusIcon(): string
     {
         return $this->status->getIcon();
+    }
+
+    public function isWorkerDocument(): bool
+    {
+        return $this->user_id !== null;
+    }
+
+    public function isCareHomeDocument(): bool
+    {
+        return $this->care_home_id !== null;
+    }
+
+    public function getOwnerName(): string
+    {
+        if ($this->isWorkerDocument()) {
+            return $this->user->name ?? 'Unknown Worker';
+        }
+
+        return $this->careHome->name ?? 'Unknown Care Home';
     }
 }

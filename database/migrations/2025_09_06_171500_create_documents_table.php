@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('documents', function (Blueprint $table) {
             $table->id();
-            $table->foreignUuid('care_home_id')->constrained()->onDelete('cascade');
+            $table->foreignUuid('care_home_id')->nullable()->constrained()->onDelete('cascade');
+            $table->foreignUuid('user_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('document_type'); // e.g., 'cqc_certificate', 'public_liability_insurance'
             $table->string('original_name'); // Original filename
             $table->string('file_path'); // Path to stored file
@@ -21,11 +22,11 @@ return new class extends Migration
             $table->string('mime_type'); // MIME type
             $table->string('status')->default('pending'); // pending, approved, rejected
             $table->text('rejection_reason')->nullable(); // Reason for rejection if applicable
+            $table->text('action_required')->nullable();
+            $table->foreignUuid('reviewed_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->timestamp('reviewed_at')->nullable();
             $table->timestamp('uploaded_at');
             $table->timestamps();
-            
-            // Ensure one document per type per care home
-            $table->unique(['care_home_id', 'document_type']);
         });
     }
 
