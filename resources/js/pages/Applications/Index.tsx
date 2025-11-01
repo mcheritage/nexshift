@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { SharedData } from '@/types';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
@@ -110,11 +110,16 @@ export default function ApplicationsIndex({ shift, applications }: ApplicationsI
             return;
         }
         
-        rejectForm.patch(`/applications/${applicationId}/reject`, {
-            data: { review_notes: rejectionReason },
+        // Use router.patch directly with explicit data
+        router.patch(`/applications/${applicationId}/reject`, {
+            review_notes: rejectionReason
+        }, {
             onSuccess: () => {
                 setSelectedApplication(null);
                 setRejectionReason('');
+            },
+            onError: (errors) => {
+                console.error('Rejection failed:', errors);
             }
         });
     };
@@ -127,6 +132,11 @@ export default function ApplicationsIndex({ shift, applications }: ApplicationsI
     const handleCloseProfileModal = () => {
         setIsProfileModalOpen(false);
         setSelectedProfileApplication(null);
+    };
+
+    const handleRejectFromModal = (applicationId: string) => {
+        setSelectedApplication(applicationId);
+        handleCloseProfileModal();
     };
 
     // Filter applications based on search and filters
@@ -426,7 +436,7 @@ export default function ApplicationsIndex({ shift, applications }: ApplicationsI
                 onClose={handleCloseProfileModal}
                 application={selectedProfileApplication}
                 onAccept={handleAccept}
-                onReject={(applicationId) => setSelectedApplication(applicationId)}
+                onReject={handleRejectFromModal}
                 shiftStatus={shift.status}
             />
         </AppLayout>

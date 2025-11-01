@@ -179,7 +179,7 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
 
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
-            const approveableIds = timesheets.data
+            const approveableIds = timesheets?.data
                 .filter(t => t.status === 'submitted')
                 .map(t => t.id);
             setSelectedTimesheets(approveableIds);
@@ -210,15 +210,13 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
         <AppLayout>
             <Head title="Timesheet Approvals" />
             
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-6">
                 {/* Header */}
-                <div className="space-y-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Timesheet Approvals</h1>
-                        <p className="text-gray-600 dark:text-gray-400 mt-1">
-                            Review and approve worker timesheets for payroll processing
-                        </p>
-                    </div>
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Timesheet Approvals</h1>
+                    <p className="text-muted-foreground">
+                        Review and approve worker timesheets for payroll processing
+                    </p>
                 </div>
 
                 {/* Statistics Cards */}
@@ -338,12 +336,12 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
-                            <CardTitle>Timesheets ({timesheets.meta.total})</CardTitle>
-                            {timesheets.data.some(t => t.status === 'submitted') && (
+                            <CardTitle>Timesheets ({timesheets?.data?.length || 0})</CardTitle>
+                            {timesheets?.data?.some(t => t.status === 'submitted') && (
                                 <label className="flex items-center text-sm">
                                     <input
                                         type="checkbox"
-                                        checked={selectedTimesheets.length === timesheets.data.filter(t => t.status === 'submitted').length}
+                                        checked={selectedTimesheets.length === (timesheets?.data?.filter(t => t.status === 'submitted').length || 0)}
                                         onChange={(e) => handleSelectAll(e.target.checked)}
                                         className="mr-2"
                                     />
@@ -353,7 +351,7 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {timesheets.data.length === 0 ? (
+                        {(!timesheets?.data || timesheets.data.length === 0) ? (
                             <div className="text-center py-8">
                                 <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
@@ -364,7 +362,7 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
                                 </p>
                             </div>
                         ) : (
-                            timesheets.data.map(timesheet => (
+                            timesheets?.data?.map(timesheet => (
                                 <div key={timesheet.id} className="border border-gray-200 rounded-lg p-4">
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-start space-x-4">

@@ -10,7 +10,7 @@ uses(RefreshDatabase::class);
 
 test('admin users see admin navigation menu', function () {
     // Create admin user
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->admin()->create();
 
     // Login as admin
     $this->actingAs($admin);
@@ -78,7 +78,7 @@ test('health care worker users see health care worker navigation menu', function
 
 test('admin logo link points to admin dashboard', function () {
     // Create admin user
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->admin()->create();
 
     // Login as admin
     $this->actingAs($admin);

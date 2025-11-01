@@ -51,8 +51,8 @@ class Shift extends Model
         'role',
         'location',
         'shift_date',
-        'start_time',
-        'end_time',
+        'start_datetime',
+        'end_datetime',
         'duration_hours',
         'hourly_rate',
         'total_pay',
@@ -70,12 +70,15 @@ class Shift extends Model
         'filled_at',
         'completed_at',
         'created_by',
+        'cancellation_reason',
+        'cancelled_by',
+        'cancelled_at',
     ];
 
     protected $casts = [
         'shift_date' => 'date:Y-m-d',
-        'start_time' => 'string',
-        'end_time' => 'string',
+        'start_datetime' => 'datetime',
+        'end_datetime' => 'datetime',
         'duration_hours' => 'decimal:2',
         'hourly_rate' => 'decimal:2',
         'total_pay' => 'decimal:2',
@@ -83,17 +86,34 @@ class Shift extends Model
         'required_qualifications' => 'array',
         'is_urgent' => 'boolean',
         'is_recurring' => 'boolean',
-        'ends_next_day' => 'boolean',
         'application_deadline' => 'datetime',
         'published_at' => 'datetime',
         'filled_at' => 'datetime',
         'completed_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     protected $appends = [
         'start_date_time',
         'end_date_time',
+        'start_time',
+        'end_time',
     ];
+
+    /**
+     * Boot the model
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Automatically calculate total_pay when creating or updating
+        static::saving(function ($shift) {
+            if ($shift->duration_hours && $shift->hourly_rate) {
+                $shift->total_pay = $shift->duration_hours * $shift->hourly_rate;
+            }
+        });
+    }
 
     // Role constants
     public const ROLE_REGISTERED_NURSE = 'registered_nurse';
@@ -174,6 +194,14 @@ class Shift extends Model
     }
 
     /**
+     * Relationship: Shift was cancelled by user
+     */
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    /**
      * Relationship: Shift has many applications
      */
     public function applications(): HasMany
@@ -182,19 +210,23 @@ class Shift extends Model
     }
 
     /**
-     * Calculate duration in hours based on start and end time
+     * Relationship: Shift has many timesheets
+     */
+    public function timesheets(): HasMany
+    {
+        return $this->hasMany(Timesheet::class);
+    }
+
+    /**
+     * Calculate duration in hours based on start and end datetime
      */
     public function calculateDuration(): float
     {
-        $start = \Carbon\Carbon::parse($this->start_time);
-        $end = \Carbon\Carbon::parse($this->end_time);
-        
-        // Handle overnight shifts
-        if ($end->lessThan($start)) {
-            $end->addDay();
+        if (!$this->start_datetime || !$this->end_datetime) {
+            return 0;
         }
         
-        return $end->diffInHours($start, true);
+        return $this->end_datetime->diffInHours($this->start_datetime, true);
     }
 
     /**
@@ -241,7 +273,7 @@ class Shift extends Model
     }
 
     /**
-     * Check if shift is urgent (within 24 hours)
+     * Check if this shift is urgent (within 24 hours)
      */
     public function isUrgent(): bool
     {
@@ -249,8 +281,7 @@ class Shift extends Model
             return true;
         }
         
-        $shiftDateTime = \Carbon\Carbon::parse($this->shift_date . ' ' . $this->start_time);
-        return now()->diffInHours($shiftDateTime) <= 24;
+        return now()->diffInHours($this->start_datetime) <= 24;
     }
 
     /**
@@ -270,35 +301,42 @@ class Shift extends Model
     }
 
     /**
+     * Get backward compatible start_time attribute (just time portion)
+     */
+    public function getStartTimeAttribute(): string
+    {
+        $startDatetime = $this->getRawOriginal('start_datetime');
+        if (!$startDatetime) {
+            return '';
+        }
+        
+        return \Carbon\Carbon::parse($startDatetime)->format('H:i');
+    }
+
+    /**
+     * Get backward compatible end_time attribute (just time portion)
+     */
+    public function getEndTimeAttribute(): string
+    {
+        $endDatetime = $this->getRawOriginal('end_datetime');
+        if (!$endDatetime) {
+            return '';
+        }
+        
+        return \Carbon\Carbon::parse($endDatetime)->format('H:i');
+    }
+
+    /**
      * Get the combined start date and time for backward compatibility
      */
     public function getStartDateTimeAttribute(): string
     {
-        try {
-            // Ensure we have valid date and time values
-            if (empty($this->shift_date) || empty($this->start_time)) {
-                return '';
-            }
-            
-            // Parse the date (handles both date and datetime formats)
-            $date = \Carbon\Carbon::parse($this->shift_date)->startOfDay();
-            
-            // Parse the time (handles both H:i and H:i:s formats)
-            $timeStr = substr($this->start_time, 0, 5); // Take only HH:MM part
-            $time = \Carbon\Carbon::createFromFormat('H:i', $timeStr);
-            
-            $startDateTime = $date->copy()->setTime($time->hour, $time->minute);
-            
-            // Format as local datetime string instead of ISO to avoid timezone issues
-            return $startDateTime->format('Y-m-d\TH:i:s');
-        } catch (\Exception $e) {
-            \Log::error('Error creating start_date_time', [
-                'shift_date' => $this->shift_date,
-                'start_time' => $this->start_time,
-                'error' => $e->getMessage()
-            ]);
+        $startDatetime = $this->getRawOriginal('start_datetime');
+        if (!$startDatetime) {
             return '';
         }
+        
+        return \Carbon\Carbon::parse($startDatetime)->format('Y-m-d\TH:i:s');
     }
 
     /**
@@ -306,35 +344,11 @@ class Shift extends Model
      */
     public function getEndDateTimeAttribute(): string
     {
-        try {
-            // Ensure we have valid date and time values
-            if (empty($this->shift_date) || empty($this->end_time)) {
-                return '';
-            }
-            
-            // Parse the base date (handles both date and datetime formats)
-            $date = \Carbon\Carbon::parse($this->shift_date)->startOfDay();
-            
-            // Check if shift ends the next day (handle null as false)
-            if ($this->ends_next_day === true || $this->ends_next_day === 1) {
-                $date->addDay();
-            }
-            
-            // Parse the time (handles both H:i and H:i:s formats)
-            $timeStr = substr($this->end_time, 0, 5); // Take only HH:MM part
-            $time = \Carbon\Carbon::createFromFormat('H:i', $timeStr);
-            $endDateTime = $date->copy()->setTime($time->hour, $time->minute);
-            
-            // Format as local datetime string instead of ISO to avoid timezone issues
-            return $endDateTime->format('Y-m-d\TH:i:s');
-        } catch (\Exception $e) {
-            \Log::error('Error creating end_date_time', [
-                'shift_date' => $this->shift_date,
-                'end_time' => $this->end_time,
-                'ends_next_day' => $this->ends_next_day,
-                'error' => $e->getMessage()
-            ]);
+        $endDatetime = $this->getRawOriginal('end_datetime');
+        if (!$endDatetime) {
             return '';
         }
+        
+        return \Carbon\Carbon::parse($endDatetime)->format('Y-m-d\TH:i:s');
     }
 }

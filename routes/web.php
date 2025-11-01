@@ -27,6 +27,15 @@ Route::get('/auto-login', function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Notification routes
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [App\Http\Controllers\NotificationController::class, 'index'])->name('index');
+        Route::get('/unread-count', [App\Http\Controllers\NotificationController::class, 'unreadCount'])->name('unread-count');
+        Route::patch('/{notification}/read', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('mark-as-read');
+        Route::patch('/mark-all-read', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::delete('/{notification}', [App\Http\Controllers\NotificationController::class, 'destroy'])->name('destroy');
+    });
+
     // Document upload routes for care homes
     Route::prefix('documents')->name('documents.')->group(function () {
         Route::get('/', [App\Http\Controllers\DocumentUploadController::class, 'index'])->name('index');
@@ -58,6 +67,16 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/{timesheet}/reject', [App\Http\Controllers\TimesheetController::class, 'reject'])->name('reject');
         Route::patch('/bulk-approve', [App\Http\Controllers\TimesheetController::class, 'bulkApprove'])->name('bulk-approve');
     });
+
+    // Invoice management routes for care homes
+    Route::prefix('invoices')->name('invoices.')->group(function () {
+        Route::get('/', [App\Http\Controllers\InvoiceController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\InvoiceController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\InvoiceController::class, 'store'])->name('store');
+        Route::get('/{invoice}', [App\Http\Controllers\InvoiceController::class, 'show'])->name('show');
+        Route::patch('/{invoice}/mark-sent', [App\Http\Controllers\InvoiceController::class, 'markAsSent'])->name('mark-sent');
+        Route::patch('/{invoice}/mark-paid', [App\Http\Controllers\InvoiceController::class, 'markAsPaid'])->name('mark-paid');
+    });
 });
 
 // Healthcare Worker routes (outside care home middleware)
@@ -70,6 +89,25 @@ Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worke
     Route::post('/shifts/{shift}/apply', [App\Http\Controllers\WorkerController::class, 'apply'])->name('apply');
     Route::get('/applications', [App\Http\Controllers\WorkerController::class, 'applications'])->name('applications');
     Route::patch('/applications/{application}/withdraw', [App\Http\Controllers\WorkerController::class, 'withdrawApplication'])->name('applications.withdraw');
+    
+    // My Shifts page for workers
+    Route::get('/my-shifts', [App\Http\Controllers\WorkerController::class, 'myShifts'])->name('my-shifts');
+    
+    // Timesheet routes for workers
+    Route::get('/timesheets', [App\Http\Controllers\WorkerController::class, 'timesheets'])->name('timesheets');
+    Route::get('/shifts/{shift}/timesheets/create', [App\Http\Controllers\WorkerController::class, 'createTimesheet'])->name('timesheets.create');
+    Route::post('/shifts/{shift}/timesheets', [App\Http\Controllers\WorkerController::class, 'storeTimesheet'])->name('timesheets.store');
+    Route::get('/timesheets/{timesheet}/edit', [App\Http\Controllers\WorkerController::class, 'editTimesheet'])->name('timesheets.edit');
+    Route::patch('/timesheets/{timesheet}', [App\Http\Controllers\WorkerController::class, 'updateTimesheet'])->name('timesheets.update');
+    Route::patch('/timesheets/{timesheet}/submit', [App\Http\Controllers\WorkerController::class, 'submitTimesheet'])->name('timesheets.submit');
+
+    // Document routes for workers
+    Route::prefix('documents')->name('documents.')->group(function () {
+        Route::get('/', [App\Http\Controllers\WorkerDocumentController::class, 'index'])->name('index');
+        Route::post('/upload', [App\Http\Controllers\WorkerDocumentController::class, 'store'])->name('store');
+        Route::get('/{document}/download', [App\Http\Controllers\WorkerDocumentController::class, 'download'])->name('download');
+        Route::delete('/{document}', [App\Http\Controllers\WorkerDocumentController::class, 'destroy'])->name('destroy');
+    });
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -79,10 +117,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [App\Http\Controllers\Admin\AdminDashboardController::class, 'index'])->name('dashboard');
         
         // Document Verification
-        Route::get('/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'index'])->name('main.documents.index');
-        Route::get('/carehomes/{careHome}/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'showCareHome'])->name('main.carehomes.documents');
-        Route::patch('/documents/{document}/status', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'updateStatus'])->name('main.documents.update-status');
-        Route::get('/documents/{document}/download', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'download'])->name('main.documents.download');
+        Route::get('/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'index'])->name('documents.index');
+        Route::get('/carehomes/{careHome}/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'showCareHome'])->name('carehomes.documents');
+        Route::post('/documents/{document}/update-status', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'updateStatus'])->name('documents.update-status');
+        Route::get('/documents/{document}/download', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'download'])->name('documents.download');
+        
+        // Worker Document Verification
+        Route::get('/workers/{worker}/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'showWorker'])->name('workers.documents.show');
         
         // Care Home Management
         Route::get('/carehomes', [App\Http\Controllers\Admin\CareHomeManagementController::class, 'index'])->name('carehomes.index');

@@ -53,6 +53,11 @@ class Document extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
@@ -76,5 +81,24 @@ class Document extends Model
     public function getStatusIcon(): string
     {
         return $this->status->getIcon();
+    }
+
+    public function isWorkerDocument(): bool
+    {
+        return $this->user_id !== null;
+    }
+
+    public function isCareHomeDocument(): bool
+    {
+        return $this->care_home_id !== null;
+    }
+
+    public function getOwnerName(): string
+    {
+        if ($this->isWorkerDocument()) {
+            return $this->user->name ?? 'Unknown Worker';
+        }
+
+        return $this->careHome->name ?? 'Unknown Care Home';
     }
 }

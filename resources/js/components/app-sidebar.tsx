@@ -16,7 +16,7 @@ export function AppSidebar() {
     const navItems = getMainNavItems(userRole);
     
     // Determine the dashboard href based on user role
-    const dashboardHref = userRole === 'admin' ? '/admin' : '/dashboard';
+    const dashboardHref = userRole === 'super_admin' ? '/admin' : '/dashboard';
 
     return (
         <Sidebar collapsible="icon" variant="inset">

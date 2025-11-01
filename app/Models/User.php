@@ -116,6 +116,11 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\Application::class, 'worker_id');
     }
 
+    public function documents()
+    {
+        return $this->hasMany(Document::class);
+    }
+
     // Healthcare Profile relationships
     public function healthcareProfile()
     {
@@ -146,7 +151,7 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->is_admin === 1;
     }
 
     public function isCareHomeAdmin(): bool
