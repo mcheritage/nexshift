@@ -8,11 +8,11 @@ WORKDIR /app
 
 # Install vendor without running scripts (no artisan yet)
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --prefer-dist --no-interaction --no-progress --no-scripts
+RUN composer install --prefer-dist --no-interaction --no-progress --no-scripts
 
 # Now bring in the full app and finalize vendor (still no scripts)
 COPY . .
-RUN composer install --no-dev --prefer-dist --no-interaction --no-progress --no-scripts \
+RUN composer install --prefer-dist --no-interaction --no-progress --no-scripts \
     && composer dump-autoload --optimize
 
 
