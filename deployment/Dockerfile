@@ -41,7 +41,7 @@ RUN apk add --no-cache \
     php php-cli php-common php-curl php-dom php-fileinfo php-json php-mbstring \
     php-openssl php-phar php-session php-tokenizer php-xml php-zip \
     php-pdo php-pdo_sqlite php-sqlite3 \
-    composer php-xmlwriter php7.4-xml
+    composer php-xmlwriter
 
 # only copy what's needed for faster caching; adjust if you use Vite/Mix
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
