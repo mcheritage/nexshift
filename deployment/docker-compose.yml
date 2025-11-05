@@ -126,6 +126,7 @@ services:
             ONESIGNAL_REST_API_KEY: ${ONESIGNAL_REST_API_KEY:-}
         networks:
             - app_network
+            - dokploy-network
         depends_on:
             app:
                 condition: service_healthy
