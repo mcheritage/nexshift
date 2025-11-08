@@ -57,7 +57,6 @@ RUN composer install --prefer-dist --no-interaction --no-progress --no-scripts
 
 # Copy the full application for wayfinder to work
 COPY . .
-RUN php artisan ziggy:generate
 
 
 # Adjust for your build command (vite/mix)
