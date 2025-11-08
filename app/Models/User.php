@@ -93,6 +93,7 @@ class User extends Authenticatable
             'skills' => 'array',
             'available_weekends' => 'boolean',
             'available_nights' => 'boolean',
+            'is_admin' => 'boolean'
         ];
     }
 
