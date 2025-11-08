@@ -54,6 +54,7 @@ RUN if [ -f package-lock.json ]; then npm ci; \
 # Copy composer files for wayfinder plugin
 COPY composer.json composer.lock ./
 RUN composer install --prefer-dist --no-interaction --no-progress --no-scripts
+RUN php artisan ziggy:generate
 
 # Copy the full application for wayfinder to work
 COPY . .
