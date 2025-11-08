@@ -152,7 +152,7 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->is_admin === 1;
+        return (bool) $this->is_admin;
     }
 
     public function isCareHomeAdmin(): bool
