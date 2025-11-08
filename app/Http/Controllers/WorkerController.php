@@ -33,7 +33,6 @@ class WorkerController extends Controller
             ->whereDoesntHave('applications', function ($query) use ($user) {
                 $query->where('worker_id', $user->id);
             })
-            ->orderBy('shift_date')
             ->orderBy('start_datetime')
             ->limit(10)
             ->get();
@@ -84,11 +83,11 @@ class WorkerController extends Controller
         }
 
         if ($request->filled('date_from')) {
-            $query->where('shift_date', '>=', $request->date_from);
+            $query->whereDate('start_datetime', '>=', $request->date_from);
         }
 
         if ($request->filled('date_to')) {
-            $query->where('shift_date', '<=', $request->date_to);
+            $query->whereDate('start_datetime', '<=', $request->date_to);
         }
 
         if ($request->filled('min_rate')) {
@@ -96,8 +95,7 @@ class WorkerController extends Controller
         }
 
         // Order by date and time
-        $shifts = $query->orderBy('shift_date')
-            ->orderBy('start_datetime')
+        $shifts = $query->orderBy('start_datetime')
             ->paginate(15);
 
         // Add application status for each shift
@@ -245,8 +243,7 @@ class WorkerController extends Controller
             ->with(['careHome', 'timesheets' => function ($query) use ($user) {
                 $query->where('worker_id', $user->id);
             }])
-            ->orderBy('shift_date', 'desc')
-            ->orderBy('start_datetime')
+            ->orderBy('start_datetime', 'desc')
             ->paginate(15);
 
         // Add timesheet status for each shift
@@ -305,12 +302,12 @@ class WorkerController extends Controller
                 $query->where('worker_id', $user->id)
                       ->where('status', Application::STATUS_ACCEPTED);
             })
-            ->where('shift_date', '<', now()->format('Y-m-d')) // Shift date has passed
+            ->whereDate('start_datetime', '<', now()) // Shift date has passed
             ->whereDoesntHave('timesheets', function ($query) use ($user) {
                 $query->where('worker_id', $user->id);
             })
             ->with(['careHome'])
-            ->orderBy('shift_date', 'desc')
+            ->orderBy('start_datetime', 'desc')
             ->get();
 
         return Inertia::render('Worker/Timesheets', [
