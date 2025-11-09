@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ShiftResource;
 use App\Models\Shift;
+use App\Utils\Constants;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -18,7 +19,7 @@ class ShiftController extends BaseApiController
         $user = $this->requireAuthenticatedUser($request);
         
         // Only healthcare workers can view shifts
-        if ($user->role !== 'health_worker') {
+        if ($user->role !== Constants::HEALTH_CARE_WORKER) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -72,7 +73,7 @@ class ShiftController extends BaseApiController
         $user = $this->requireAuthenticatedUser($request);
         
         // Only healthcare workers can view shifts
-        if ($user->role !== 'health_worker') {
+        if ($user->role !== Constants::HEALTH_CARE_WORKER) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
