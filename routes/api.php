@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\SkillController;
 use App\Http\Controllers\Api\BankDetailsController;
 use App\Http\Controllers\Api\ShiftController;
 use App\Http\Controllers\Api\ApplicationController;
+use App\Http\Controllers\Api\TimesheetController as ApiTimesheetController;
 
 Route::post('/auth/register', [RegisterUserController::class, 'store']);
 Route::post('/auth/login', [LoginController::class, 'login']);
@@ -55,5 +56,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/applications', [ApplicationController::class, 'index']);
     Route::post('/applications', [ApplicationController::class, 'store']);
     Route::patch('/applications/{id}/withdraw', [ApplicationController::class, 'withdraw']);
+
+    // Timesheet routes
+    Route::get('/timesheets', [ApiTimesheetController::class, 'index']);
+    Route::get('/timesheets/summary', [ApiTimesheetController::class, 'summary']);
+    Route::get('/timesheets/eligible-shifts', [ApiTimesheetController::class, 'eligibleShifts']);
+    Route::post('/timesheets/start', [ApiTimesheetController::class, 'start']);
+    Route::get('/timesheets/{timesheet}', [ApiTimesheetController::class, 'show']);
+    Route::post('/timesheets/{timesheet}/clock-out', [ApiTimesheetController::class, 'clockOut']);
+    Route::patch('/timesheets/{timesheet}', [ApiTimesheetController::class, 'update']);
+    Route::post('/timesheets/{timesheet}/submit', [ApiTimesheetController::class, 'submit']);
 
 });
