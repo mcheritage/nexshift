@@ -12,6 +12,7 @@ services:
             target: runtime
             no_cache: true
         restart: always
+        image: nexshift-web-app
         working_dir: /var/www/html
         volumes:
             - ../../files/storage:/var/www/html/storage
@@ -55,12 +56,16 @@ services:
             ONESIGNAL_APP_ID: ${ONESIGNAL_APP_ID:-}
             ONESIGNAL_REST_API_KEY: ${ONESIGNAL_REST_API_KEY:-}
 
+            REFRESH_DB: ${REFRESH_DB:-}
+            SEED_DATA: ${SEED_DATA:-}
+
     nginx:
-        build:
-            context: ../.
-            dockerfile: deployment/Dockerfile
-            target: web
-            no_cache: true
+#        build:
+#            context: ../.
+#            dockerfile: deployment/Dockerfile
+#            target: web
+#            no_cache: true
+        image: nexshift-web-app
         restart: unless-stopped
         volumes:
             - ../../files/deployment:/var/www/html/deployment
