@@ -4,12 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { DocumentUploadItem } from './document-upload-item'
+import { DocumentUploadMulti } from './document-upload-multi'
 import { DocumentType } from '@/types/document'
 
 interface DocumentUploadFormProps {
   requiredDocuments: DocumentType[]
-  uploadedDocuments: Record<string, any>
+  uploadedDocuments: Record<string, any[]>
   careHomeId: string
 }
 
@@ -39,19 +39,30 @@ export function DocumentUploadForm({
   }
 
   const getDocumentStatus = (documentType: string) => {
-    const uploaded = uploadedDocuments[documentType]
-    if (!uploaded) return 'missing'
-    return uploaded.status || 'pending'
+    const documents = uploadedDocuments[documentType] || []
+    if (documents.length === 0) return 'missing'
+    
+    // Check if all documents are approved
+    const allApproved = documents.every(doc => doc.status === 'approved')
+    if (allApproved) return 'approved'
+    
+    // Check if any are rejected
+    const hasRejected = documents.some(doc => doc.status === 'rejected')
+    if (hasRejected) return 'rejected'
+    
+    // Otherwise pending
+    return 'pending'
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, count?: number) => {
+    const countText = count && count > 0 ? ` (${count})` : ''
     switch (status) {
       case 'approved':
-        return <Badge variant="default" className="bg-green-500">Approved</Badge>
+        return <Badge variant="default" className="bg-green-500">Approved{countText}</Badge>
       case 'pending':
-        return <Badge variant="secondary">Pending Review</Badge>
+        return <Badge variant="secondary">Pending Review{countText}</Badge>
       case 'rejected':
-        return <Badge variant="destructive">Rejected</Badge>
+        return <Badge variant="destructive">Rejected{countText}</Badge>
       case 'missing':
       default:
         return <Badge variant="outline">Not Uploaded</Badge>
@@ -120,12 +131,10 @@ export function DocumentUploadForm({
                            doc.value.startsWith('operating_') || 
                            doc.value.includes('insurance'))
               .map(doc => (
-                <DocumentUploadItem
+                <DocumentUploadMulti
                   key={doc.value}
                   documentType={doc}
-                  uploadedDocument={uploadedDocuments[doc.value]}
-                  status={getDocumentStatus(doc.value)}
-                  statusBadge={getStatusBadge(getDocumentStatus(doc.value))}
+                  uploadedDocuments={uploadedDocuments[doc.value] || []}
                   onUploadStart={() => setUploading(doc.value)}
                   onUploadEnd={() => setUploading(null)}
                   onUploadSuccess={() => handleUploadSuccess(doc.value)}
@@ -153,12 +162,10 @@ export function DocumentUploadForm({
                            doc.value.includes('food') || 
                            doc.value.includes('dbs'))
               .map(doc => (
-                <DocumentUploadItem
+                <DocumentUploadMulti
                   key={doc.value}
                   documentType={doc}
-                  uploadedDocument={uploadedDocuments[doc.value]}
-                  status={getDocumentStatus(doc.value)}
-                  statusBadge={getStatusBadge(getDocumentStatus(doc.value))}
+                  uploadedDocuments={uploadedDocuments[doc.value] || []}
                   onUploadStart={() => setUploading(doc.value)}
                   onUploadEnd={() => setUploading(null)}
                   onUploadSuccess={() => handleUploadSuccess(doc.value)}
@@ -186,12 +193,10 @@ export function DocumentUploadForm({
                            doc.value.includes('authority') || 
                            doc.value.includes('training'))
               .map(doc => (
-                <DocumentUploadItem
+                <DocumentUploadMulti
                   key={doc.value}
                   documentType={doc}
-                  uploadedDocument={uploadedDocuments[doc.value]}
-                  status={getDocumentStatus(doc.value)}
-                  statusBadge={getStatusBadge(getDocumentStatus(doc.value))}
+                  uploadedDocuments={uploadedDocuments[doc.value] || []}
                   onUploadStart={() => setUploading(doc.value)}
                   onUploadEnd={() => setUploading(null)}
                   onUploadSuccess={() => handleUploadSuccess(doc.value)}
