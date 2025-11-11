@@ -50,9 +50,7 @@ export default function LandingPage() {
                     <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex justify-between items-center h-16">
                             <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                                    <span className="text-white font-bold text-xl">N</span>
-                                </div>
+                                <img src="/favicon.png" alt="NexShift" className="w-10 h-10" />
                                 <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                                     NexShift
                                 </span>
@@ -173,9 +171,7 @@ export default function LandingPage() {
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                                    <span className="text-white font-bold">N</span>
-                                </div>
+                                <img src="/favicon.png" alt="NexShift" className="w-8 h-8" />
                                 <span className="text-xl font-bold text-gray-900 dark:text-white">
                                     NexShift
                                 </span>
