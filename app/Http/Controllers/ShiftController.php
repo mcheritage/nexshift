@@ -52,8 +52,7 @@ class ShiftController extends Controller
         }
 
         // Order by shift date and start time
-        $shifts = $query->orderBy('shift_date', 'desc')
-            ->orderBy('start_datetime', 'desc')
+        $shifts = $query->orderBy('start_datetime', 'desc')
             ->paginate(20);
 
         // Get summary statistics

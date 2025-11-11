@@ -18,7 +18,7 @@ class ShiftSeeder extends Seeder
         $this->command->info('Creating shift data...');
 
         // Get care homes and admin users
-        $careHomes = CareHome::with('user')->get();
+        $careHomes = CareHome::with('admin_user')->get();
         
         if ($careHomes->isEmpty()) {
             $this->command->error('No care homes found. Run CareHomeSeeder first.');

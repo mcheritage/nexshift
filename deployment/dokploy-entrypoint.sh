@@ -16,12 +16,31 @@ chmod -R 775 storage bootstrap/cache || true
 php artisan config:clear || true
 php artisan cache:clear || true
 
-# If you run migrations on each deploy, do it before config:cache
-php artisan migrate --force --no-interaction || true
+# Refresh database if REFRESH_DB is enabled
+if [ "$REFRESH_DB" = "true" ]; then
+  echo -e "${BLUE}🌱 Running fresh migrations...${NC}"
+  php artisan migrate:fresh --force
+  echo -e "${GREEN}✅ Database fresh migration successful ${NC}"
+else
+  php artisan migrate --force
+  echo -e "${GREEN}✅ Database migration successful ${NC}"
+
+fi
+
+# Seed database if SEED_DATA is enabled
+if [ "$SEED_DATA" = "true" ]; then
+  echo -e "${BLUE}🌱 Seeding database with sample data...${NC}"
+  php artisan db:seed --force
+  echo -e "${GREEN}✅ Database seeded successfully${NC}"
+else
+  echo -e "${YELLOW}⚠️  Skipping database seeding (SEED_DATA=false)${NC}"
+fi
+
 
 php artisan config:cache || true
 php artisan route:cache || true
 php artisan view:cache || true
+php artisan storage:link || true
 
 # Restart workers so they load the new code/config
 php artisan queue:restart || true

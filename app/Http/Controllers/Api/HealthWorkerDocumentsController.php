@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\DocumentType;
 use App\Http\Controllers\Controller;
+use App\DocumentVerificationStatus;
 use App\Models\Document;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,7 +27,11 @@ class HealthWorkerDocumentsController extends Controller
     {
         $user = $request->user();
         $required_docs = DocumentType::getRequiredHealthWorkerDocumentsAsGrouped();
-        $uploaded_docs = Document::query()->where('user_id', $user->id)->get();
+        $uploaded_docs = Document::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('uploaded_at')
+            ->get()
+            ->groupBy('document_type');
 
         $data = [];
 
@@ -34,13 +39,15 @@ class HealthWorkerDocumentsController extends Controller
             $data[] = [
               'category' => $cat,
               'documents' => array_map(function ($doc) use ($uploaded_docs) {
-                  $uploaded_doc = $uploaded_docs->where('document_type', $doc->value)->first();
+                  $documentUploads = $uploaded_docs->get($doc->value, collect());
+                  $latestUpload = $documentUploads->first();
 
                   return [
                       'doc_type' => $doc->value,
                       'name' => $doc->getDisplayName(),
                       'description' => $doc->getDescription(),
-                      'uploaded' => $uploaded_doc
+                      'uploaded' => $latestUpload,
+                      'uploads' => $documentUploads->values(),
                   ];
               }, $required_doc_list)
             ];
@@ -54,7 +61,8 @@ class HealthWorkerDocumentsController extends Controller
     {
         $request->validate([
             'document_type' => 'required|string',
-            'file' => 'required|file|max:' . self::MAX_FILE_SIZE,
+            'label' => 'required|string|max:255',
+            'file' => 'required|file|max:' . self::MAX_FILE_SIZE . '|mimetypes:' . implode(',', self::ALLOWED_MIME_TYPES),
         ]);
 
         $user = $request->user();
@@ -77,20 +85,17 @@ class HealthWorkerDocumentsController extends Controller
             $path = $file->storeAs('documents/health-worker/' . $user->id, $filename, 'private');
 
             // Create or update document record
-            $document = Document::updateOrCreate(
-                [
-                    'user_id' => $user->id,
-                    'document_type' => $documentType->value,
-                ],
-                [
-                    'original_name' => $file->getClientOriginalName(),
-                    'file_path' => $path,
-                    'file_size' => $file->getSize(),
-                    'mime_type' => $file->getMimeType(),
-                    'status' => 'pending',
-                    'uploaded_at' => now(),
-                ]
-            );
+            $document = Document::create([
+                'user_id' => $user->id,
+                'document_type' => $documentType->value,
+                'label' => $request->string('label')->toString(),
+                'original_name' => $file->getClientOriginalName(),
+                'file_path' => $path,
+                'file_size' => (string) $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+                'status' => DocumentVerificationStatus::PENDING,
+                'uploaded_at' => now(),
+            ]);
 
             return response()->json([
                 'success' => true,

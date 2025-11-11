@@ -3,6 +3,8 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\UserRoles;
+use App\Utils\Constants;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -93,6 +95,7 @@ class User extends Authenticatable
             'skills' => 'array',
             'available_weekends' => 'boolean',
             'available_nights' => 'boolean',
+            'is_admin' => 'boolean'
         ];
     }
 
@@ -151,16 +154,16 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->is_admin === 1;
+        return (bool) $this->is_admin;
     }
 
     public function isCareHomeAdmin(): bool
     {
-        return $this->role === 'care_home_admin';
+        return $this->role === UserRoles::CARE_HOME_ADMIN->value;
     }
 
     public function isHealthCareWorker(): bool
     {
-        return $this->role === 'health_care_worker';
+        return $this->role === UserRoles::HEALTH_WORKER->value;
     }
 }
