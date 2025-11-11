@@ -5,9 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\Shift;
-use App\Utils\Constants;
+use App\UserRoles;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class ApplicationController extends BaseApiController
 {
@@ -19,7 +20,7 @@ class ApplicationController extends BaseApiController
         $user = $this->requireAuthenticatedUser($request);
         
         // Only healthcare workers can apply for shifts
-        if ($user->role !== Constants::HEALTH_CARE_WORKER) {
+        if ($user->role !== UserRoles::HEALTH_WORKER) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -125,11 +126,6 @@ class ApplicationController extends BaseApiController
     public function index(Request $request): JsonResponse
     {
         $user = $this->requireAuthenticatedUser($request);
-        
-        // Only healthcare workers can view their applications
-        if ($user->role !== Constants::HEALTH_CARE_WORKER) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
 
         $applications = Application::with(['shift.careHome', 'shift.selectedWorker'])
             ->where('worker_id', $user->id)
@@ -156,7 +152,7 @@ class ApplicationController extends BaseApiController
         $user = $this->requireAuthenticatedUser($request);
         
         // Only healthcare workers can withdraw their applications
-        if ($user->role !== Constants::HEALTH_CARE_WORKER) {
+        if ($user->role !== UserRoles::HEALTH_WORKER) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 

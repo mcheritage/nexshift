@@ -7,6 +7,7 @@ use App\Http\Resources\TimesheetResource;
 use App\Models\Application;
 use App\Models\Shift;
 use App\Models\Timesheet;
+use App\UserRoles;
 use App\Utils\Constants;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -17,10 +18,6 @@ class TimesheetController extends BaseApiController
     public function index(Request $request): JsonResponse
     {
         $user = $this->requireAuthenticatedUser($request);
-
-        if ($user->role !== Constants::HEALTH_CARE_WORKER) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
 
         $query = Timesheet::with(['shift.careHome', 'careHome'])
             ->where('worker_id', $user->id)
@@ -57,10 +54,6 @@ class TimesheetController extends BaseApiController
     {
         $user = $this->requireAuthenticatedUser($request);
 
-        if ($user->role !== Constants::HEALTH_CARE_WORKER) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
         $startDate = $request->query('start_date');
         $endDate = $request->query('end_date');
 
@@ -92,7 +85,7 @@ class TimesheetController extends BaseApiController
     {
         $user = $this->requireAuthenticatedUser($request);
 
-        if ($user->role !== Constants::HEALTH_CARE_WORKER) {
+        if ($user->role !== UserRoles::HEALTH_WORKER) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -318,7 +311,7 @@ class TimesheetController extends BaseApiController
     {
         $user = $this->requireAuthenticatedUser($request);
 
-        if ($user->role !== Constants::HEALTH_CARE_WORKER) {
+        if ($user->role !== UserRoles::HEALTH_WORKER) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 

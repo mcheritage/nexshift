@@ -19,7 +19,7 @@ class UserResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'avatar_url' => $this->avatar_url,
+            'avatar_url' => $this->profile_photo,
 //            'is_completed_onboarding' => (bool) $this->is_completed_onboarding,
             'email' => $this->email,
             'role' => $this->role,

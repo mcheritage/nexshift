@@ -16,7 +16,7 @@ use App\Http\Controllers\Api\TimesheetController as ApiTimesheetController;
 Route::post('/auth/register', [RegisterUserController::class, 'store']);
 Route::post('/auth/login', [LoginController::class, 'login']);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'health_care_worker'])->group(function () {
 
     Route::get('/users/me', [AuthController::class, 'me']);
     Route::put('/users/me', [AuthController::class, 'updateProfile']);

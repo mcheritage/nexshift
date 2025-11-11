@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\UserRoles;
 use App\Utils\Constants;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -158,11 +159,11 @@ class User extends Authenticatable
 
     public function isCareHomeAdmin(): bool
     {
-        return $this->role === Constants::CARE_HOME_ADMIN;
+        return $this->role === UserRoles::CARE_HOME_ADMIN->value;
     }
 
     public function isHealthCareWorker(): bool
     {
-        return $this->role === Constants::HEALTH_CARE_WORKER;
+        return $this->role === UserRoles::HEALTH_WORKER->value;
     }
 }

@@ -7,6 +7,7 @@ use App\Models\HealthcareProfile;
 use App\Models\Skill;
 use App\Models\User;
 use App\Models\WorkExperience;
+use App\UserRoles;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -55,7 +56,7 @@ class HealthCareWorkerProfileSeeder extends Seeder
                     'available_weekends' => true,
                     'available_nights' => true,
                     'additional_notes' => 'Available for last-minute shifts. Own transport. Excellent references from previous care homes.',
-                    'role' => 'health_care_worker',
+                    'role' => UserRoles::HEALTH_WORKER,
                 ],
                 'profile' => [
                     'is_profile_complete' => true,
@@ -143,7 +144,7 @@ class HealthCareWorkerProfileSeeder extends Seeder
                     'available_weekends' => true,
                     'available_nights' => false,
                     'additional_notes' => 'Fluent in Mandarin and Cantonese. Experience with residents with varying levels of cognitive impairment.',
-                    'role' => 'health_care_worker',
+                    'role' => UserRoles::HEALTH_WORKER,
                 ],
                 'profile' => [
                     'is_profile_complete' => true,
@@ -231,7 +232,7 @@ class HealthCareWorkerProfileSeeder extends Seeder
                     'available_weekends' => false,
                     'available_nights' => true,
                     'additional_notes' => 'Specialist in palliative care. Available for complex cases requiring experienced staff.',
-                    'role' => 'health_care_worker',
+                    'role' => UserRoles::HEALTH_WORKER,
                 ],
                 'profile' => [
                     'is_profile_complete' => true,
@@ -319,7 +320,7 @@ class HealthCareWorkerProfileSeeder extends Seeder
                     'available_weekends' => true,
                     'available_nights' => true,
                     'additional_notes' => 'New to the field but very motivated. Completed work experience at three different care facilities. Tech-savvy and comfortable with digital systems.',
-                    'role' => 'health_care_worker',
+                    'role' => UserRoles::HEALTH_WORKER,
                 ],
                 'profile' => [
                     'is_profile_complete' => true,
@@ -399,7 +400,7 @@ class HealthCareWorkerProfileSeeder extends Seeder
                     'available_weekends' => true,
                     'available_nights' => false,
                     'additional_notes' => 'Specialist in mental health aspects of elderly care. Fluent in Hindi and Gujarati. Experience with residents with complex needs.',
-                    'role' => 'health_care_worker',
+                    'role' => UserRoles::HEALTH_WORKER,
                 ],
                 'profile' => [
                     'is_profile_complete' => true,
