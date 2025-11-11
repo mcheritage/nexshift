@@ -60,12 +60,11 @@ services:
             SEED_DATA: ${SEED_DATA:-}
 
     nginx:
-#        build:
-#            context: ../.
-#            dockerfile: deployment/Dockerfile
-#            target: web
-#            no_cache: true
-        image: nexshift-web-app
+        build:
+            context: ../.
+            dockerfile: deployment/Dockerfile
+            target: web
+            no_cache: true
         restart: unless-stopped
         volumes:
             - ../../files/deployment:/var/www/html/deployment
@@ -93,11 +92,7 @@ services:
             "
 
     queue:
-        build:
-            context: ../.
-            dockerfile: deployment/Dockerfile
-            target: runtime
-            no_cache: true
+        image: nexshift-web-app
         restart: always
         working_dir: /var/www/html
         environment:
