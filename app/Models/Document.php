@@ -16,6 +16,7 @@ class Document extends Model
         'care_home_id',
         'user_id',
         'document_type',
+        'label',
         'original_name',
         'file_path',
         'file_size',

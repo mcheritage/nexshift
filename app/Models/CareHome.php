@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 
 /**
@@ -31,5 +32,10 @@ class CareHome extends Model
     public function shifts()
     {
         return $this->hasMany(Shift::class);
+    }
+
+    public function admin_user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'care_home_id');
     }
 }

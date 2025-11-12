@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AdminUserSeeder::class,
             CareHomeSeeder::class,
+            HealthCareWorkerProfileSeeder::class,
             ShiftSeeder::class,
         ]);
     }
