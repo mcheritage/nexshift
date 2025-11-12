@@ -157,9 +157,7 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
         setIsLoadingDocument(true);
         
         try {
-            // Use /admin prefix for web.php routes
             const url = `/admin/documents/${document.id}/view`;
-            console.log('Attempting to fetch:', url);
             
             const response = await fetch(url, {
                 credentials: 'include',
@@ -168,22 +166,14 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
                 },
             });
             
-            console.log('Response status:', response.status);
-            console.log('Response headers:', response.headers);
-            
             if (response.ok) {
                 const blob = await response.blob();
-                console.log('Blob created:', blob.type, blob.size);
                 const objectUrl = URL.createObjectURL(blob);
-                console.log('Object URL created:', objectUrl);
                 setDocumentUrl(objectUrl);
             } else {
-                const text = await response.text();
-                console.error('Failed to load document:', response.status, response.statusText, text);
-                alert(`Failed to load document (${response.status}). Please try downloading instead.`);
+                alert(`Failed to load document. Please try downloading instead.`);
             }
         } catch (error) {
-            console.error('Error loading document:', error);
             alert('Error loading document. Please try downloading instead.');
         } finally {
             setIsLoadingDocument(false);
@@ -456,11 +446,6 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
                                             src={documentUrl}
                                             alt={viewDocument.original_name}
                                             className="max-w-full max-h-full object-contain rounded-md"
-                                            onError={(e) => {
-                                                console.error('Image failed to load');
-                                                e.currentTarget.style.display = 'none';
-                                            }}
-                                            onLoad={() => console.log('Image loaded successfully')}
                                         />
                                     
                                     ) : (

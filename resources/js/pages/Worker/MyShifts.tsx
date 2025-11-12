@@ -4,6 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ROLE_LABELS } from '@/constants/roles';
 
 interface CareHome {
     id: number;
@@ -54,13 +55,6 @@ const MyShifts = ({ shifts }: Props) => {
             minute: '2-digit',
             hour12: false
         });
-    };
-
-    const roleLabels = {
-        'registered_nurse': 'Registered Nurse',
-        'healthcare_assistant': 'Healthcare Assistant',
-        'support_worker': 'Support Worker',
-        'senior_care_worker': 'Senior Care Worker',
     };
 
     const timesheetStatusColors = {
@@ -161,7 +155,7 @@ const MyShifts = ({ shifts }: Props) => {
                                             <div className="space-y-3 flex-1">
                                                 <div className="flex items-center gap-2">
                                                     <h3 className="font-semibold text-lg">
-                                                        {roleLabels[shift.role as keyof typeof roleLabels] || shift.role}
+                                                        {ROLE_LABELS[shift.role as keyof typeof ROLE_LABELS] || shift.role}
                                                     </h3>
                                                     <Badge className={shiftStatus.color}>
                                                         {shiftStatus.label}

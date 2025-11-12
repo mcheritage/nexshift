@@ -18,6 +18,7 @@ import {
     AlertTriangle
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { ROLE_LABELS } from '@/constants/roles';
 
 interface Shift {
     id: string;
@@ -54,17 +55,6 @@ interface Timesheet {
 interface EditTimesheetPageProps extends SharedData {
     timesheet: Timesheet;
 }
-
-const roleLabels = {
-    'registered_nurse': 'Registered Nurse',
-    'healthcare_assistant': 'Healthcare Assistant',
-    'support_worker': 'Support Worker',
-    'senior_care_worker': 'Senior Care Worker',
-    'night_shift_worker': 'Night Shift Worker',
-    'domestic_staff': 'Domestic Staff',
-    'kitchen_staff': 'Kitchen Staff',
-    'maintenance_staff': 'Maintenance Staff'
-};
 
 const statusColors = {
     'draft': 'bg-gray-100 text-gray-800',
@@ -226,7 +216,7 @@ export default function EditTimesheet({ timesheet }: EditTimesheetPageProps) {
                                 <div>
                                     <div className="text-sm text-muted-foreground">Role</div>
                                     <div className="font-medium">
-                                        {roleLabels[timesheet.shift.role as keyof typeof roleLabels] || timesheet.shift.role}
+                                        {ROLE_LABELS[timesheet.shift.role as keyof typeof ROLE_LABELS] || timesheet.shift.role}
                                     </div>
                                 </div>
                                 <div>

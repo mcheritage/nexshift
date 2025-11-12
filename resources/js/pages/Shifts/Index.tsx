@@ -16,6 +16,7 @@ import {
     Plus,
     TrendingUp
 } from 'lucide-react';
+import { ROLE_LABELS } from '@/constants/roles';
 
 interface Shift {
     id: string;
@@ -52,15 +53,6 @@ interface ShiftsPageProps extends SharedData {
         search?: string;
     };
 }
-
-const roleLabels: Record<string, string> = {
-    'registered_nurse': 'Registered Nurse',
-    'healthcare_assistant': 'Healthcare Assistant',
-    'support_worker': 'Support Worker',
-    'domestic_staff': 'Domestic Staff',
-    'kitchen_staff': 'Kitchen Staff',
-    'maintenance_staff': 'Maintenance Staff'
-};
 
 const statusColors: Record<string, string> = {
     'draft': 'bg-gray-100 text-gray-800',
@@ -204,7 +196,7 @@ export default function ShiftsIndex({ shifts, stats, filters }: ShiftsPageProps)
                                         <div className="flex-1">
                                             <div className="flex items-center gap-3 mb-2">
                                                 <h3 className="text-lg font-semibold text-gray-900">
-                                                    {roleLabels[shift.role] || shift.role}
+                                                    {ROLE_LABELS[shift.role] || shift.role}
                                                 </h3>
                                                 {shift.is_urgent && (
                                                     <Badge variant="destructive" className="text-xs">

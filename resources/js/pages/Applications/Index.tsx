@@ -20,6 +20,7 @@ import {
 import { useState } from 'react';
 import WorkerProfileCard from '@/components/WorkerProfileCard';
 import WorkerProfileModal from '@/components/WorkerProfileModal';
+import { ROLE_LABELS } from '@/constants/roles';
 
 interface Worker {
     id: string;
@@ -74,17 +75,6 @@ const statusColors = {
     'accepted': 'bg-green-100 text-green-800',
     'rejected': 'bg-red-100 text-red-800',
     'withdrawn': 'bg-gray-100 text-gray-800',
-};
-
-const roleLabels = {
-    'registered_nurse': 'Registered Nurse',
-    'healthcare_assistant': 'Healthcare Assistant',
-    'support_worker': 'Support Worker',
-    'senior_care_worker': 'Senior Care Worker',
-    'night_shift_worker': 'Night Shift Worker',
-    'domestic_staff': 'Domestic Staff',
-    'kitchen_staff': 'Kitchen Staff',
-    'maintenance_staff': 'Maintenance Staff'
 };
 
 export default function ApplicationsIndex({ shift, applications }: ApplicationsIndexProps) {
