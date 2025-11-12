@@ -45,7 +45,8 @@ class DocumentUploadController extends Controller
             ];
         })->toArray();
         
-        $uploadedDocuments = $careHome->documents()->get()->keyBy('document_type');
+        // Group uploaded documents by type (allowing multiple per type)
+        $uploadedDocuments = $careHome->documents()->get()->groupBy('document_type');
 
         return Inertia::render('carehome/document-upload', [
             'requiredDocuments' => $requiredDocuments,
@@ -89,21 +90,17 @@ class DocumentUploadController extends Controller
             $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
             $path = $file->storeAs('documents/carehomes/' . $careHome->id, $filename, 'private');
 
-            // Create or update document record
-            $document = Document::updateOrCreate(
-                [
-                    'care_home_id' => $careHome->id,
-                    'document_type' => $documentType->value,
-                ],
-                [
-                    'original_name' => $file->getClientOriginalName(),
-                    'file_path' => $path,
-                    'file_size' => $file->getSize(),
-                    'mime_type' => $file->getMimeType(),
-                    'status' => 'pending',
-                    'uploaded_at' => now(),
-                ]
-            );
+            // Create new document record (allowing multiple files per document type)
+            $document = Document::create([
+                'care_home_id' => $careHome->id,
+                'document_type' => $documentType->value,
+                'original_name' => $file->getClientOriginalName(),
+                'file_path' => $path,
+                'file_size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+                'status' => 'pending',
+                'uploaded_at' => now(),
+            ]);
 
             return response()->json([
                 'success' => true,

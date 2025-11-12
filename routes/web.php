@@ -9,7 +9,7 @@ use Inertia\Inertia;
 require __DIR__.'/admin.php';
 
 Route::get('/', function () {
-    return Inertia::render('welcome');
+    return Inertia::render('LandingPage');
 })->name('home');
 
 
@@ -121,6 +121,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/carehomes/{careHome}/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'showCareHome'])->name('carehomes.documents');
         Route::post('/documents/{document}/update-status', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'updateStatus'])->name('documents.update-status');
         Route::get('/documents/{document}/download', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'download'])->name('documents.download');
+        Route::get('/documents/{document}/view', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'view'])->name('documents.view');
         
         // Worker Document Verification
         Route::get('/workers/{worker}/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'showWorker'])->name('workers.documents.show');

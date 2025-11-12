@@ -11,17 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Calendar, Clock, MapPin, Coins, Users, AlertTriangle, Plus, X } from 'lucide-react';
+import { ROLE_OPTIONS } from '@/constants/roles';
 
 interface CreateShiftProps extends SharedData {}
-
-const roleOptions = [
-    { value: 'registered_nurse', label: 'Registered Nurse' },
-    { value: 'healthcare_assistant', label: 'Healthcare Assistant' },
-    { value: 'support_worker', label: 'Support Worker' },
-    { value: 'domestic_staff', label: 'Domestic Staff' },
-    { value: 'kitchen_staff', label: 'Kitchen Staff' },
-    { value: 'maintenance_staff', label: 'Maintenance Staff' }
-];
 
 const commonSkills = [
     'Medication Administration',
@@ -287,7 +279,7 @@ export default function CreateShift({}: CreateShiftProps) {
                                             <SelectValue placeholder="Select a role" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {roleOptions.map((role) => (
+                                            {ROLE_OPTIONS.map((role) => (
                                                 <SelectItem key={role.value} value={role.value}>
                                                     {role.label}
                                                 </SelectItem>

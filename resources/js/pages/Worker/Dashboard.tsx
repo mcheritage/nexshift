@@ -16,6 +16,7 @@ import {
     XCircle,
     Timer
 } from 'lucide-react';
+import { ROLE_LABELS } from '@/constants/roles';
 
 interface Application {
     id: string;
@@ -57,17 +58,6 @@ interface WorkerDashboardProps extends SharedData {
         pending_applications: number;
     };
 }
-
-const roleLabels = {
-    'registered_nurse': 'Registered Nurse',
-    'healthcare_assistant': 'Healthcare Assistant',
-    'support_worker': 'Support Worker',
-    'senior_care_worker': 'Senior Care Worker',
-    'night_shift_worker': 'Night Shift Worker',
-    'domestic_staff': 'Domestic Staff',
-    'kitchen_staff': 'Kitchen Staff',
-    'maintenance_staff': 'Maintenance Staff'
-};
 
 const statusColors = {
     'pending': 'bg-yellow-100 text-yellow-800',
@@ -217,7 +207,7 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                                         </div>
                                         <div className="ml-4">
                                             <Badge variant="secondary">
-                                                {roleLabels[shift.role as keyof typeof roleLabels] || shift.role}
+                                                {ROLE_LABELS[shift.role as keyof typeof ROLE_LABELS] || shift.role}
                                             </Badge>
                                         </div>
                                     </div>

@@ -50,7 +50,6 @@ class Shift extends Model
         'description',
         'role',
         'location',
-        'shift_date',
         'start_datetime',
         'end_datetime',
         'duration_hours',
@@ -76,7 +75,6 @@ class Shift extends Model
     ];
 
     protected $casts = [
-        'shift_date' => 'date:Y-m-d',
         'start_datetime' => 'datetime',
         'end_datetime' => 'datetime',
         'duration_hours' => 'decimal:2',
@@ -98,6 +96,7 @@ class Shift extends Model
         'end_date_time',
         'start_time',
         'end_time',
+        'shift_date',
     ];
 
     /**
@@ -298,6 +297,19 @@ class Shift extends Model
     public function getStatusDisplayAttribute(): string
     {
         return self::getStatuses()[$this->status] ?? $this->status;
+    }
+
+    /**
+     * Get backward compatible shift_date attribute (just date portion from start_datetime)
+     */
+    public function getShiftDateAttribute(): string
+    {
+        $startDatetime = $this->getRawOriginal('start_datetime');
+        if (!$startDatetime) {
+            return '';
+        }
+        
+        return \Carbon\Carbon::parse($startDatetime)->format('Y-m-d');
     }
 
     /**

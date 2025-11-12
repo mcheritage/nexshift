@@ -58,15 +58,9 @@ class DocumentVerificationController extends Controller
         $careHome->load(['users', 'documents.reviewer']);
         
         $requiredDocuments = collect(DocumentType::getAllRequired())->map(function ($docType) use ($careHome) {
-            $document = $careHome->documents->where('document_type', $docType->value)->first();
-            
-            return [
-                'type' => [
-                    'value' => $docType->value,
-                    'displayName' => $docType->getDisplayName(),
-                    'description' => $docType->getDescription(),
-                ],
-                'document' => $document ? [
+            // Get all documents for this type (not just the first one)
+            $documents = $careHome->documents->where('document_type', $docType->value)->map(function ($document) {
+                return [
                     'id' => $document->id,
                     'original_name' => $document->original_name,
                     'file_size' => $document->file_size,
@@ -81,7 +75,16 @@ class DocumentVerificationController extends Controller
                     'reviewed_at' => $document->reviewed_at,
                     'uploaded_at' => $document->uploaded_at,
                     'reviewer' => $document->reviewer,
-                ] : null,
+                ];
+            })->values();
+            
+            return [
+                'type' => [
+                    'value' => $docType->value,
+                    'displayName' => $docType->getDisplayName(),
+                    'description' => $docType->getDescription(),
+                ],
+                'documents' => $documents,
             ];
         });
 
@@ -141,6 +144,24 @@ class DocumentVerificationController extends Controller
             $document->file_path,
             $document->original_name
         );
+    }
+
+    /**
+     * View a document inline (for preview)
+     */
+    public function view(Document $document)
+    {
+        if (!Storage::disk('private')->exists($document->file_path)) {
+            abort(404);
+        }
+
+        $file = Storage::disk('private')->get($document->file_path);
+        $mimeType = $document->mime_type;
+
+        return response($file, 200, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . $document->original_name . '"'
+        ]);
     }
 
     /**

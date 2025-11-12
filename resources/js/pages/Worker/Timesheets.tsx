@@ -17,6 +17,7 @@ import {
     Eye,
     Send
 } from 'lucide-react';
+import { ROLE_LABELS } from '@/constants/roles';
 
 interface Shift {
     id: string;
@@ -72,17 +73,6 @@ const statusIcons = {
     'approved': CheckCircle,
     'queried': AlertTriangle,
     'rejected': XCircle,
-};
-
-const roleLabels = {
-    'registered_nurse': 'Registered Nurse',
-    'healthcare_assistant': 'Healthcare Assistant',
-    'support_worker': 'Support Worker',
-    'senior_care_worker': 'Senior Care Worker',
-    'night_shift_worker': 'Night Shift Worker',
-    'domestic_staff': 'Domestic Staff',
-    'kitchen_staff': 'Kitchen Staff',
-    'maintenance_staff': 'Maintenance Staff'
 };
 
 export default function WorkerTimesheets({ timesheets, shiftsNeedingTimesheets }: TimesheetsPageProps) {

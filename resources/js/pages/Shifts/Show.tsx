@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import WorkerProfileModal from '@/components/WorkerProfileModal';
+import { ROLE_LABELS } from '@/constants/roles';
 import { 
     ArrowLeft, 
     Calendar, 
@@ -64,15 +65,6 @@ interface Shift {
 interface ShiftShowProps extends SharedData {
     shift: Shift;
 }
-
-const roleLabels: Record<string, string> = {
-    'registered_nurse': 'Registered Nurse',
-    'healthcare_assistant': 'Healthcare Assistant',
-    'support_worker': 'Support Worker',
-    'domestic_staff': 'Domestic Staff',
-    'kitchen_staff': 'Kitchen Staff',
-    'maintenance_staff': 'Maintenance Staff'
-};
 
 const statusColors: Record<string, string> = {
     'draft': 'bg-gray-100 text-gray-800',
@@ -160,7 +152,7 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
 
     return (
         <AppLayout>
-            <Head title={`${roleLabels[shift.role] || shift.role} - Shift Details`} />
+            <Head title={`${ROLE_LABELS[shift.role] || shift.role} - Shift Details`} />
             
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
                 {/* Header */}
