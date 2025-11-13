@@ -14,9 +14,15 @@ return new class extends Migration
         Schema::create('care_homes', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('name')->unique();
+            $table->enum('status', ['pending', 'approved', 'rejected', 'suspended'])->default('pending');
+            $table->uuid('approved_by')->nullable();
+            $table->timestamp('approved_at')->nullable();
+            $table->text('rejection_reason')->nullable();
             $table->rememberToken();
 
             $table->timestamps();
+            
+            $table->foreign('approved_by')->references('id')->on('users')->onDelete('set null');
         });
 
         Schema::table('users', function (Blueprint $table) {

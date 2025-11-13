@@ -31,7 +31,7 @@ class AuthService
             /** @var CareHome $care_home */
             $care_home = CareHome::create([
                 'name' => $payload->name,
-                'approval_status' => 'pending',
+                'status' => 'pending',
             ]);
 
             $user = $this->registerUser(new RegisterUserDto(
@@ -63,7 +63,7 @@ class AuthService
             'email' => $payload->email,
             'password' => Hash::make($payload->password),
             'role' => $role,
-            'approval_status' => $role === 'health_worker' ? 'pending' : 'approved',
+            'status' => $role === 'health_worker' ? 'pending' : 'approved',
         ]);
 
         event(new Registered($user));

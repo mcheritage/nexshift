@@ -122,7 +122,7 @@ class ShiftController extends BaseApiController
     public function careHomes(): JsonResponse
     {
         $careHomes = \App\Models\CareHome::select('id', 'name')
-            ->where('approval_status', 'approved')
+            ->where('status', 'approved')
             ->whereHas('shifts', function ($query) {
                 $query->available();
             })

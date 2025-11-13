@@ -33,7 +33,7 @@ class WorkerController extends Controller
         // Only load shifts if approved
         $availableShifts = $isApproved ? Shift::where('status', Shift::STATUS_PUBLISHED)
             ->whereHas('careHome', function($q) {
-                $q->where('approval_status', 'approved');
+                $q->where('status', 'approved');
             })
             ->with(['careHome'])
             ->whereDoesntHave('applications', function ($query) use ($user) {
@@ -54,7 +54,7 @@ class WorkerController extends Controller
         $stats = [
             'available_shifts' => $isApproved ? Shift::where('status', Shift::STATUS_PUBLISHED)
                 ->whereHas('careHome', function($q) {
-                    $q->where('approval_status', 'approved');
+                    $q->where('status', 'approved');
                 })->count() : 0,
             'my_applications' => Application::where('worker_id', $user->id)->count(),
             'accepted_applications' => Application::where('worker_id', $user->id)
@@ -68,7 +68,7 @@ class WorkerController extends Controller
             'myApplications' => $myApplications,
             'stats' => $stats,
             'isApproved' => $isApproved,
-            'approvalStatus' => $user->approval_status,
+            'approvalStatus' => $user->status,
         ]);
     }
 
@@ -86,7 +86,7 @@ class WorkerController extends Controller
         if ($isApproved) {
             $query = Shift::where('status', Shift::STATUS_PUBLISHED)
                 ->whereHas('careHome', function($q) {
-                    $q->where('approval_status', 'approved');
+                    $q->where('status', 'approved');
                 })
                 ->with(['careHome'])
                 ->withCount('applications');
@@ -132,7 +132,7 @@ class WorkerController extends Controller
             'filters' => $request->only(['role', 'location', 'date_from', 'date_to', 'min_rate']),
             'roleOptions' => Shift::getRoleLabels(),
             'isApproved' => $isApproved,
-            'approvalStatus' => $user->approval_status,
+            'approvalStatus' => $user->status,
         ]);
     }
 

@@ -17,7 +17,7 @@ class CareHome extends Model
 
     protected $fillable = [
         'name',
-        'approval_status',
+        'status',
         'approved_by',
         'approved_at',
         'rejection_reason',
@@ -57,7 +57,7 @@ class CareHome extends Model
      */
     public function isApproved(): bool
     {
-        return $this->approval_status === 'approved';
+        return $this->status === 'approved';
     }
 
     /**
@@ -65,7 +65,7 @@ class CareHome extends Model
      */
     public function isPending(): bool
     {
-        return $this->approval_status === 'pending';
+        return $this->status === 'pending';
     }
 
     /**
@@ -73,6 +73,22 @@ class CareHome extends Model
      */
     public function isRejected(): bool
     {
-        return $this->approval_status === 'rejected';
+        return $this->status === 'rejected';
+    }
+
+    /**
+     * Check if the care home is suspended
+     */
+    public function isSuspended(): bool
+    {
+        return $this->status === 'suspended';
+    }
+
+    /**
+     * Check if the care home is active (approved and not suspended)
+     */
+    public function isActive(): bool
+    {
+        return $this->status === 'approved';
     }
 }
