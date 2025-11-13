@@ -37,8 +37,10 @@ class AuthenticatedSessionController extends Controller
         $user = $request->user();
         
         if ($user->isAdmin()) {
+            // Admin should always go to admin dashboard
             return redirect()->intended(route('admin.dashboard', absolute: false));
         } elseif ($user->role === 'health_care_worker') {
+            // Healthcare workers should go to worker dashboard
             return redirect()->intended(route('worker.dashboard', absolute: false));
         }
         

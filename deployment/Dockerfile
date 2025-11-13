@@ -8,11 +8,11 @@ WORKDIR /app
 
 # Install vendor without running scripts (no artisan yet)
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --prefer-dist --no-interaction --no-progress --no-scripts
+RUN composer install --prefer-dist --no-interaction --no-progress --no-scripts
 
 # Now bring in the full app and finalize vendor (still no scripts)
 COPY . .
-RUN composer install --no-dev --prefer-dist --no-interaction --no-progress --no-scripts \
+RUN composer install --prefer-dist --no-interaction --no-progress --no-scripts \
     && composer dump-autoload --optimize
 
 
@@ -41,7 +41,7 @@ RUN apk add --no-cache \
     php php-cli php-common php-curl php-dom php-fileinfo php-json php-mbstring \
     php-openssl php-phar php-session php-tokenizer php-xml php-zip \
     php-pdo php-pdo_sqlite php-sqlite3 \
-    composer
+    composer php-xmlwriter php-simplexml
 
 # only copy what's needed for faster caching; adjust if you use Vite/Mix
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
@@ -53,7 +53,7 @@ RUN if [ -f package-lock.json ]; then npm ci; \
 
 # Copy composer files for wayfinder plugin
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --prefer-dist --no-interaction --no-progress --no-scripts
+RUN composer install --prefer-dist --no-interaction --no-progress --no-scripts
 
 # Copy the full application for wayfinder to work
 COPY . .
