@@ -21,9 +21,9 @@ export default function Register({ status }: RegisterProps) {
             <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
                 <div className="flex w-full max-w-md flex-col gap-6">
                   <div className="flex justify-center">
-                    <img
-                      src="/images/nexshift-logo.JPG"
-                      alt="NextShift Logo"
+                  <img 
+                      src="/images/nexshiftlogo.png"
+                      alt="NexShift Logo"
                       className="h-16 w-auto object-contain"
                     />
                   </div>

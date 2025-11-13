@@ -17,7 +17,8 @@ import {
     Users,
     Download,
     ArrowLeft,
-    Save
+    Save,
+    Eye
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -73,7 +74,7 @@ interface RequiredDocument {
         displayName: string;
         description: string;
     };
-    document: Document | null;
+    documents: Document[];
 }
 
 interface VerificationStatus {
@@ -110,6 +111,10 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
     const [rejectionReason, setRejectionReason] = useState<string>('');
     const [actionRequired, setActionRequired] = useState<string>('');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [viewDocument, setViewDocument] = useState<Document | null>(null);
+    const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+    const [documentUrl, setDocumentUrl] = useState<string>('');
+    const [isLoadingDocument, setIsLoadingDocument] = useState(false);
 
     const getStatusIcon = (status: string) => {
         const IconComponent = statusIcons[status as keyof typeof statusIcons];
@@ -146,10 +151,51 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
         setIsDialogOpen(true);
     };
 
+    const openViewDialog = async (document: Document) => {
+        setViewDocument(document);
+        setIsViewDialogOpen(true);
+        setIsLoadingDocument(true);
+        
+        try {
+            const url = `/admin/documents/${document.id}/view`;
+            
+            const response = await fetch(url, {
+                credentials: 'include',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const objectUrl = URL.createObjectURL(blob);
+                setDocumentUrl(objectUrl);
+            } else {
+                alert(`Failed to load document. Please try downloading instead.`);
+            }
+        } catch (error) {
+            alert('Error loading document. Please try downloading instead.');
+        } finally {
+            setIsLoadingDocument(false);
+        }
+    };
+
+    const closeViewDialog = () => {
+        setIsViewDialogOpen(false);
+        // Clean up object URL to prevent memory leaks
+        if (documentUrl) {
+            URL.revokeObjectURL(documentUrl);
+            setDocumentUrl('');
+        }
+        setViewDocument(null);
+    };
+
     const getCompletionStats = () => {
         const total = requiredDocuments.length;
-        const uploaded = requiredDocuments.filter(rd => rd.document).length;
-        const approved = requiredDocuments.filter(rd => rd.document?.status === 'approved').length;
+        const uploaded = requiredDocuments.filter(rd => rd.documents && rd.documents.length > 0).length;
+        const approved = requiredDocuments.filter(rd => 
+            rd.documents && rd.documents.length > 0 && rd.documents.every(d => d.status === 'approved')
+        ).length;
         
         return { total, uploaded, approved };
     };
@@ -218,12 +264,9 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
                                 <CardHeader>
                                     <CardTitle className="flex items-center justify-between">
                                         <span>{requiredDoc.type.displayName}</span>
-                                        {requiredDoc.document && (
-                                            <Badge 
-                                                className={`${getStatusColor(requiredDoc.document.status)} flex items-center gap-1`}
-                                            >
-                                                {getStatusIcon(requiredDoc.document.status)}
-                                                {requiredDoc.document.status_display}
+                                        {requiredDoc.documents && requiredDoc.documents.length > 0 && (
+                                            <Badge variant="secondary">
+                                                {requiredDoc.documents.length} file(s) uploaded
                                             </Badge>
                                         )}
                                     </CardTitle>
@@ -232,53 +275,74 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    {requiredDoc.document ? (
+                                    {requiredDoc.documents && requiredDoc.documents.length > 0 ? (
                                         <div className="space-y-4">
-                                            <div className="grid gap-2 text-sm">
-                                                <div><strong>File:</strong> {requiredDoc.document.original_name}</div>
-                                                <div><strong>Size:</strong> {(requiredDoc.document.file_size / 1024).toFixed(1)} KB</div>
-                                                <div><strong>Uploaded:</strong> {new Date(requiredDoc.document.uploaded_at).toLocaleDateString()}</div>
-                                                {requiredDoc.document.reviewed_at && (
-                                                    <div><strong>Reviewed:</strong> {new Date(requiredDoc.document.reviewed_at).toLocaleDateString()}</div>
-                                                )}
-                                                {requiredDoc.document.reviewer && (
-                                                    <div><strong>Reviewed by:</strong> {requiredDoc.document.reviewer.name}</div>
-                                                )}
-                                            </div>
-                                            
-                                            {(requiredDoc.document.rejection_reason || requiredDoc.document.action_required) && (
-                                                <div className="space-y-2">
-                                                    {requiredDoc.document.rejection_reason && (
-                                                        <div>
-                                                            <strong className="text-red-600">Rejection Reason:</strong>
-                                                            <p className="text-sm text-red-600">{requiredDoc.document.rejection_reason}</p>
+                                            {requiredDoc.documents.map((document) => (
+                                                <div key={document.id} className="p-4 border rounded-lg space-y-3 bg-gray-50 dark:bg-gray-800">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="font-medium">{document.original_name}</div>
+                                                        <Badge 
+                                                            className={`${getStatusColor(document.status)} flex items-center gap-1`}
+                                                        >
+                                                            {getStatusIcon(document.status)}
+                                                            {document.status_display}
+                                                        </Badge>
+                                                    </div>
+                                                    
+                                                    <div className="grid gap-2 text-sm">
+                                                        <div><strong>Size:</strong> {(document.file_size / 1024).toFixed(1)} KB</div>
+                                                        <div><strong>Uploaded:</strong> {new Date(document.uploaded_at).toLocaleDateString()}</div>
+                                                        {document.reviewed_at && (
+                                                            <div><strong>Reviewed:</strong> {new Date(document.reviewed_at).toLocaleDateString()}</div>
+                                                        )}
+                                                        {document.reviewer && (
+                                                            <div><strong>Reviewed by:</strong> {document.reviewer.name}</div>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    {(document.rejection_reason || document.action_required) && (
+                                                        <div className="space-y-2">
+                                                            {document.rejection_reason && (
+                                                                <div>
+                                                                    <strong className="text-red-600">Rejection Reason:</strong>
+                                                                    <p className="text-sm text-red-600">{document.rejection_reason}</p>
+                                                                </div>
+                                                            )}
+                                                            {document.action_required && (
+                                                                <div>
+                                                                    <strong className="text-orange-600">Action Required:</strong>
+                                                                    <p className="text-sm text-orange-600">{document.action_required}</p>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
-                                                    {requiredDoc.document.action_required && (
-                                                        <div>
-                                                            <strong className="text-orange-600">Action Required:</strong>
-                                                            <p className="text-sm text-orange-600">{requiredDoc.document.action_required}</p>
-                                                        </div>
-                                                    )}
+                                                    
+                                                    <div className="flex gap-2">
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm"
+                                                            onClick={() => openViewDialog(document)}
+                                                        >
+                                                            <Eye className="h-4 w-4 mr-2" />
+                                                            View
+                                                        </Button>
+                                                        <Button asChild variant="outline" size="sm">
+                                                            <a href={`/admin/documents/${document.id}/download`}>
+                                                                <Download className="h-4 w-4 mr-2" />
+                                                                Download
+                                                            </a>
+                                                        </Button>
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm"
+                                                            onClick={() => openStatusDialog(document)}
+                                                        >
+                                                            <Save className="h-4 w-4 mr-2" />
+                                                            Update Status
+                                                        </Button>
+                                                    </div>
                                                 </div>
-                                            )}
-                                            
-                                            <div className="flex gap-2">
-                                                <Button asChild variant="outline" size="sm">
-                                                    <a href={`/admin/documents/${requiredDoc.document.id}/download`}>
-                                                        <Download className="h-4 w-4 mr-2" />
-                                                        Download
-                                                    </a>
-                                                </Button>
-                                                <Button 
-                                                    variant="outline" 
-                                                    size="sm"
-                                                    onClick={() => openStatusDialog(requiredDoc.document!)}
-                                                >
-                                                    <Save className="h-4 w-4 mr-2" />
-                                                    Update Status
-                                                </Button>
-                                            </div>
+                                            ))}
                                         </div>
                                     ) : (
                                         <div className="text-muted-foreground">
@@ -347,6 +411,77 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
                             </Button>
                             <Button onClick={handleStatusUpdate}>
                                 Update Status
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Document Viewer Modal */}
+                <Dialog open={isViewDialogOpen} onOpenChange={(open) => !open && closeViewDialog()}>
+                    <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
+                        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+                            <DialogTitle>Document Preview</DialogTitle>
+                            <DialogDescription>
+                                {viewDocument?.original_name}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex-1 overflow-auto p-4">
+                            {isLoadingDocument ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <div className="text-center">
+                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                                        <p className="text-muted-foreground">Loading document...</p>
+                                    </div>
+                                </div>
+                            ) : viewDocument && documentUrl ? (
+                                <div className="w-full h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                                    {viewDocument.mime_type === 'application/pdf' ? (
+                                        <iframe
+                                            src={documentUrl}
+                                            className="w-full h-full border-0 rounded-md"
+                                            title={viewDocument.original_name}
+                                        />
+                                    ) : viewDocument.mime_type.startsWith('image/') ? (
+                                        <img
+                                            src={documentUrl}
+                                            alt={viewDocument.original_name}
+                                            className="max-w-full max-h-full object-contain rounded-md"
+                                        />
+                                    
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full">
+                                            <div className="text-center p-8">
+                                                <p className="text-muted-foreground mb-4">
+                                                    Preview not available for this file type ({viewDocument.mime_type}).
+                                                </p>
+                                                <p className="text-sm text-muted-foreground mb-4">
+                                                    Supported formats: PDF, Images (JPG, PNG, GIF)
+                                                </p>
+                                                <Button asChild>
+                                                    <a href={`/admin/documents/${viewDocument.id}/download`}>
+                                                        <Download className="h-4 w-4 mr-2" />
+                                                        Download to View
+                                                    </a>
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-center h-full">
+                                    <p className="text-muted-foreground">Failed to load document</p>
+                                </div>
+                            )}
+                        </div>
+                        <DialogFooter className="px-6 py-4 border-t">
+                            <Button asChild variant="outline">
+                                <a href={`/admin/documents/${viewDocument?.id}/download`}>
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Download
+                                </a>
+                            </Button>
+                            <Button onClick={closeViewDialog}>
+                                Close
                             </Button>
                         </DialogFooter>
                     </DialogContent>
