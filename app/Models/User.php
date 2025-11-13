@@ -59,6 +59,10 @@ class User extends Authenticatable
         'available_weekends',
         'available_nights',
         'additional_notes',
+        'approval_status',
+        'approved_by',
+        'approved_at',
+        'rejection_reason',
     ];
 
     /**
@@ -95,7 +99,8 @@ class User extends Authenticatable
             'skills' => 'array',
             'available_weekends' => 'boolean',
             'available_nights' => 'boolean',
-            'is_admin' => 'boolean'
+            'is_admin' => 'boolean',
+            'approved_at' => 'datetime',
         ];
     }
 
@@ -165,5 +170,34 @@ class User extends Authenticatable
     public function isHealthCareWorker(): bool
     {
         return $this->role === UserRoles::HEALTH_WORKER->value;
+    }
+
+    public function approvedBy()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /**
+     * Check if the user is approved
+     */
+    public function isApproved(): bool
+    {
+        return $this->approval_status === 'approved';
+    }
+
+    /**
+     * Check if the user is pending approval
+     */
+    public function isPending(): bool
+    {
+        return $this->approval_status === 'pending';
+    }
+
+    /**
+     * Check if the user is rejected
+     */
+    public function isRejected(): bool
+    {
+        return $this->approval_status === 'rejected';
     }
 }

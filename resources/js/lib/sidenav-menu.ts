@@ -110,8 +110,9 @@ const footerNavItems: NavItem[] = [];
 export function getMainNavItems(userRole?: string): NavItem[] {
   switch (userRole) {
     case "super_admin":
+    case "nexshift_admin":
       return adminNavItems;
-    case "health_care_worker":
+    case "health_worker":
       return healthCareWorkerNavItems;
     case "care_home_admin":
     default:

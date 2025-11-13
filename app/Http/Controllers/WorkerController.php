@@ -27,15 +27,21 @@ class WorkerController extends Controller
     {
         $user = Auth::user();
         
-        // Get available shifts (published and not filled)
-        $availableShifts = Shift::where('status', Shift::STATUS_PUBLISHED)
+        // Check if user is approved
+        $isApproved = $user->isApproved();
+        
+        // Only load shifts if approved
+        $availableShifts = $isApproved ? Shift::where('status', Shift::STATUS_PUBLISHED)
+            ->whereHas('careHome', function($q) {
+                $q->where('approval_status', 'approved');
+            })
             ->with(['careHome'])
             ->whereDoesntHave('applications', function ($query) use ($user) {
                 $query->where('worker_id', $user->id);
             })
             ->orderBy('start_datetime')
             ->limit(10)
-            ->get();
+            ->get() : collect();
 
         // Get worker's applications
         $myApplications = Application::where('worker_id', $user->id)
@@ -46,7 +52,10 @@ class WorkerController extends Controller
 
         // Stats
         $stats = [
-            'available_shifts' => Shift::where('status', Shift::STATUS_PUBLISHED)->count(),
+            'available_shifts' => $isApproved ? Shift::where('status', Shift::STATUS_PUBLISHED)
+                ->whereHas('careHome', function($q) {
+                    $q->where('approval_status', 'approved');
+                })->count() : 0,
             'my_applications' => Application::where('worker_id', $user->id)->count(),
             'accepted_applications' => Application::where('worker_id', $user->id)
                 ->where('status', Application::STATUS_ACCEPTED)->count(),
@@ -58,6 +67,8 @@ class WorkerController extends Controller
             'availableShifts' => $availableShifts,
             'myApplications' => $myApplications,
             'stats' => $stats,
+            'isApproved' => $isApproved,
+            'approvalStatus' => $user->approval_status,
         ]);
     }
 
@@ -67,48 +78,61 @@ class WorkerController extends Controller
     public function shifts(Request $request): Response
     {
         $user = Auth::user();
+        
+        // Check if user is approved
+        $isApproved = $user->isApproved();
 
-        // Build query for available shifts
-        $query = Shift::where('status', Shift::STATUS_PUBLISHED)
-            ->with(['careHome'])
-            ->withCount('applications');
+        // Build query for available shifts (only if approved)
+        if ($isApproved) {
+            $query = Shift::where('status', Shift::STATUS_PUBLISHED)
+                ->whereHas('careHome', function($q) {
+                    $q->where('approval_status', 'approved');
+                })
+                ->with(['careHome'])
+                ->withCount('applications');
 
-        // Apply filters
-        if ($request->filled('role')) {
-            $query->where('role', $request->role);
+            // Apply filters
+            if ($request->filled('role')) {
+                $query->where('role', $request->role);
+            }
+
+            if ($request->filled('location')) {
+                $query->where('location', 'like', '%' . $request->location . '%');
+            }
+
+            if ($request->filled('date_from')) {
+                $query->whereDate('start_datetime', '>=', $request->date_from);
+            }
+
+            if ($request->filled('date_to')) {
+                $query->whereDate('start_datetime', '<=', $request->date_to);
+            }
+
+            if ($request->filled('min_rate')) {
+                $query->where('hourly_rate', '>=', $request->min_rate);
+            }
+
+            // Order by date and time
+            $shifts = $query->orderBy('start_datetime')
+                ->paginate(15);
+
+            // Add application status for each shift
+            $shifts->each(function ($shift) use ($user) {
+                $application = $shift->applications()->where('worker_id', $user->id)->first();
+                $shift->user_application_status = $application ? $application->status : null;
+                $shift->user_has_applied = (bool) $application;
+            });
+        } else {
+            // Return empty pagination if not approved
+            $shifts = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
         }
-
-        if ($request->filled('location')) {
-            $query->where('location', 'like', '%' . $request->location . '%');
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('start_datetime', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('start_datetime', '<=', $request->date_to);
-        }
-
-        if ($request->filled('min_rate')) {
-            $query->where('hourly_rate', '>=', $request->min_rate);
-        }
-
-        // Order by date and time
-        $shifts = $query->orderBy('start_datetime')
-            ->paginate(15);
-
-        // Add application status for each shift
-        $shifts->each(function ($shift) use ($user) {
-            $application = $shift->applications()->where('worker_id', $user->id)->first();
-            $shift->user_application_status = $application ? $application->status : null;
-            $shift->user_has_applied = (bool) $application;
-        });
 
         return Inertia::render('Worker/ShiftsMinimal', [
             'shifts' => $shifts,
             'filters' => $request->only(['role', 'location', 'date_from', 'date_to', 'min_rate']),
             'roleOptions' => Shift::getRoleLabels(),
+            'isApproved' => $isApproved,
+            'approvalStatus' => $user->approval_status,
         ]);
     }
 
@@ -128,6 +152,11 @@ class WorkerController extends Controller
         // Validate that user is a healthcare worker
         if (!$user->isHealthCareWorker()) {
             abort(403, 'Only healthcare workers can apply for shifts');
+        }
+        
+        // Check if user is approved
+        if (!$user->isApproved()) {
+            return redirect()->back()->withErrors(['error' => 'Your account must be approved before you can apply for shifts']);
         }
 
         // Check if shift is available for applications

@@ -57,6 +57,8 @@ interface WorkerDashboardProps extends SharedData {
         accepted_applications: number;
         pending_applications: number;
     };
+    isApproved?: boolean;
+    approvalStatus?: string;
 }
 
 const statusColors = {
@@ -66,7 +68,7 @@ const statusColors = {
     'withdrawn': 'bg-gray-100 text-gray-800',
 };
 
-export default function WorkerDashboard({ availableShifts, myApplications, stats }: WorkerDashboardProps) {
+export default function WorkerDashboard({ availableShifts, myApplications, stats, isApproved, approvalStatus }: WorkerDashboardProps) {
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-GB', { 
@@ -92,6 +94,43 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                         Find and apply for healthcare shifts
                     </p>
                 </div>
+
+                {/* Approval Status Warning */}
+                {!isApproved && approvalStatus === 'pending' && (
+                    <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10 dark:border-yellow-800">
+                        <CardContent className="p-6">
+                            <div className="flex items-start">
+                                <Timer className="h-6 w-6 text-yellow-600 dark:text-yellow-500 mt-0.5 mr-3 flex-shrink-0" />
+                                <div>
+                                    <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-400 mb-2">
+                                        Account Pending Approval
+                                    </h3>
+                                    <p className="text-yellow-800 dark:text-yellow-300">
+                                        Your account is currently pending approval by an administrator. You will be able to view and apply for shifts once your account has been approved. This typically takes 1-2 business days.
+                                    </p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {!isApproved && approvalStatus === 'rejected' && (
+                    <Card className="border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-800">
+                        <CardContent className="p-6">
+                            <div className="flex items-start">
+                                <XCircle className="h-6 w-6 text-red-600 dark:text-red-500 mt-0.5 mr-3 flex-shrink-0" />
+                                <div>
+                                    <h3 className="text-lg font-semibold text-red-900 dark:text-red-400 mb-2">
+                                        Account Not Approved
+                                    </h3>
+                                    <p className="text-red-800 dark:text-red-300">
+                                        Unfortunately, your account application was not approved. Please contact support for more information.
+                                    </p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

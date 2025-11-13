@@ -30,6 +30,8 @@ class DashboardController extends Controller
             return redirect()->route('worker.dashboard');
         }
         
+        // Reload the care_home relationship to ensure it's fresh
+        $user->load('care_home');
         $careHome = $user->care_home;
         
         if (!$careHome) {

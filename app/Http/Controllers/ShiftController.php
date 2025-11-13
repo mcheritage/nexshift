@@ -92,6 +92,13 @@ class ShiftController extends Controller
             abort(403, 'Access denied: No care home associated');
         }
 
+        // Check if care home is approved
+        if (!$careHome->isApproved()) {
+            return redirect()->back()->withErrors([
+                'error' => 'Your care home must be approved by an administrator before you can post shifts.'
+            ]);
+        }
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'role' => ['required', Rule::in(array_keys(Shift::getRoles()))],
@@ -289,6 +296,14 @@ class ShiftController extends Controller
         
         if ($shift->care_home_id !== $user->care_home_id) {
             abort(403, 'Access denied');
+        }
+
+        // Check if care home is approved
+        $careHome = $user->care_home;
+        if (!$careHome || !$careHome->isApproved()) {
+            return redirect()->back()->withErrors([
+                'error' => 'Your care home must be approved by an administrator before you can publish shifts.'
+            ]);
         }
 
         if ($shift->status !== Shift::STATUS_DRAFT) {

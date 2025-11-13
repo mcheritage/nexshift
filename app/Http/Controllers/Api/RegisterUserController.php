@@ -37,7 +37,8 @@ class RegisterUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'last_login_at' => now(),
-            'role' => UserRoles::HEALTH_WORKER
+            'role' => UserRoles::HEALTH_WORKER,
+            'approval_status' => 'pending',
         ]);
 
         event(new Registered($user));
