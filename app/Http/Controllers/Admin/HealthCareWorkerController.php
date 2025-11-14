@@ -181,4 +181,52 @@ class HealthCareWorkerController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Approve a health care worker
+     */
+    public function approve(User $healthCareWorker)
+    {
+        try {
+            $healthCareWorker->update([
+                'status' => 'approved',
+                'approved_by' => auth()->id(),
+                'approved_at' => now(),
+                'rejection_reason' => null,
+            ]);
+
+            return redirect()->back()->with('success', 'Healthcare worker approved successfully');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors([
+                'error' => 'Failed to approve healthcare worker: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Reject a health care worker
+     */
+    public function reject(Request $request, User $healthCareWorker)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        try {
+            $healthCareWorker->update([
+                'status' => 'rejected',
+                'approved_by' => auth()->id(),
+                'approved_at' => now(),
+                'rejection_reason' => $request->reason,
+            ]);
+
+            return redirect()->back()->with('success', 'Healthcare worker rejected');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors([
+                'error' => 'Failed to reject healthcare worker: ' . $e->getMessage(),
+            ]);
+        }
+    }
 }

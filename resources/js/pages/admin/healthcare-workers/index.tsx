@@ -43,6 +43,7 @@ interface HealthCareWorker {
     email: string;
     gender: string;
     role: string;
+    status: string;
     created_at: string;
     documents_count: number;
     pending_documents_count: number;
@@ -137,6 +138,10 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                     aValue = a.gender.toLowerCase();
                     bValue = b.gender.toLowerCase();
                     break;
+                case 'status':
+                    aValue = a.status.toLowerCase();
+                    bValue = b.status.toLowerCase();
+                    break;
                 case 'documents':
                     aValue = a.documents_count;
                     bValue = b.documents_count;
@@ -181,6 +186,19 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
     const handleDelete = (workerId: string) => {
         if (confirm('Are you sure you want to delete this health care worker? This action cannot be undone.')) {
             router.delete(`/admin/healthcare-workers/${workerId}`);
+        }
+    };
+
+    const handleApprove = (workerId: string) => {
+        if (confirm('Are you sure you want to approve this healthcare worker?')) {
+            router.patch(`/admin/healthcare-workers/${workerId}/approve`);
+        }
+    };
+
+    const handleReject = (workerId: string) => {
+        const reason = prompt('Please provide a reason for rejection:');
+        if (reason) {
+            router.patch(`/admin/healthcare-workers/${workerId}/reject`, { reason });
         }
     };
 
@@ -416,6 +434,15 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                         </TableHead>
                                         <TableHead 
                                             className="cursor-pointer select-none"
+                                            onClick={() => handleSort('status')}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                Status
+                                                {getSortIcon('status')}
+                                            </div>
+                                        </TableHead>
+                                        <TableHead 
+                                            className="cursor-pointer select-none"
                                             onClick={() => handleSort('documents')}
                                         >
                                             <div className="flex items-center gap-2">
@@ -453,6 +480,25 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                                 <TableCell className="py-2">{worker.email}</TableCell>
                                                 <TableCell className="py-2 capitalize">{worker.gender}</TableCell>
                                                 <TableCell className="py-2">
+                                                    <Badge 
+                                                        variant={
+                                                            worker.status === 'approved' ? 'default' : 
+                                                            worker.status === 'pending' ? 'secondary' : 
+                                                            'destructive'
+                                                        }
+                                                        className={
+                                                            worker.status === 'approved' ? 'bg-green-600 hover:bg-green-700' :
+                                                            worker.status === 'pending' ? 'bg-yellow-600 hover:bg-yellow-700' :
+                                                            'bg-red-600 hover:bg-red-700'
+                                                        }
+                                                    >
+                                                        {worker.status === 'approved' && <CheckCircle className="h-3 w-3 mr-1" />}
+                                                        {worker.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
+                                                        {worker.status === 'rejected' && <XCircle className="h-3 w-3 mr-1" />}
+                                                        {worker.status.charAt(0).toUpperCase() + worker.status.slice(1)}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="py-2">
                                                     <div className="inline-flex flex-col border rounded-md overflow-hidden min-w-[140px]">
                                                         <div className="flex items-center justify-between px-2 py-1 bg-muted border-b">
                                                             <span className="font-medium text-xs">Total</span>
@@ -475,6 +521,28 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                                 <TableCell className="py-2">{new Date(worker.created_at).toLocaleDateString()}</TableCell>
                                                 <TableCell className="py-2">
                                                     <div className="flex gap-2 justify-end">
+                                                        {worker.status === 'pending' && (
+                                                            <>
+                                                                <Button 
+                                                                    variant="outline" 
+                                                                    size="sm"
+                                                                    onClick={() => handleApprove(worker.id)}
+                                                                    className="text-green-600 hover:text-green-700"
+                                                                >
+                                                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                                                    Approve
+                                                                </Button>
+                                                                <Button 
+                                                                    variant="outline" 
+                                                                    size="sm"
+                                                                    onClick={() => handleReject(worker.id)}
+                                                                    className="text-red-600 hover:text-red-700"
+                                                                >
+                                                                    <XCircle className="h-4 w-4 mr-1" />
+                                                                    Reject
+                                                                </Button>
+                                                            </>
+                                                        )}
                                                         <Button asChild variant="outline" size="sm">
                                                             <a href={`/admin/workers/${worker.id}/documents`}>
                                                                 <FileText className="h-4 w-4 mr-2" />
@@ -495,7 +563,7 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                         ))
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                                                 No healthcare workers found
                                             </TableCell>
                                         </TableRow>
