@@ -107,6 +107,19 @@ export default function CareHomesIndex({ careHomes }: Props) {
         if (reason) {
             router.patch(`/admin/carehomes/${careHomeId}/reject`, { reason });
         }
+    };
+
+    const handleSuspend = (careHomeId: string) => {
+        const reason = prompt('Please provide a reason for suspension:');
+        if (reason) {
+            router.patch(`/admin/carehomes/${careHomeId}/suspend`, { reason });
+        }
+    };
+
+    const handleUnsuspend = (careHomeId: string) => {
+        if (confirm('Are you sure you want to unsuspend this care home?')) {
+            router.patch(`/admin/carehomes/${careHomeId}/unsuspend`);
+        }
     };    const getCompletionPercentage = (careHome: CareHome) => {
         const totalRequired = 18; // Based on DocumentType::getAllRequired()
         return Math.round((careHome.approved_documents_count / totalRequired) * 100);
@@ -307,16 +320,19 @@ export default function CareHomesIndex({ careHomes }: Props) {
                                                     variant={
                                                         careHome.status === 'approved' ? 'default' : 
                                                         careHome.status === 'pending' ? 'secondary' : 
+                                                        careHome.status === 'suspended' ? 'secondary' :
                                                         'destructive'
                                                     }
                                                     className={
                                                         careHome.status === 'approved' ? 'bg-green-600 hover:bg-green-700' :
                                                         careHome.status === 'pending' ? 'bg-yellow-600 hover:bg-yellow-700' :
+                                                        careHome.status === 'suspended' ? 'bg-orange-600 hover:bg-orange-700' :
                                                         'bg-red-600 hover:bg-red-700'
                                                     }
                                                 >
                                                     {careHome.status === 'approved' && <CheckCircle className="h-3 w-3 mr-1" />}
                                                     {careHome.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
+                                                    {careHome.status === 'suspended' && <XCircle className="h-3 w-3 mr-1" />}
                                                     {careHome.status === 'rejected' && <XCircle className="h-3 w-3 mr-1" />}
                                                     {careHome.status.charAt(0).toUpperCase() + careHome.status.slice(1)}
                                                 </Badge>
@@ -362,6 +378,28 @@ export default function CareHomesIndex({ careHomes }: Props) {
                                                                 Reject
                                                             </Button>
                                                         </>
+                                                    )}
+                                                    {careHome.status === 'approved' && (
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm"
+                                                            onClick={() => handleSuspend(careHome.id)}
+                                                            className="text-orange-600 hover:text-orange-700"
+                                                        >
+                                                            <XCircle className="h-4 w-4 mr-1" />
+                                                            Suspend
+                                                        </Button>
+                                                    )}
+                                                    {careHome.status === 'suspended' && (
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm"
+                                                            onClick={() => handleUnsuspend(careHome.id)}
+                                                            className="text-green-600 hover:text-green-700"
+                                                        >
+                                                            <CheckCircle className="h-4 w-4 mr-1" />
+                                                            Unsuspend
+                                                        </Button>
                                                     )}
                                                     <Button asChild variant="outline" size="sm">
                                                         <a href={`/admin/carehomes/${careHome.id}/documents`}>

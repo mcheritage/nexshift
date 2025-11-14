@@ -132,6 +132,24 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                     </Card>
                 )}
 
+                {!isApproved && approvalStatus === 'suspended' && (
+                    <Card className="border-orange-200 bg-orange-50 dark:bg-orange-900/10 dark:border-orange-800">
+                        <CardContent className="p-6">
+                            <div className="flex items-start">
+                                <XCircle className="h-6 w-6 text-orange-600 dark:text-orange-500 mt-0.5 mr-3 flex-shrink-0" />
+                                <div>
+                                    <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-400 mb-2">
+                                        Account Suspended
+                                    </h3>
+                                    <p className="text-orange-800 dark:text-orange-300">
+                                        Your account has been suspended. You cannot view or apply for shifts. Please contact support for assistance.
+                                    </p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <Card>

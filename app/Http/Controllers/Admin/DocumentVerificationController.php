@@ -259,7 +259,7 @@ class DocumentVerificationController extends Controller
      */
     public function indexWorkers()
     {
-        $workers = User::where('role', 'health_care_worker')
+        $workers = User::where('role', 'health_worker')
             ->withCount([
                 'documents',
                 'documents as pending_documents_count' => function ($query) {
@@ -299,7 +299,7 @@ class DocumentVerificationController extends Controller
     public function showWorker(User $worker)
     {
         // Ensure the user is a healthcare worker
-        if ($worker->role !== 'health_care_worker') {
+        if ($worker->role !== 'health_worker') {
             abort(403, 'This user is not a healthcare worker');
         }
 

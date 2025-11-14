@@ -202,6 +202,19 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
         }
     };
 
+    const handleSuspend = (workerId: string) => {
+        const reason = prompt('Please provide a reason for suspension:');
+        if (reason) {
+            router.patch(`/admin/healthcare-workers/${workerId}/suspend`, { reason });
+        }
+    };
+
+    const handleUnsuspend = (workerId: string) => {
+        if (confirm('Are you sure you want to unsuspend this healthcare worker?')) {
+            router.patch(`/admin/healthcare-workers/${workerId}/unsuspend`);
+        }
+    };
+
     const handleExport = () => {
         const csvContent = [
             ['Name', 'Email', 'Gender', 'Total Documents', 'Pending', 'Approved', 'Rejected', 'Joined Date'],
@@ -484,16 +497,19 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                                         variant={
                                                             worker.status === 'approved' ? 'default' : 
                                                             worker.status === 'pending' ? 'secondary' : 
+                                                            worker.status === 'suspended' ? 'secondary' :
                                                             'destructive'
                                                         }
                                                         className={
                                                             worker.status === 'approved' ? 'bg-green-600 hover:bg-green-700' :
                                                             worker.status === 'pending' ? 'bg-yellow-600 hover:bg-yellow-700' :
+                                                            worker.status === 'suspended' ? 'bg-orange-600 hover:bg-orange-700' :
                                                             'bg-red-600 hover:bg-red-700'
                                                         }
                                                     >
                                                         {worker.status === 'approved' && <CheckCircle className="h-3 w-3 mr-1" />}
                                                         {worker.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
+                                                        {worker.status === 'suspended' && <XCircle className="h-3 w-3 mr-1" />}
                                                         {worker.status === 'rejected' && <XCircle className="h-3 w-3 mr-1" />}
                                                         {worker.status.charAt(0).toUpperCase() + worker.status.slice(1)}
                                                     </Badge>
@@ -542,6 +558,28 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                                                     Reject
                                                                 </Button>
                                                             </>
+                                                        )}
+                                                        {worker.status === 'approved' && (
+                                                            <Button 
+                                                                variant="outline" 
+                                                                size="sm"
+                                                                onClick={() => handleSuspend(worker.id)}
+                                                                className="text-orange-600 hover:text-orange-700"
+                                                            >
+                                                                <XCircle className="h-4 w-4 mr-1" />
+                                                                Suspend
+                                                            </Button>
+                                                        )}
+                                                        {worker.status === 'suspended' && (
+                                                            <Button 
+                                                                variant="outline" 
+                                                                size="sm"
+                                                                onClick={() => handleUnsuspend(worker.id)}
+                                                                className="text-green-600 hover:text-green-700"
+                                                            >
+                                                                <CheckCircle className="h-4 w-4 mr-1" />
+                                                                Unsuspend
+                                                            </Button>
                                                         )}
                                                         <Button asChild variant="outline" size="sm">
                                                             <a href={`/admin/workers/${worker.id}/documents`}>

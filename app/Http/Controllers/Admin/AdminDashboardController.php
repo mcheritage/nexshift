@@ -29,7 +29,7 @@ class AdminDashboardController extends Controller
             'requires_attention_documents' => Document::where('status', 'requires_attention')->count(),
             'admin_users' => User::where('role', 'admin')->count(),
             'care_home_admins' => User::where('role', 'care_home_admin')->count(),
-            'health_care_workers' => User::where('role', 'health_care_worker')->count(),
+            'health_care_workers' => User::where('role', 'health_worker')->count(),
         ];
 
         // Get recent activity

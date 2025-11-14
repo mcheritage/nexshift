@@ -202,4 +202,50 @@ class CareHomeManagementController extends Controller
             ]);
         }
     }
+
+    /**
+     * Suspend a care home
+     */
+    public function suspend(Request $request, CareHome $careHome)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        try {
+            $careHome->update([
+                'status' => 'suspended',
+                'approved_by' => auth()->id(),
+                'approved_at' => now(),
+                'rejection_reason' => $request->reason,
+            ]);
+
+            return redirect()->back()->with('success', 'Care home suspended');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors([
+                'error' => 'Failed to suspend care home: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Unsuspend a care home
+     */
+    public function unsuspend(CareHome $careHome)
+    {
+        try {
+            $careHome->update([
+                'status' => 'approved',
+                'rejection_reason' => null,
+            ]);
+
+            return redirect()->back()->with('success', 'Care home unsuspended');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors([
+                'error' => 'Failed to unsuspend care home: ' . $e->getMessage(),
+            ]);
+        }
+    }
 }
