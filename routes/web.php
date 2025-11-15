@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 //require __DIR__.'/carehome.php';
-require __DIR__.'/admin.php';
 
 Route::get('/', function () {
     return Inertia::render('LandingPage');
@@ -116,7 +115,12 @@ Route::middleware(['auth'])->group(function () {
         // Admin Dashboard
         Route::get('/', [App\Http\Controllers\Admin\AdminDashboardController::class, 'index'])->name('dashboard');
         
-        // Note: Document Verification routes are in routes/admin.php for admin subdomain
+        // Document Verification
+        Route::get('/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'index'])->name('documents.index');
+        Route::get('/carehomes/{careHome}/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'showCareHome'])->name('carehomes.documents');
+        Route::patch('/documents/{document}/status', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'updateStatus'])->name('documents.update-status');
+        Route::get('/documents/{document}/download', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'download'])->name('documents.download');
+        Route::get('/documents/{document}/view', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'view'])->name('documents.view');
         
         // Worker Document Verification
         Route::get('/workers/{worker}/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'showWorker'])->name('workers.documents.show');
