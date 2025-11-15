@@ -115,6 +115,9 @@ Route::middleware(['auth'])->group(function () {
         // Admin Dashboard
         Route::get('/', [App\Http\Controllers\Admin\AdminDashboardController::class, 'index'])->name('dashboard');
         
+        // Activity Logs
+        Route::get('/activity-logs', [App\Http\Controllers\Admin\ActivityLogController::class, 'index'])->name('activity-logs.index');
+        
         // Document Verification
         Route::get('/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'index'])->name('documents.index');
         Route::get('/carehomes/{careHome}/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'showCareHome'])->name('carehomes.documents');

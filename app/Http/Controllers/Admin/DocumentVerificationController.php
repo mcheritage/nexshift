@@ -9,6 +9,7 @@ use App\Models\CareHome;
 use App\Models\Document;
 use App\Models\Notification;
 use App\Models\User;
+use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -180,6 +181,15 @@ class DocumentVerificationController extends Controller
         }
 
         $document->update($updateData);
+
+        // Log activity
+        ActivityLogService::logDocumentStatusChange(
+            $document,
+            $oldStatus->value,
+            $newStatus->value,
+            $request->rejection_reason ?? $request->action_required,
+            $document->care_home_id
+        );
 
         // Send notification to care home administrator
         $this->sendStatusChangeNotification($document, $oldStatus, $newStatus);

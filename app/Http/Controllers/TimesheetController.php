@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Timesheet;
+use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -156,6 +157,9 @@ class TimesheetController extends Controller
             'approved_by' => $user->id,
             'approved_at' => now(),
         ]);
+
+        // Log activity
+        ActivityLogService::logTimesheetApproved($timesheet, $timesheet->care_home_id);
 
         return redirect()->back()->with('success', 'Timesheet approved successfully.');
     }
