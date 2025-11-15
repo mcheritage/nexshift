@@ -8,6 +8,7 @@ use App\Mail\ApplicationRejected;
 use App\Models\Application;
 use App\Models\Notification;
 use App\Models\Shift;
+use App\Services\ActivityLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -81,6 +82,14 @@ class ApplicationController extends Controller
             'status' => Shift::STATUS_FILLED,
             'selected_worker_id' => $application->worker_id,
         ]);
+
+        // Log activity
+        ActivityLogService::logApplicationStatusChange(
+            $application,
+            'pending',
+            'accepted',
+            $application->shift->care_home_id
+        );
 
         // Notify accepted worker (in-app and email)
         Notification::create([
@@ -159,6 +168,14 @@ class ApplicationController extends Controller
             'reviewed_by' => $user->id,
             'review_notes' => $validated['review_notes'],
         ]);
+
+        // Log activity
+        ActivityLogService::logApplicationStatusChange(
+            $application,
+            'pending',
+            'rejected',
+            $application->shift->care_home_id
+        );
 
         // Notify rejected worker (in-app and email)
         Notification::create([

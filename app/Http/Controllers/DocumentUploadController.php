@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DocumentType;
 use App\Models\Document;
+use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
@@ -118,6 +119,9 @@ class DocumentUploadController extends Controller
                 'status' => 'pending',
                 'uploaded_at' => now(),
             ]);
+
+            // Log activity
+            ActivityLogService::logDocumentUploaded($document, $careHome->id);
 
             return response()->json([
                 'success' => true,

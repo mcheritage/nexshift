@@ -15,6 +15,7 @@ import {
   Settings,
   Clock,
   Receipt,
+  Activity,
 } from "lucide-react";
 
 // Care Home Admin Navigation Items
@@ -67,6 +68,11 @@ const adminNavItems: NavItem[] = [
     title: "Documents",
     href: "/admin/documents",
     icon: FileText,
+  },
+  {
+    title: "Activity Logs",
+    href: "/admin/activity-logs",
+    icon: Activity,
   },
 ];
 

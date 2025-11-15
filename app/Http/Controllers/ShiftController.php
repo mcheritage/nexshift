@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Notification;
 use App\Models\Shift;
+use App\Services\ActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -172,6 +173,9 @@ class ShiftController extends Controller
 
         $shift = Shift::create($shiftData);
 
+        // Log activity
+        ActivityLogService::logShiftCreated($shift, $user->care_home_id);
+
         return redirect()->route('shifts.index')
             ->with('success', 'Shift created successfully.');
     }
@@ -279,6 +283,9 @@ class ShiftController extends Controller
 
         $shift->update($updateData);
 
+        // Log activity
+        ActivityLogService::logShiftUpdated($shift, $updateData, $user->care_home_id);
+
         return redirect()->route('shifts.show', $shift)
             ->with('success', 'Shift updated successfully.');
     }
@@ -299,7 +306,14 @@ class ShiftController extends Controller
             return redirect()->back()->withErrors(['error' => 'Cannot delete shifts with applications or in progress']);
         }
 
+        $shiftTitle = $shift->title;
+        $shiftId = $shift->id;
+        $careHomeId = $shift->care_home_id;
+
         $shift->delete();
+
+        // Log activity
+        ActivityLogService::logShiftDeleted($shiftTitle, $shiftId, $careHomeId);
 
         return redirect()->route('shifts.index')
             ->with('success', 'Shift deleted successfully.');
