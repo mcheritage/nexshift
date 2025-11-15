@@ -38,14 +38,14 @@ class AuthenticatedSessionController extends Controller
         
         if ($user->isAdmin()) {
             // Admin should always go to admin dashboard
-            return redirect()->intended(route('admin.dashboard', absolute: false));
-        } elseif ($user->role === 'health_care_worker') {
+            return redirect()->route('admin.dashboard');
+        } elseif ($user->role === 'health_worker') {
             // Healthcare workers should go to worker dashboard
-            return redirect()->intended(route('worker.dashboard', absolute: false));
+            return redirect()->route('worker.dashboard');
         }
         
         // Default to care home admin dashboard
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->route('dashboard');
     }
 
     /**

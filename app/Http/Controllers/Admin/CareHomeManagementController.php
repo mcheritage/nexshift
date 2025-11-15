@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CareHome;
 use App\Models\Document;
+use App\Models\StatusChange;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -36,7 +37,7 @@ class CareHomeManagementController extends Controller
      */
     public function show(CareHome $careHome): Response
     {
-        $careHome->load(['users', 'documents']);
+        $careHome->load(['users', 'documents', 'statusChanges.changedBy']);
         
         $totalRequired = 18; // Based on DocumentType::getAllRequired()
         
@@ -152,6 +153,156 @@ class CareHomeManagementController extends Controller
                 'success' => false,
                 'message' => 'Failed to delete care home: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * Approve a care home
+     */
+    public function approve(CareHome $careHome)
+    {
+        try {
+            $oldStatus = $careHome->status;
+            
+            $careHome->update([
+                'status' => 'approved',
+                'approved_by' => auth()->id(),
+                'approved_at' => now(),
+                'rejection_reason' => null,
+            ]);
+
+            // Log status change
+            StatusChange::create([
+                'model_type' => CareHome::class,
+                'model_id' => $careHome->id,
+                'old_status' => $oldStatus,
+                'new_status' => 'approved',
+                'action' => 'approve',
+                'reason' => null,
+                'changed_by' => auth()->id(),
+            ]);
+
+            return redirect()->back()->with('success', 'Care home approved successfully');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors([
+                'error' => 'Failed to approve care home: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Reject a care home
+     */
+    public function reject(Request $request, CareHome $careHome)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        try {
+            $oldStatus = $careHome->status;
+            
+            $careHome->update([
+                'status' => 'rejected',
+                'approved_by' => auth()->id(),
+                'approved_at' => now(),
+                'rejection_reason' => $request->reason,
+            ]);
+
+            // Log status change
+            StatusChange::create([
+                'model_type' => CareHome::class,
+                'model_id' => $careHome->id,
+                'old_status' => $oldStatus,
+                'new_status' => 'rejected',
+                'action' => 'reject',
+                'reason' => $request->reason,
+                'changed_by' => auth()->id(),
+            ]);
+
+            return redirect()->back()->with('success', 'Care home rejected');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors([
+                'error' => 'Failed to reject care home: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Suspend a care home
+     */
+    public function suspend(Request $request, CareHome $careHome)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        try {
+            $oldStatus = $careHome->status;
+            
+            $careHome->update([
+                'status' => 'suspended',
+                'approved_by' => auth()->id(),
+                'approved_at' => now(),
+                'rejection_reason' => $request->reason,
+            ]);
+
+            // Log status change
+            StatusChange::create([
+                'model_type' => CareHome::class,
+                'model_id' => $careHome->id,
+                'old_status' => $oldStatus,
+                'new_status' => 'suspended',
+                'action' => 'suspend',
+                'reason' => $request->reason,
+                'changed_by' => auth()->id(),
+            ]);
+
+            return redirect()->back()->with('success', 'Care home suspended');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors([
+                'error' => 'Failed to suspend care home: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Unsuspend a care home
+     */
+    public function unsuspend(Request $request, CareHome $careHome)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        try {
+            $oldStatus = $careHome->status;
+            
+            $careHome->update([
+                'status' => 'approved',
+                'rejection_reason' => null,
+            ]);
+
+            // Log status change
+            StatusChange::create([
+                'model_type' => CareHome::class,
+                'model_id' => $careHome->id,
+                'old_status' => $oldStatus,
+                'new_status' => 'approved',
+                'action' => 'unsuspend',
+                'reason' => $request->reason,
+                'changed_by' => auth()->id(),
+            ]);
+
+            return redirect()->back()->with('success', 'Care home unsuspended');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors([
+                'error' => 'Failed to unsuspend care home: ' . $e->getMessage(),
+            ]);
         }
     }
 }

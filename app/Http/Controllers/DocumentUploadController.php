@@ -46,7 +46,24 @@ class DocumentUploadController extends Controller
         })->toArray();
         
         // Group uploaded documents by type (allowing multiple per type)
-        $uploadedDocuments = $careHome->documents()->get()->groupBy('document_type');
+        $uploadedDocuments = $careHome->documents()->get()->groupBy('document_type')->map(function ($documents) {
+            return $documents->map(function ($document) {
+                return [
+                    'id' => $document->id,
+                    'document_type' => $document->document_type,
+                    'original_name' => $document->original_name,
+                    'file_path' => $document->file_path,
+                    'file_size' => $document->file_size,
+                    'mime_type' => $document->mime_type,
+                    'status' => $document->status,
+                    'uploaded_at' => $document->uploaded_at,
+                    'reviewed_at' => $document->reviewed_at,
+                    'reviewed_by' => $document->reviewed_by,
+                    'rejection_reason' => $document->rejection_reason,
+                    'action_required' => $document->action_required,
+                ];
+            });
+        });
 
         return Inertia::render('carehome/document-upload', [
             'requiredDocuments' => $requiredDocuments,

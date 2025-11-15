@@ -214,7 +214,7 @@ export default function ApplicationsIndex({ shift, applications }: ApplicationsI
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                             <div>
                                 <span className="font-medium">Role:</span>
-                                <div>{roleLabels[shift.role as keyof typeof roleLabels] || shift.role}</div>
+                                <div>{ROLE_LABELS[shift.role as keyof typeof ROLE_LABELS] || shift.role}</div>
                             </div>
                             <div>
                                 <span className="font-medium">Date & Time:</span>

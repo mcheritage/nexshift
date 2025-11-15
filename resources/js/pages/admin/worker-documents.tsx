@@ -172,7 +172,10 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                                 <span>{requiredDoc.type.displayName}</span>
                                 {requiredDoc.document && (
                                     <Badge 
-                                        className={`${getStatusColor(requiredDoc.document.status)} flex items-center gap-1`}
+                                        variant={requiredDoc.document.status === 'approved' ? 'default' : requiredDoc.document.status === 'rejected' ? 'destructive' : 'secondary'}
+                                        className={`flex items-center gap-1 ${
+                                            requiredDoc.document.status === 'approved' ? 'bg-green-500' : ''
+                                        }`}
                                     >
                                         {getStatusIcon(requiredDoc.document.status)}
                                         {requiredDoc.document.status_display}

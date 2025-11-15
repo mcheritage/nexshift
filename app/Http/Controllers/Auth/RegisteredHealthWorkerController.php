@@ -37,7 +37,9 @@ class RegisteredHealthWorkerController extends Controller
         $user = $authService->registerUser($payload);
 
         Auth::login($user);
+        
+        $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->route('worker.dashboard')->with('info', 'Registration successful! Your account is pending approval. You will be able to view and apply for shifts once approved.');
     }
 }

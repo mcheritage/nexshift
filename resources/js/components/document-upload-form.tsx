@@ -42,13 +42,13 @@ export function DocumentUploadForm({
     const documents = uploadedDocuments[documentType] || []
     if (documents.length === 0) return 'missing'
     
+    // Check if any are rejected/requires attention
+    const hasRejected = documents.some(doc => doc.status === 'rejected')
+    if (hasRejected) return 'rejected'
+    
     // Check if all documents are approved
     const allApproved = documents.every(doc => doc.status === 'approved')
     if (allApproved) return 'approved'
-    
-    // Check if any are rejected
-    const hasRejected = documents.some(doc => doc.status === 'rejected')
-    if (hasRejected) return 'rejected'
     
     // Otherwise pending
     return 'pending'
@@ -62,7 +62,7 @@ export function DocumentUploadForm({
       case 'pending':
         return <Badge variant="secondary">Pending Review{countText}</Badge>
       case 'rejected':
-        return <Badge variant="destructive">Rejected{countText}</Badge>
+        return <Badge variant="destructive">Requires Attention{countText}</Badge>
       case 'missing':
       default:
         return <Badge variant="outline">Not Uploaded</Badge>

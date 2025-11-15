@@ -75,8 +75,28 @@ class ShiftController extends Controller
     /**
      * Show the form for creating a new shift
      */
-    public function create(): Response
+    public function create(): Response|RedirectResponse
     {
+        $user = Auth::user();
+        $careHome = $user->care_home;
+
+        if (!$careHome) {
+            abort(403, 'Access denied: No care home associated');
+        }
+
+        // Prevent non-approved care homes from creating shifts
+        if ($careHome->status !== 'approved') {
+            $message = match($careHome->status) {
+                'pending' => 'Your care home is pending verification. Please complete your document verification.',
+                'rejected' => 'Your care home has been rejected. Please contact support for assistance.',
+                'suspended' => 'Your care home has been suspended. Please contact support for assistance.',
+                default => 'Your care home must be approved before you can post shifts.',
+            };
+            
+            return redirect()->route('dashboard')
+                ->with('error', $message);
+        }
+
         return Inertia::render('Shifts/Create');
     }
 
@@ -90,6 +110,13 @@ class ShiftController extends Controller
 
         if (!$careHome) {
             abort(403, 'Access denied: No care home associated');
+        }
+
+        // Check if care home is approved
+        if (!$careHome->isApproved()) {
+            return redirect()->back()->withErrors([
+                'error' => 'Your care home must be approved by an administrator before you can post shifts.'
+            ]);
         }
 
         $validated = $request->validate([
@@ -130,10 +157,8 @@ class ShiftController extends Controller
             'title' => $validated['title'],
             'role' => $validated['role'],
             'location' => $validated['location'],
-            'shift_date' => $validated['shift_date'],
             'start_datetime' => $startDateTime,
             'end_datetime' => $endDateTime,
-            'ends_next_day' => $validated['ends_next_day'] ?? false,
             'duration_hours' => $durationHours,
             'hourly_rate' => $validated['hourly_rate'],
             'total_pay' => $totalPay,
@@ -289,6 +314,14 @@ class ShiftController extends Controller
         
         if ($shift->care_home_id !== $user->care_home_id) {
             abort(403, 'Access denied');
+        }
+
+        // Check if care home is approved
+        $careHome = $user->care_home;
+        if (!$careHome || !$careHome->isApproved()) {
+            return redirect()->back()->withErrors([
+                'error' => 'Your care home must be approved by an administrator before you can publish shifts.'
+            ]);
         }
 
         if ($shift->status !== Shift::STATUS_DRAFT) {

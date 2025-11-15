@@ -27,27 +27,33 @@ class AuthService
 
     public function registerCareHome(RegisterCareHomeDto $payload): User
     {
-        /** @var CareHome $care_home */
-        $care_home = CareHome::create([
-            'name' => $payload->name,
-        ]);
+        return \DB::transaction(function () use ($payload) {
+            /** @var CareHome $care_home */
+            $care_home = CareHome::create([
+                'name' => $payload->name,
+                'status' => 'pending',
+            ]);
 
-        $user = $this->registerUser(new RegisterUserDto(
-            first_name: 'Admin',
-            last_name: explode(' ', $care_home->name)[0],
-            other_names: '',
-            gender: null,
-            email: $payload->email,
-            password: $payload->password
-        ), 'care_home_admin');
+            $user = $this->registerUser(new RegisterUserDto(
+                first_name: 'Admin',
+                last_name: explode(' ', $care_home->name)[0],
+                other_names: '',
+                gender: null,
+                email: $payload->email,
+                password: $payload->password
+            ), 'care_home_admin');
 
-        $user->care_home_id = $care_home->id;
-        $user->save();
+            $user->care_home_id = $care_home->id;
+            $user->save();
 
-        return $user;
+            // Ensure the relationship is loaded
+            $user->load('care_home');
+
+            return $user;
+        });
     }
 
-    public function registerUser(RegisterUserDto $payload, string $role = 'health_care_worker'): User
+    public function registerUser(RegisterUserDto $payload, string $role = 'health_worker'): User
     {
         $user = User::create([
             'first_name' => $payload->first_name,
@@ -57,6 +63,7 @@ class AuthService
             'email' => $payload->email,
             'password' => Hash::make($payload->password),
             'role' => $role,
+            'status' => $role === 'health_worker' ? 'pending' : 'approved',
         ]);
 
         event(new Registered($user));

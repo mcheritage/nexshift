@@ -23,19 +23,66 @@ class DocumentVerificationController extends Controller
      */
     public function index(): Response
     {
+        // Get all pending documents with their associated care homes or users
+        $pendingDocuments = Document::with(['careHome.user', 'user', 'reviewer'])
+            ->where('status', 'pending')
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function ($document) {
+                $owner = null;
+                $ownerType = null;
+                
+                if ($document->careHome) {
+                    $owner = [
+                        'id' => $document->careHome->id,
+                        'name' => $document->careHome->name,
+                        'email' => $document->careHome->user?->email,
+                    ];
+                    $ownerType = 'care_home';
+                } elseif ($document->user) {
+                    $owner = [
+                        'id' => $document->user->id,
+                        'name' => $document->user->name,
+                        'email' => $document->user->email,
+                    ];
+                    $ownerType = 'healthcare_worker';
+                }
+
+                return [
+                    'id' => $document->id,
+                    'document_type' => $document->document_type,
+                    'document_type_display' => DocumentType::tryFrom($document->document_type)?->getDisplayName() ?? $document->document_type,
+                    'original_name' => $document->original_name,
+                    'file_size' => $document->file_size,
+                    'mime_type' => $document->mime_type,
+                    'status' => $document->status->value,
+                    'status_display' => $document->getStatusDisplayName(),
+                    'status_color' => $document->getStatusColor(),
+                    'status_icon' => $document->getStatusIcon(),
+                    'uploaded_at' => $document->created_at,
+                    'owner' => $owner,
+                    'owner_type' => $ownerType,
+                ];
+            });
+
         $careHomes = CareHome::with(['users', 'documents' => function ($query) {
             $query->orderBy('created_at', 'desc');
         }])->get();
 
         $documentStats = [
             'total_documents' => Document::count(),
-            'pending_documents' => Document::where('status', DocumentVerificationStatus::PENDING)->count(),
-            'approved_documents' => Document::where('status', DocumentVerificationStatus::APPROVED)->count(),
-            'rejected_documents' => Document::where('status', DocumentVerificationStatus::REJECTED)->count(),
-            'requires_attention_documents' => Document::where('status', DocumentVerificationStatus::REQUIRES_ATTENTION)->count(),
+            'pending_documents' => Document::where('status', 'pending')->count(),
+            'approved_documents' => Document::where('status', 'approved')->count(),
+            'rejected_documents' => Document::where('status', 'rejected')->count(),
+            'requires_attention_documents' => Document::where('status', 'requires_attention')->count(),
         ];
 
+        // Debug: Check what we're passing
+        \Log::info('Pending documents count: ' . $pendingDocuments->count());
+        \Log::info('Pending documents data: ', $pendingDocuments->toArray());
+
         return Inertia::render('admin/document-verification', [
+            'pendingDocuments' => $pendingDocuments,
             'careHomes' => $careHomes,
             'documentStats' => $documentStats,
             'verificationStatuses' => collect(DocumentVerificationStatus::cases())->map(function ($status) {
@@ -117,13 +164,22 @@ class DocumentVerificationController extends Controller
         $oldStatus = $document->status;
         $newStatus = DocumentVerificationStatus::from($request->status);
 
-        $document->update([
+        // Clear rejection fields if status is being set to approved or pending
+        $updateData = [
             'status' => $newStatus,
-            'rejection_reason' => $request->rejection_reason,
-            'action_required' => $request->action_required,
             'reviewed_by' => Auth::id(),
             'reviewed_at' => now(),
-        ]);
+        ];
+
+        if ($newStatus->value === 'approved' || $newStatus->value === 'pending') {
+            $updateData['rejection_reason'] = null;
+            $updateData['action_required'] = null;
+        } else {
+            $updateData['rejection_reason'] = $request->rejection_reason;
+            $updateData['action_required'] = $request->action_required;
+        }
+
+        $document->update($updateData);
 
         // Send notification to care home administrator
         $this->sendStatusChangeNotification($document, $oldStatus, $newStatus);
@@ -259,7 +315,7 @@ class DocumentVerificationController extends Controller
      */
     public function indexWorkers()
     {
-        $workers = User::where('role', 'health_care_worker')
+        $workers = User::where('role', 'health_worker')
             ->withCount([
                 'documents',
                 'documents as pending_documents_count' => function ($query) {
@@ -299,7 +355,7 @@ class DocumentVerificationController extends Controller
     public function showWorker(User $worker)
     {
         // Ensure the user is a healthcare worker
-        if ($worker->role !== 'health_care_worker') {
+        if ($worker->role !== 'health_worker') {
             abort(403, 'This user is not a healthcare worker');
         }
 

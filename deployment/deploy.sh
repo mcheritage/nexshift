@@ -141,9 +141,7 @@ echo -e "${BLUE}📋 Copying .env file...${NC}"
 # Create .env from GitHub APP_ENV variable (if set)
 if [ -n "$APP_ENV" ]; then
     echo -e "${BLUE}📋 Creating .env from GitHub APP_ENV variable...${NC}"
-    ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && echo '$APP_ENV' > .env"
-    # Set ownership and permissions so the Docker container can write to the .env file
-    ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && sudo chown 1000:1000 .env && chmod 644 .env"
+    ssh $VPS_USER@$VPS_HOST "cd $VPS_PATH && echo '$APP_ENV' > .env && chmod 644 .env"
     echo -e "${GREEN}✅ .env created from GitHub APP_ENV variable with proper permissions${NC}"
 fi
 
@@ -282,6 +280,10 @@ else
   echo -e "${YELLOW}⚠️  Skipping database seeding (SEED_DATA=false)${NC}"
 fi
 
+# Set proper permissions and ensure directories exist FIRST
+echo -e "${BLUE}🔐 Ensuring storage directories exist with proper permissions...${NC}"
+run_docker_compose "exec -T --user root app sh -c 'mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache && chown -R dev:dev storage bootstrap/cache && chmod -R 775 storage bootstrap/cache'" || echo "Permission setting failed (this is OK if files are already owned correctly)"
+
 # Clear all caches to resolve volume cache issues
 echo -e "${BLUE}🧹 Clearing application caches...${NC}"
 run_docker_compose "exec -T app php artisan config:clear"
@@ -298,10 +300,6 @@ echo -e "${BLUE}⚡ Optimizing for production...${NC}"
 run_docker_compose "exec -T app php artisan config:cache"
 run_docker_compose "exec -T app php artisan route:cache"
 run_docker_compose "exec -T app php artisan view:cache"
-
-# Set proper permissions (using the dev user that's configured in Dockerfile)
-echo -e "${BLUE}🔐 Setting proper permissions...${NC}"
-run_docker_compose "exec -T --user root app chown -R dev:dev storage bootstrap/cache && chmod -R 775 storage bootstrap/cache" || echo "Permission setting failed (this is OK if files are already owned correctly)"
 
 echo ""
 echo -e "${GREEN}✅ Deployment completed successfully!${NC}"
