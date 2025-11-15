@@ -61,6 +61,14 @@ class CareHome extends Model
     }
 
     /**
+     * Get all status changes for this care home
+     */
+    public function statusChanges()
+    {
+        return $this->morphMany(StatusChange::class, 'model')->orderBy('created_at', 'desc');
+    }
+
+    /**
      * Check if the care home is approved
      */
     public function isApproved(): bool

@@ -28,6 +28,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface CareHome {
     id: string;
     name: string;
+    status: 'pending' | 'approved' | 'rejected' | 'suspended';
 }
 
 interface Props {
@@ -123,6 +124,60 @@ export default function Dashboard({ careHome, documents, notifications, verifica
                         <CardContent>
                             <p className="text-orange-700">
                                 Some of your documents require attention. Please review the status below and take the necessary action.
+                            </p>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Pending Verification Alert */}
+                {careHome.status === 'pending' && (
+                    <Card className="border-yellow-200 bg-yellow-50">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-yellow-800">
+                                <AlertCircle className="h-5 w-5" />
+                                Account Pending Verification
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-yellow-700 mb-3">
+                                Your care home account is currently pending verification. Please upload all required documents to complete the verification process.
+                            </p>
+                            <p className="text-yellow-700 font-semibold">
+                                You will not be able to post shifts until your account is approved by our administrators.
+                            </p>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Rejected Alert */}
+                {careHome.status === 'rejected' && (
+                    <Card className="border-red-200 bg-red-50">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-red-800">
+                                <XCircle className="h-5 w-5" />
+                                Account Rejected
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-red-700">
+                                Your care home account has been rejected. Please contact support for more information or resubmit your documents.
+                            </p>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Suspended Alert */}
+                {careHome.status === 'suspended' && (
+                    <Card className="border-red-200 bg-red-50">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-red-800">
+                                <XCircle className="h-5 w-5" />
+                                Account Suspended
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-red-700">
+                                Your care home account has been suspended. Please contact support for assistance.
                             </p>
                         </CardContent>
                     </Card>

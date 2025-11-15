@@ -10,7 +10,11 @@ import {
     Calendar,
     ArrowLeft,
     FileText,
-    Building2
+    Building2,
+    CheckCircle,
+    XCircle,
+    Ban,
+    Shield
 } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -28,6 +32,20 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+interface StatusChange {
+    id: string;
+    old_status: string | null;
+    new_status: string;
+    action: string;
+    reason: string | null;
+    created_at: string;
+    changed_by: {
+        id: string;
+        first_name: string;
+        last_name: string;
+    };
+}
+
 interface HealthCareWorker {
     id: string;
     first_name: string;
@@ -36,6 +54,7 @@ interface HealthCareWorker {
     gender: string;
     role: string;
     created_at: string;
+    status_changes?: StatusChange[];
     care_home: {
         id: string;
         name: string;
@@ -162,6 +181,59 @@ export default function HealthCareWorkerShow({ healthCareWorker }: Props) {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Status History */}
+                {healthCareWorker.status_changes && healthCareWorker.status_changes.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Status History</CardTitle>
+                            <CardDescription>Track of all status changes for this healthcare worker</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {healthCareWorker.status_changes.map((change) => (
+                                    <div 
+                                        key={change.id} 
+                                        className="flex items-start gap-4 p-4 border rounded-lg"
+                                    >
+                                        <div className="flex-shrink-0 mt-1">
+                                            {change.action === 'approve' && <CheckCircle className="h-5 w-5 text-green-600" />}
+                                            {change.action === 'reject' && <XCircle className="h-5 w-5 text-red-600" />}
+                                            {change.action === 'suspend' && <Ban className="h-5 w-5 text-orange-600" />}
+                                            {change.action === 'unsuspend' && <Shield className="h-5 w-5 text-blue-600" />}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Badge 
+                                                    variant={
+                                                        change.new_status === 'approved' ? 'default' :
+                                                        change.new_status === 'rejected' ? 'destructive' :
+                                                        change.new_status === 'suspended' ? 'secondary' :
+                                                        'outline'
+                                                    }
+                                                >
+                                                    {change.old_status ? `${change.old_status} → ${change.new_status}` : change.new_status}
+                                                </Badge>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {new Date(change.created_at).toLocaleString()}
+                                                </span>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground mb-1">
+                                                Changed by {change.changed_by.first_name} {change.changed_by.last_name}
+                                            </p>
+                                            {change.reason && (
+                                                <p className="text-sm mt-2 p-2 bg-muted rounded">
+                                                    <span className="font-medium">Reason: </span>
+                                                    {change.reason}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
             </div>
         </AppLayout>
     );

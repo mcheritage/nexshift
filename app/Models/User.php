@@ -178,6 +178,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get all status changes for this user (healthcare worker)
+     */
+    public function statusChanges()
+    {
+        return $this->morphMany(StatusChange::class, 'model')->orderBy('created_at', 'desc');
+    }
+
+    /**
      * Check if the user is approved
      */
     public function isApproved(): bool

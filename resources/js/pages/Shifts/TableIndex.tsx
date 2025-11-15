@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { SharedData, BreadcrumbItem } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, MapPin, Users, TrendingUp, Plus, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, TrendingUp, Plus, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import WorkerProfileModal from '@/components/WorkerProfileModal';
 
@@ -104,14 +104,17 @@ const getStatusBadge = (status: string) => {
     );
 };
 
-export default function ShiftsTableIndex({ shifts, stats, filters = {} }: ShiftsPageProps) {
-    const [searchTerm, setSearchTerm] = useState(filters.search || '');
-    const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
-    const [roleFilter, setRoleFilter] = useState(filters.role || 'all');
-    const [sortField, setSortField] = useState<string>('shift_date');
-    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+export default function ShiftsTableIndex({ shifts, stats, filters }: ShiftsPageProps) {
+    const { auth } = usePage<SharedData>().props;
+    const [searchTerm, setSearchTerm] = useState(filters?.search || '');
+    const [roleFilter, setRoleFilter] = useState(filters?.role || 'all');
+    const [statusFilter, setStatusFilter] = useState(filters?.status || 'all');
+    const [sortColumn, setSortColumn] = useState<string | null>(null);
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
     const [selectedWorker, setSelectedWorker] = useState<any>(null);
-    const [isWorkerModalOpen, setIsWorkerModalOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const isApproved = auth.careHome?.status === 'approved';
 
     const handleSearch = () => {
         router.get('/shifts', {
@@ -135,16 +138,16 @@ export default function ShiftsTableIndex({ shifts, stats, filters = {} }: Shifts
     };
 
     const handleSort = (field: string) => {
-        if (sortField === field) {
+        if (sortColumn === field) {
             setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
         } else {
-            setSortField(field);
+            setSortColumn(field);
             setSortDirection('asc');
         }
     };
 
     const getSortIcon = (field: string) => {
-        if (sortField !== field) {
+        if (sortColumn !== field) {
             return <ArrowUpDown className="h-4 w-4 text-muted-foreground" />;
         }
         return sortDirection === 'asc' ? 
@@ -161,7 +164,7 @@ export default function ShiftsTableIndex({ shifts, stats, filters = {} }: Shifts
             worker: worker
         };
         setSelectedWorker(mockApplication);
-        setIsWorkerModalOpen(true);
+        setIsModalOpen(true);
     };
 
     // Filter and sort the shifts data locally
@@ -178,8 +181,9 @@ export default function ShiftsTableIndex({ shifts, stats, filters = {} }: Shifts
     });
 
     const sortedShifts = [...filteredShifts].sort((a, b) => {
-        const aValue = a[sortField as keyof Shift];
-        const bValue = b[sortField as keyof Shift];
+        if (!sortColumn) return 0;
+        const aValue = a[sortColumn as keyof Shift];
+        const bValue = b[sortColumn as keyof Shift];
         
         if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
@@ -200,13 +204,62 @@ export default function ShiftsTableIndex({ shifts, stats, filters = {} }: Shifts
                             Manage your care home shifts and track applications
                         </p>
                     </div>
-                    <Link href="/shifts/create">
-                        <Button>
+                    {isApproved ? (
+                        <Link href="/shifts/create">
+                            <Button>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Create Shift
+                            </Button>
+                        </Link>
+                    ) : (
+                        <Button disabled title="Your care home must be approved before you can create shifts">
                             <Plus className="h-4 w-4 mr-2" />
                             Create Shift
                         </Button>
-                    </Link>
+                    )}
                 </div>
+
+                {/* Pending Verification Alert */}
+                {!isApproved && (
+                    <Card className={
+                        auth.careHome?.status === 'suspended' || auth.careHome?.status === 'rejected'
+                            ? 'border-red-200 bg-red-50'
+                            : 'border-yellow-200 bg-yellow-50'
+                    }>
+                        <CardHeader>
+                            <CardTitle className={`flex items-center gap-2 ${
+                                auth.careHome?.status === 'suspended' || auth.careHome?.status === 'rejected'
+                                    ? 'text-red-800'
+                                    : 'text-yellow-800'
+                            }`}>
+                                <AlertTriangle className="h-5 w-5" />
+                                {auth.careHome?.status === 'suspended' ? 'Account Suspended' : 
+                                 auth.careHome?.status === 'rejected' ? 'Account Rejected' :
+                                 'Account Pending Verification'}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {auth.careHome?.status === 'suspended' ? (
+                                <p className="text-red-700">
+                                    Your care home account has been suspended. Please contact support for assistance.
+                                </p>
+                            ) : auth.careHome?.status === 'rejected' ? (
+                                <p className="text-red-700">
+                                    Your care home account has been rejected. Please contact support for more information.
+                                </p>
+                            ) : (
+                                <>
+                                    <p className="text-yellow-700 mb-3">
+                                        Your care home account is currently pending verification. Please upload all required documents to complete the verification process.
+                                    </p>
+                                    <p className="text-yellow-700 font-semibold">
+                                        You will not be able to post shifts until your account is approved by our administrators.
+                                    </p>
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Stats Cards */}
                 <div className="grid gap-4 md:grid-cols-4">
@@ -451,11 +504,17 @@ export default function ShiftsTableIndex({ shifts, stats, filters = {} }: Shifts
                                                 <div className="space-y-2">
                                                     <Calendar className="h-8 w-8 mx-auto text-muted-foreground" />
                                                     <p className="text-muted-foreground">No shifts found</p>
-                                                    <Link href="/shifts/create">
-                                                        <Button variant="outline" size="sm">
+                                                    {isApproved ? (
+                                                        <Link href="/shifts/create">
+                                                            <Button variant="outline" size="sm">
+                                                                Create Your First Shift
+                                                            </Button>
+                                                        </Link>
+                                                    ) : (
+                                                        <Button variant="outline" size="sm" disabled title="Your care home must be approved before you can create shifts">
                                                             Create Your First Shift
                                                         </Button>
-                                                    </Link>
+                                                    )}
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -491,9 +550,9 @@ export default function ShiftsTableIndex({ shifts, stats, filters = {} }: Shifts
 
             {/* Worker Profile Modal */}
             <WorkerProfileModal
-                isOpen={isWorkerModalOpen}
+                isOpen={isModalOpen}
                 onClose={() => {
-                    setIsWorkerModalOpen(false);
+                    setIsModalOpen(false);
                     setSelectedWorker(null);
                 }}
                 application={selectedWorker}
