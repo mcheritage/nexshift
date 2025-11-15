@@ -282,6 +282,10 @@ else
   echo -e "${YELLOW}⚠️  Skipping database seeding (SEED_DATA=false)${NC}"
 fi
 
+# Set proper permissions and ensure directories exist FIRST
+echo -e "${BLUE}🔐 Ensuring storage directories exist with proper permissions...${NC}"
+run_docker_compose "exec -T --user root app sh -c 'mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache && chown -R dev:dev storage bootstrap/cache && chmod -R 775 storage bootstrap/cache'" || echo "Permission setting failed (this is OK if files are already owned correctly)"
+
 # Clear all caches to resolve volume cache issues
 echo -e "${BLUE}🧹 Clearing application caches...${NC}"
 run_docker_compose "exec -T app php artisan config:clear"
@@ -292,10 +296,6 @@ run_docker_compose "exec -T app php artisan view:clear"
 # Clear Redis cache if it exists
 echo -e "${BLUE}🔴 Clearing Redis cache...${NC}"
 run_docker_compose "exec -T redis redis-cli FLUSHALL" || echo "Redis cache clear failed (container might not be ready yet)"
-
-# Set proper permissions BEFORE optimization (using the dev user that's configured in Dockerfile)
-echo -e "${BLUE}🔐 Setting proper permissions...${NC}"
-run_docker_compose "exec -T --user root app chown -R dev:dev storage bootstrap/cache && chmod -R 775 storage bootstrap/cache" || echo "Permission setting failed (this is OK if files are already owned correctly)"
 
 # Optimize for production
 echo -e "${BLUE}⚡ Optimizing for production...${NC}"
