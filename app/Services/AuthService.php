@@ -7,11 +7,13 @@ use App\Dtos\RegisterCareHomeDto;
 use App\Dtos\RegisterUserDto;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
+use App\Mail\WelcomeEmail;
 use App\Models\CareHome;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
@@ -67,6 +69,9 @@ class AuthService
         ]);
 
         event(new Registered($user));
+
+        // Send welcome email with verification link
+        Mail::to($user->email)->send(new WelcomeEmail($user));
 
         return $user;
     }
