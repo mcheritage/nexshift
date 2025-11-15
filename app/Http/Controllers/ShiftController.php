@@ -75,8 +75,21 @@ class ShiftController extends Controller
     /**
      * Show the form for creating a new shift
      */
-    public function create(): Response
+    public function create(): Response|RedirectResponse
     {
+        $user = Auth::user();
+        $careHome = $user->care_home;
+
+        if (!$careHome) {
+            abort(403, 'Access denied: No care home associated');
+        }
+
+        // Prevent pending care homes from creating shifts
+        if ($careHome->status !== 'approved') {
+            return redirect()->route('dashboard')
+                ->with('error', 'Your care home must be approved before you can post shifts. Please complete your document verification.');
+        }
+
         return Inertia::render('Shifts/Create');
     }
 

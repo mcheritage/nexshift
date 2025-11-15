@@ -60,7 +60,11 @@ class DashboardController extends Controller
         });
 
         return Inertia::render('dashboard', [
-            'careHome' => $careHome,
+            'careHome' => [
+                'id' => $careHome->id,
+                'name' => $careHome->name,
+                'status' => $careHome->status,
+            ],
             'documents' => $documents,
             'notifications' => $notifications,
             'verificationStatuses' => $verificationStatuses,

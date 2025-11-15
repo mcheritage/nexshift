@@ -3,6 +3,11 @@ import type { Config } from "ziggy-js";
 
 export interface Auth {
   user: User;
+  careHome?: {
+    id: string;
+    name: string;
+    status: 'pending' | 'approved' | 'rejected' | 'suspended';
+  } | null;
 }
 
 export interface BreadcrumbItem {
