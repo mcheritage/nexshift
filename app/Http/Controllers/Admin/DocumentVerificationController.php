@@ -203,7 +203,14 @@ class DocumentVerificationController extends Controller
     public function download(Document $document)
     {
         if (!Storage::disk('private')->exists($document->file_path)) {
-            abort(404);
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'error' => 'Document file not found. The file may have been deleted or is corrupted.',
+                    'document_id' => $document->id,
+                    'file_path' => $document->file_path
+                ], 404);
+            }
+            abort(404, 'Document file not found. The file may have been deleted or is corrupted.');
         }
 
         return Storage::disk('private')->download(
@@ -218,7 +225,14 @@ class DocumentVerificationController extends Controller
     public function view(Document $document)
     {
         if (!Storage::disk('private')->exists($document->file_path)) {
-            abort(404);
+            if (request()->expectsJson() || request()->wantsJson()) {
+                return response()->json([
+                    'error' => 'Document file not found. The file may have been deleted or is corrupted.',
+                    'document_id' => $document->id,
+                    'file_path' => $document->file_path
+                ], 404);
+            }
+            abort(404, 'Document file not found. The file may have been deleted or is corrupted.');
         }
 
         $file = Storage::disk('private')->get($document->file_path);

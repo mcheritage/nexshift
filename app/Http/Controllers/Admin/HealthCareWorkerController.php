@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\UserStatusChanged;
 use App\Models\CareHome;
 use App\Models\StatusChange;
 use App\Models\User;
@@ -10,6 +11,7 @@ use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -244,6 +246,18 @@ class HealthCareWorkerController extends Controller
                 $healthCareWorker->care_home_id
             );
 
+            // Send email notification
+            try {
+                Mail::to($healthCareWorker->email)->send(
+                    new UserStatusChanged($healthCareWorker, $oldStatus, 'approved', 'approve')
+                );
+            } catch (\Exception $e) {
+                \Log::error('Failed to send user status email', [
+                    'error' => $e->getMessage(),
+                    'user_email' => $healthCareWorker->email,
+                ]);
+            }
+
             return redirect()->back()->with('success', 'Healthcare worker approved successfully');
 
         } catch (\Exception $e) {
@@ -292,6 +306,18 @@ class HealthCareWorkerController extends Controller
                 $request->reason,
                 $healthCareWorker->care_home_id
             );
+
+            // Send email notification
+            try {
+                Mail::to($healthCareWorker->email)->send(
+                    new UserStatusChanged($healthCareWorker, $oldStatus, 'rejected', 'reject', $request->reason)
+                );
+            } catch (\Exception $e) {
+                \Log::error('Failed to send user status email', [
+                    'error' => $e->getMessage(),
+                    'user_email' => $healthCareWorker->email,
+                ]);
+            }
 
             return redirect()->back()->with('success', 'Healthcare worker rejected');
 

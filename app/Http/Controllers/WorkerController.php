@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Mail\NewShiftApplication;
+use App\Mail\TimesheetStatusChanged;
 use App\Models\Application;
 use App\Models\Notification;
 use App\Models\Shift;
@@ -600,6 +601,18 @@ class WorkerController extends Controller
                         'shift_id' => $timesheet->shift_id,
                     ],
                 ]);
+
+                // Send email notification
+                try {
+                    Mail::to($admin->email)->send(
+                        new TimesheetStatusChanged($timesheet, 'submitted')
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send timesheet submitted email', [
+                        'error' => $e->getMessage(),
+                        'admin_email' => $admin->email,
+                    ]);
+                }
             }
         }
 

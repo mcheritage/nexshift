@@ -86,8 +86,8 @@ class WorkerDocumentController extends Controller
 
         if ($existingDocument) {
             // Delete old file
-            if (Storage::disk('public')->exists($existingDocument->file_path)) {
-                Storage::disk('public')->delete($existingDocument->file_path);
+            if (Storage::disk('private')->exists($existingDocument->file_path)) {
+                Storage::disk('private')->delete($existingDocument->file_path);
             }
             
             // Delete old record
@@ -95,7 +95,7 @@ class WorkerDocumentController extends Controller
         }
 
         // Store the new file
-        $path = $file->store('documents/workers/' . $user->id, 'public');
+        $path = $file->store('documents/workers/' . $user->id, 'private');
 
         // Create document record
         $document = Document::create([
@@ -124,11 +124,11 @@ class WorkerDocumentController extends Controller
             abort(403, 'Unauthorized access to document.');
         }
 
-        if (!Storage::disk('public')->exists($document->file_path)) {
+        if (!Storage::disk('private')->exists($document->file_path)) {
             abort(404, 'Document file not found.');
         }
 
-        return Storage::disk('public')->download($document->file_path, $document->original_name);
+        return Storage::disk('private')->download($document->file_path, $document->original_name);
     }
 
     /**
@@ -148,9 +148,9 @@ class WorkerDocumentController extends Controller
             return redirect()->back()->with('error', 'Cannot delete an approved document. Please contact support.');
         }
 
-        // Delete the file
-        if (Storage::disk('public')->exists($document->file_path)) {
-            Storage::disk('public')->delete($document->file_path);
+                // Delete the file from storage
+        if (Storage::disk('private')->exists($document->file_path)) {
+            Storage::disk('private')->delete($document->file_path);
         }
 
         // Delete the record

@@ -57,15 +57,27 @@
 <body>
     <div class="header">
         <h1>Document Verification Status Update</h1>
-        <p>Dear {{ $careHome->user->name ?? 'Care Home Administrator' }},</p>
+        @if($careHome)
+            <p>Dear {{ $careHome->user->name ?? 'Care Home Administrator' }},</p>
+        @elseif($worker)
+            <p>Dear {{ $worker->first_name }},</p>
+        @else
+            <p>Dear User,</p>
+        @endif
     </div>
 
     <div class="content">
-        <p>The verification status for one of your facility's documents has been updated:</p>
+        @if($careHome)
+            <p>The verification status for one of your facility's documents has been updated:</p>
+        @else
+            <p>The verification status for one of your documents has been updated:</p>
+        @endif
         
         <h2>Document Details</h2>
         <ul>
-            <li><strong>Care Home:</strong> {{ $careHome->name }}</li>
+            @if($careHome)
+                <li><strong>Care Home:</strong> {{ $careHome->name }}</li>
+            @endif
             <li><strong>Document Type:</strong> {{ $document->document_type }}</li>
             <li><strong>File Name:</strong> {{ $document->original_name }}</li>
             <li><strong>Previous Status:</strong> {{ $oldStatus->getDisplayName() }}</li>
@@ -86,11 +98,19 @@
                 @if($document->action_required)
                     <p><strong>Required Action:</strong> {{ $document->action_required }}</p>
                 @endif
-                <p>Please log in to your Nexshift Care Home portal to view the full details and take the necessary action.</p>
+                @if($careHome)
+                    <p>Please log in to your NexShift Care Home portal to view the full details and take the necessary action.</p>
+                @else
+                    <p>Please log in to your NexShift portal to view the full details and take the necessary action.</p>
+                @endif
             </div>
         @endif
 
-        <p>You can view all your document verification statuses by logging into your Nexshift Care Home portal.</p>
+        @if($careHome)
+            <p>You can view all your document verification statuses by logging into your NexShift Care Home portal.</p>
+        @else
+            <p>You can view all your document verification statuses by logging into your NexShift portal.</p>
+        @endif
     </div>
 
     <div class="footer">
