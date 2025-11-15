@@ -221,20 +221,42 @@ export default function ShiftsTableIndex({ shifts, stats, filters }: ShiftsPageP
 
                 {/* Pending Verification Alert */}
                 {!isApproved && (
-                    <Card className="border-yellow-200 bg-yellow-50">
+                    <Card className={
+                        auth.careHome?.status === 'suspended' || auth.careHome?.status === 'rejected'
+                            ? 'border-red-200 bg-red-50'
+                            : 'border-yellow-200 bg-yellow-50'
+                    }>
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-yellow-800">
+                            <CardTitle className={`flex items-center gap-2 ${
+                                auth.careHome?.status === 'suspended' || auth.careHome?.status === 'rejected'
+                                    ? 'text-red-800'
+                                    : 'text-yellow-800'
+                            }`}>
                                 <AlertTriangle className="h-5 w-5" />
-                                Account Pending Verification
+                                {auth.careHome?.status === 'suspended' ? 'Account Suspended' : 
+                                 auth.careHome?.status === 'rejected' ? 'Account Rejected' :
+                                 'Account Pending Verification'}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-yellow-700 mb-3">
-                                Your care home account is currently pending verification. Please upload all required documents to complete the verification process.
-                            </p>
-                            <p className="text-yellow-700 font-semibold">
-                                You will not be able to post shifts until your account is approved by our administrators.
-                            </p>
+                            {auth.careHome?.status === 'suspended' ? (
+                                <p className="text-red-700">
+                                    Your care home account has been suspended. Please contact support for assistance.
+                                </p>
+                            ) : auth.careHome?.status === 'rejected' ? (
+                                <p className="text-red-700">
+                                    Your care home account has been rejected. Please contact support for more information.
+                                </p>
+                            ) : (
+                                <>
+                                    <p className="text-yellow-700 mb-3">
+                                        Your care home account is currently pending verification. Please upload all required documents to complete the verification process.
+                                    </p>
+                                    <p className="text-yellow-700 font-semibold">
+                                        You will not be able to post shifts until your account is approved by our administrators.
+                                    </p>
+                                </>
+                            )}
                         </CardContent>
                     </Card>
                 )}

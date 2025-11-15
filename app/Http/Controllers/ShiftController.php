@@ -84,10 +84,17 @@ class ShiftController extends Controller
             abort(403, 'Access denied: No care home associated');
         }
 
-        // Prevent pending care homes from creating shifts
+        // Prevent non-approved care homes from creating shifts
         if ($careHome->status !== 'approved') {
+            $message = match($careHome->status) {
+                'pending' => 'Your care home is pending verification. Please complete your document verification.',
+                'rejected' => 'Your care home has been rejected. Please contact support for assistance.',
+                'suspended' => 'Your care home has been suspended. Please contact support for assistance.',
+                default => 'Your care home must be approved before you can post shifts.',
+            };
+            
             return redirect()->route('dashboard')
-                ->with('error', 'Your care home must be approved before you can post shifts. Please complete your document verification.');
+                ->with('error', $message);
         }
 
         return Inertia::render('Shifts/Create');
