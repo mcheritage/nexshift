@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CareHome;
+use App\Models\StatusChange;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -47,7 +48,7 @@ class HealthCareWorkerController extends Controller
      */
     public function show(User $healthCareWorker): Response
     {
-        $healthCareWorker->load('care_home');
+        $healthCareWorker->load(['care_home', 'statusChanges.changedBy']);
 
         return Inertia::render('admin/healthcare-workers/show', [
             'healthCareWorker' => $healthCareWorker,
@@ -188,11 +189,24 @@ class HealthCareWorkerController extends Controller
     public function approve(User $healthCareWorker)
     {
         try {
+            $oldStatus = $healthCareWorker->status;
+            
             $healthCareWorker->update([
                 'status' => 'approved',
                 'approved_by' => auth()->id(),
                 'approved_at' => now(),
                 'rejection_reason' => null,
+            ]);
+
+            // Log status change
+            StatusChange::create([
+                'model_type' => User::class,
+                'model_id' => $healthCareWorker->id,
+                'old_status' => $oldStatus,
+                'new_status' => 'approved',
+                'action' => 'approve',
+                'reason' => null,
+                'changed_by' => auth()->id(),
             ]);
 
             return redirect()->back()->with('success', 'Healthcare worker approved successfully');
@@ -214,11 +228,24 @@ class HealthCareWorkerController extends Controller
         ]);
 
         try {
+            $oldStatus = $healthCareWorker->status;
+            
             $healthCareWorker->update([
                 'status' => 'rejected',
                 'approved_by' => auth()->id(),
                 'approved_at' => now(),
                 'rejection_reason' => $request->reason,
+            ]);
+
+            // Log status change
+            StatusChange::create([
+                'model_type' => User::class,
+                'model_id' => $healthCareWorker->id,
+                'old_status' => $oldStatus,
+                'new_status' => 'rejected',
+                'action' => 'reject',
+                'reason' => $request->reason,
+                'changed_by' => auth()->id(),
             ]);
 
             return redirect()->back()->with('success', 'Healthcare worker rejected');
@@ -240,11 +267,24 @@ class HealthCareWorkerController extends Controller
         ]);
 
         try {
+            $oldStatus = $healthCareWorker->status;
+            
             $healthCareWorker->update([
                 'status' => 'suspended',
                 'approved_by' => auth()->id(),
                 'approved_at' => now(),
                 'rejection_reason' => $request->reason,
+            ]);
+
+            // Log status change
+            StatusChange::create([
+                'model_type' => User::class,
+                'model_id' => $healthCareWorker->id,
+                'old_status' => $oldStatus,
+                'new_status' => 'suspended',
+                'action' => 'suspend',
+                'reason' => $request->reason,
+                'changed_by' => auth()->id(),
             ]);
 
             return redirect()->back()->with('success', 'Healthcare worker suspended');
@@ -262,9 +302,22 @@ class HealthCareWorkerController extends Controller
     public function unsuspend(User $healthCareWorker)
     {
         try {
+            $oldStatus = $healthCareWorker->status;
+            
             $healthCareWorker->update([
                 'status' => 'approved',
                 'rejection_reason' => null,
+            ]);
+
+            // Log status change
+            StatusChange::create([
+                'model_type' => User::class,
+                'model_id' => $healthCareWorker->id,
+                'old_status' => $oldStatus,
+                'new_status' => 'approved',
+                'action' => 'unsuspend',
+                'reason' => null,
+                'changed_by' => auth()->id(),
             ]);
 
             return redirect()->back()->with('success', 'Healthcare worker unsuspended');
