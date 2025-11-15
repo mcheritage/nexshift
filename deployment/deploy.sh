@@ -293,15 +293,15 @@ run_docker_compose "exec -T app php artisan view:clear"
 echo -e "${BLUE}🔴 Clearing Redis cache...${NC}"
 run_docker_compose "exec -T redis redis-cli FLUSHALL" || echo "Redis cache clear failed (container might not be ready yet)"
 
+# Set proper permissions BEFORE optimization (using the dev user that's configured in Dockerfile)
+echo -e "${BLUE}🔐 Setting proper permissions...${NC}"
+run_docker_compose "exec -T --user root app chown -R dev:dev storage bootstrap/cache && chmod -R 775 storage bootstrap/cache" || echo "Permission setting failed (this is OK if files are already owned correctly)"
+
 # Optimize for production
 echo -e "${BLUE}⚡ Optimizing for production...${NC}"
 run_docker_compose "exec -T app php artisan config:cache"
 run_docker_compose "exec -T app php artisan route:cache"
 run_docker_compose "exec -T app php artisan view:cache"
-
-# Set proper permissions (using the dev user that's configured in Dockerfile)
-echo -e "${BLUE}🔐 Setting proper permissions...${NC}"
-run_docker_compose "exec -T --user root app chown -R dev:dev storage bootstrap/cache && chmod -R 775 storage bootstrap/cache" || echo "Permission setting failed (this is OK if files are already owned correctly)"
 
 echo ""
 echo -e "${GREEN}✅ Deployment completed successfully!${NC}"

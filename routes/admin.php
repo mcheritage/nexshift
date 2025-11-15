@@ -11,4 +11,4 @@ Route::domain('admin.' . config('app.domain'))->group(function () {
         Route::get('/documents/{document}/download', [DocumentVerificationController::class, 'download'])->name('admin.documents.download');
         Route::get('/documents/{document}/view', [DocumentVerificationController::class, 'view'])->name('admin.documents.view');
     });
-})->name('admin.');
+});
