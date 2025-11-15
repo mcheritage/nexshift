@@ -17,7 +17,8 @@ import {
     Users,
     Download,
     ArrowLeft,
-    Save
+    Save,
+    Eye
 } from 'lucide-react';
 import { useState } from 'react';
 import axios from 'axios';
@@ -109,6 +110,10 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
     const [newStatus, setNewStatus] = useState('');
     const [rejectionReason, setRejectionReason] = useState('');
     const [actionRequired, setActionRequired] = useState('');
+    const [viewDocument, setViewDocument] = useState<Document | null>(null);
+    const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+    const [documentUrl, setDocumentUrl] = useState<string>('');
+    const [isLoadingDocument, setIsLoadingDocument] = useState(false);
 
     const getStatusIcon = (status: Document['status']) => {
         const Icon = statusIcons[status];
@@ -144,6 +149,45 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
             console.error('Failed to update document status:', error);
             alert('Failed to update document status. Please try again.');
         }
+    };
+
+    const openViewDialog = async (document: Document) => {
+        setViewDocument(document);
+        setIsViewDialogOpen(true);
+        setIsLoadingDocument(true);
+        
+        try {
+            const url = `/admin/documents/${document.id}/view`;
+            
+            const response = await fetch(url, {
+                credentials: 'include',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const objectUrl = URL.createObjectURL(blob);
+                setDocumentUrl(objectUrl);
+            } else {
+                alert(`Failed to load document. Please try downloading instead.`);
+            }
+        } catch (error) {
+            alert('Error loading document. Please try downloading instead.');
+        } finally {
+            setIsLoadingDocument(false);
+        }
+    };
+
+    const closeViewDialog = () => {
+        setIsViewDialogOpen(false);
+        // Clean up object URL to prevent memory leaks
+        if (documentUrl) {
+            URL.revokeObjectURL(documentUrl);
+            setDocumentUrl('');
+        }
+        setViewDocument(null);
     };
 
     const getCompletionStats = () => {
@@ -219,6 +263,14 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                                     )}
                                     
                                     <div className="flex gap-2">
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm"
+                                            onClick={() => openViewDialog(requiredDoc.document!)}
+                                        >
+                                            <Eye className="h-4 w-4 mr-2" />
+                                            View
+                                        </Button>
                                         <Button asChild variant="outline" size="sm">
                                             <a href={`/admin/documents/${requiredDoc.document.id}/download`}>
                                                 <Download className="h-4 w-4 mr-2" />
@@ -377,6 +429,76 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                             </Button>
                             <Button onClick={handleStatusUpdate}>
                                 Update Status
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Document Viewer Modal */}
+                <Dialog open={isViewDialogOpen} onOpenChange={(open) => !open && closeViewDialog()}>
+                    <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
+                        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+                            <DialogTitle>Document Preview</DialogTitle>
+                            <DialogDescription>
+                                {viewDocument?.original_name}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex-1 overflow-auto p-4">
+                            {isLoadingDocument ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <div className="text-center">
+                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                                        <p className="text-muted-foreground">Loading document...</p>
+                                    </div>
+                                </div>
+                            ) : viewDocument && documentUrl ? (
+                                <div className="w-full h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                                    {viewDocument.mime_type === 'application/pdf' ? (
+                                        <iframe
+                                            src={documentUrl}
+                                            className="w-full h-full border-0 rounded-md"
+                                            title={viewDocument.original_name}
+                                        />
+                                    ) : viewDocument.mime_type.startsWith('image/') ? (
+                                        <img
+                                            src={documentUrl}
+                                            alt={viewDocument.original_name}
+                                            className="max-w-full max-h-full object-contain rounded-md"
+                                        />
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full">
+                                            <div className="text-center p-8">
+                                                <p className="text-muted-foreground mb-4">
+                                                    Preview not available for this file type ({viewDocument.mime_type}).
+                                                </p>
+                                                <p className="text-sm text-muted-foreground mb-4">
+                                                    Supported formats: PDF, Images (JPG, PNG, GIF)
+                                                </p>
+                                                <Button asChild>
+                                                    <a href={`/admin/documents/${viewDocument.id}/download`}>
+                                                        <Download className="h-4 w-4 mr-2" />
+                                                        Download to View
+                                                    </a>
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-center h-full">
+                                    <p className="text-muted-foreground">Failed to load document</p>
+                                </div>
+                            )}
+                        </div>
+                        <DialogFooter className="px-6 py-4 border-t">
+                            <Button asChild variant="outline">
+                                <a href={`/admin/documents/${viewDocument?.id}/download`}>
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Download
+                                </a>
+                            </Button>
+                            <Button onClick={closeViewDialog}>
+                                Close
                             </Button>
                         </DialogFooter>
                     </DialogContent>
