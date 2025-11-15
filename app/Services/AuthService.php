@@ -68,9 +68,10 @@ class AuthService
             'status' => $role === 'health_worker' ? 'pending' : 'approved',
         ]);
 
-        event(new Registered($user));
+        // Don't fire Registered event - it triggers default Laravel verification email
+        // event(new Registered($user));
 
-        // Send welcome email with verification link
+        // Send custom welcome email with verification link
         Mail::to($user->email)->send(new WelcomeEmail($user));
 
         return $user;

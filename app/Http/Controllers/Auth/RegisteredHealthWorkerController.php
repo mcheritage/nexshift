@@ -37,6 +37,6 @@ class RegisteredHealthWorkerController extends Controller
         $user = $authService->registerUser($payload);
 
         // Don't auto-login - user must verify email first
-        return redirect()->route('verification.notice')->with('success', 'Registration successful! Please check your email to verify your account.');
+        return redirect()->route('login')->with('status', 'Registration successful! We\'ve sent a verification email to ' . $user->email . '. Please check your inbox and click the verification link before logging in.');
     }
 }

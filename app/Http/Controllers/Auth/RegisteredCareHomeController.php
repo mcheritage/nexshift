@@ -37,6 +37,6 @@ class RegisteredCareHomeController extends Controller
         $user = $authService->registerCareHome($payload);
 
         // Don't auto-login - user must verify email first
-        return redirect()->route('verification.notice')->with('success', 'Care home registered successfully! Please check your email to verify your account.');
+        return redirect()->route('login')->with('status', 'Care home registered successfully! We\'ve sent a verification email to ' . $user->email . '. Please check your inbox and click the verification link before logging in.');
     }
 }
