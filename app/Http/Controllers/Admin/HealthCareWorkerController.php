@@ -18,7 +18,7 @@ class HealthCareWorkerController extends Controller
      */
     public function index(): Response
     {
-        $healthCareWorkers = User::where('role', 'health_care_worker')
+        $healthCareWorkers = User::where('role', 'health_worker')
             ->withCount([
                 'documents',
                 'documents as pending_documents_count' => function ($query) {
@@ -74,7 +74,7 @@ class HealthCareWorkerController extends Controller
                 'last_name' => $request->last_name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
-                'role' => 'health_care_worker',
+                'role' => 'health_worker',
                 'care_home_id' => $request->care_home_id,
                 'gender' => $request->gender,
                 'email_verified_at' => now(),
@@ -179,6 +179,100 @@ class HealthCareWorkerController extends Controller
                 'success' => false,
                 'message' => 'Failed to delete health care worker: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * Approve a health care worker
+     */
+    public function approve(User $healthCareWorker)
+    {
+        try {
+            $healthCareWorker->update([
+                'status' => 'approved',
+                'approved_by' => auth()->id(),
+                'approved_at' => now(),
+                'rejection_reason' => null,
+            ]);
+
+            return redirect()->back()->with('success', 'Healthcare worker approved successfully');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors([
+                'error' => 'Failed to approve healthcare worker: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Reject a health care worker
+     */
+    public function reject(Request $request, User $healthCareWorker)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        try {
+            $healthCareWorker->update([
+                'status' => 'rejected',
+                'approved_by' => auth()->id(),
+                'approved_at' => now(),
+                'rejection_reason' => $request->reason,
+            ]);
+
+            return redirect()->back()->with('success', 'Healthcare worker rejected');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors([
+                'error' => 'Failed to reject healthcare worker: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Suspend a health care worker
+     */
+    public function suspend(Request $request, User $healthCareWorker)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        try {
+            $healthCareWorker->update([
+                'status' => 'suspended',
+                'approved_by' => auth()->id(),
+                'approved_at' => now(),
+                'rejection_reason' => $request->reason,
+            ]);
+
+            return redirect()->back()->with('success', 'Healthcare worker suspended');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors([
+                'error' => 'Failed to suspend healthcare worker: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Unsuspend a health care worker
+     */
+    public function unsuspend(User $healthCareWorker)
+    {
+        try {
+            $healthCareWorker->update([
+                'status' => 'approved',
+                'rejection_reason' => null,
+            ]);
+
+            return redirect()->back()->with('success', 'Healthcare worker unsuspended');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors([
+                'error' => 'Failed to unsuspend healthcare worker: ' . $e->getMessage(),
+            ]);
         }
     }
 }

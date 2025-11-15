@@ -3,6 +3,7 @@ import { SharedData } from '@/types';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { Timer, XCircle } from 'lucide-react';
 
 interface Shift {
     id: string;
@@ -36,9 +37,11 @@ interface WorkerShiftsMinimalProps extends SharedData {
         min_rate?: number;
     };
     roleOptions: Record<string, string>;
+    isApproved?: boolean;
+    approvalStatus?: string;
 }
 
-export default function WorkerShiftsMinimal({ shifts, filters, roleOptions }: WorkerShiftsMinimalProps) {
+export default function WorkerShiftsMinimal({ shifts, filters, roleOptions, isApproved, approvalStatus }: WorkerShiftsMinimalProps) {
     const [selectedShift, setSelectedShift] = useState<string | null>(null);
     const [applicationMessage, setApplicationMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,6 +89,55 @@ export default function WorkerShiftsMinimal({ shifts, filters, roleOptions }: Wo
                         Browse and apply for healthcare shifts
                     </p>
                 </div>
+
+            {/* Approval Status Warning */}
+            {(approvalStatus === 'pending' || approvalStatus === 'rejected' || approvalStatus === 'suspended') && (
+                <div className={`rounded-lg p-4 mb-6 ${
+                    approvalStatus === 'pending' 
+                        ? 'bg-yellow-50 border border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800' 
+                        : approvalStatus === 'suspended'
+                        ? 'bg-orange-50 border border-orange-200 dark:bg-orange-950/20 dark:border-orange-800'
+                        : 'bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-800'
+                }`}>
+                    <div className="flex items-start gap-3">
+                        {approvalStatus === 'pending' ? (
+                            <Timer className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                        ) : (
+                            <XCircle className={`h-5 w-5 mt-0.5 ${
+                                approvalStatus === 'suspended' 
+                                    ? 'text-orange-600 dark:text-orange-400' 
+                                    : 'text-red-600 dark:text-red-400'
+                            }`} />
+                        )}
+                        <div>
+                            <h3 className={`font-semibold mb-1 ${
+                                approvalStatus === 'pending' 
+                                    ? 'text-yellow-800 dark:text-yellow-400' 
+                                    : approvalStatus === 'suspended'
+                                    ? 'text-orange-800 dark:text-orange-400'
+                                    : 'text-red-800 dark:text-red-400'
+                            }`}>
+                                {approvalStatus === 'pending' ? 'Account Pending Approval' : 
+                                 approvalStatus === 'suspended' ? 'Account Suspended' : 'Account Rejected'}
+                            </h3>
+                            <p className={
+                                approvalStatus === 'pending' 
+                                    ? 'text-yellow-700 dark:text-yellow-300' 
+                                    : approvalStatus === 'suspended'
+                                    ? 'text-orange-700 dark:text-orange-300'
+                                    : 'text-red-700 dark:text-red-300'
+                            }>
+                                {approvalStatus === 'pending'
+                                    ? 'Your account is under review. You will be able to view and apply for shifts once approved.'
+                                    : approvalStatus === 'suspended'
+                                    ? 'Your account has been suspended. You cannot view or apply for shifts. Please contact support.'
+                                    : 'Your account has been rejected. Please contact support for assistance.'
+                                }
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
                 {/* Filters */}
                 <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">

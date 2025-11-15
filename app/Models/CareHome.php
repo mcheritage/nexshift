@@ -17,6 +17,14 @@ class CareHome extends Model
 
     protected $fillable = [
         'name',
+        'status',
+        'approved_by',
+        'approved_at',
+        'rejection_reason',
+    ];
+
+    protected $casts = [
+        'approved_at' => 'datetime',
     ];
 
     public function users()
@@ -37,5 +45,50 @@ class CareHome extends Model
     public function admin_user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'care_home_id');
+    }
+
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /**
+     * Check if the care home is approved
+     */
+    public function isApproved(): bool
+    {
+        return $this->status === 'approved';
+    }
+
+    /**
+     * Check if the care home is pending approval
+     */
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    /**
+     * Check if the care home is rejected
+     */
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
+    }
+
+    /**
+     * Check if the care home is suspended
+     */
+    public function isSuspended(): bool
+    {
+        return $this->status === 'suspended';
+    }
+
+    /**
+     * Check if the care home is active (approved and not suspended)
+     */
+    public function isActive(): bool
+    {
+        return $this->status === 'approved';
     }
 }

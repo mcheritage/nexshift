@@ -203,7 +203,7 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
                     {/* Title Section */}
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                            {roleLabels[shift.role] || shift.role}
+                            {ROLE_LABELS[shift.role] || shift.role}
                         </h1>
                         <div className="flex items-center gap-2 mt-2">
                             <Badge className={statusColors[shift.status] || 'bg-gray-100 text-gray-800'}>

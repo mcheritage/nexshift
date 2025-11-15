@@ -2,170 +2,59 @@ name: Deploy Nexshift App
 
 on:
   push:
-    branches: [sandbox, staging, production]
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        default: 'sandbox'
-        type: choice
-        options:
-          - sandbox
-          - staging
-          - production
-      force_rebuild:
-        description: 'Force rebuild containers'
-        required: false
-        default: false
-        type: boolean
-      clear_volumes:
-        description: 'Clear project volumes (safe)'
-        required: false
-        default: false
-        type: boolean
-      seed_data:
-        description: 'Seed database with sample data'
-        required: false
-        default: false
-        type: boolean
-      force_cleanup:
-        description: 'Force cleanup all project volumes and containers (use with caution)'
-        required: false
-        default: false
-        type: boolean
-      setup_reverse_proxy:
-        description: 'Setup nginx reverse proxy for domain-based routing'
-        required: false
-        default: true
-        type: boolean
+    branches:
+      - main   # change if using release or production
+  workflow_dispatch: {}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name }}
-
-    # Set environment-specific variables
-    env:
-      # Project Configuration (set these in GitHub repository variables)
-      PROJECT_NAME: ${{ vars.PROJECT_NAME || 'nexshift' }}
-      PROJECT_PORT: ${{ vars.PROJECT_PORT || '8080' }}
-      DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || github.ref_name }}
-
-      # Nginx Port Configuration (auto-calculated from PROJECT_PORT)
-      NGINX_PORT_80: ${{ vars.PROJECT_PORT || '8080' }}
-      NGINX_PORT_443: ${{ vars.PROJECT_PORT_443 || '8091' }}
-
-      # Domain Configuration (set these in GitHub repository variables)
-      DOMAIN: ${{ vars.DOMAIN || 'nexshift.sandbox.novarelabs.dev' }}
-      API_DOMAIN: ${{ vars.API_DOMAIN || 'api.nexshift.sandbox.novarelabs.dev' }}
-
-      # Deployment Options (GitHub Variables or workflow inputs)
-      FORCE_REBUILD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force_rebuild || vars.FORCE_REBUILD || 'false' }}
-      CLEAR_VOLUMES: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.clear_volumes || vars.CLEAR_VOLUMES || 'false' }}
-      SEED_DATA: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.seed_data || vars.SEED_DATA || 'false' }}
-      FORCE_CLEANUP: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force_cleanup || vars.FORCE_CLEANUP || 'false' }}
-      CLEAR_NODE_MODULES: ${{ vars.CLEAR_NODE_MODULES || 'false' }}
-      SETUP_REVERSE_PROXY: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.setup_reverse_proxy || vars.SETUP_REVERSE_PROXY || 'true' }}
-
-      # Environment Configuration (set APP_ENV in GitHub environment variables)
-      APP_ENV: ${{ vars.APP_ENV }}
-
-      # VPS Configuration (set these in GitHub repository variables)
-      VPS_HOST: ${{ vars.VPS_HOST }}
-      VPS_USER: ${{ vars.VPS_USER }}
-      VPS_PATH: ${{ vars.VPS_PATH }}
+    environment: production
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Add keys to known hosts
+      - name: Start SSH Agent and Add Key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add VPS to known_hosts
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-          eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ vars.VPS_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.8.0
-        with:
-          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to VPS
         run: |
-          # Calculate HTTPS port from PROJECT_PORT
-          PROJECT_PORT_NUM=${{ vars.PROJECT_PORT || 8080 }}
-          NGINX_PORT_443_CALCULATED=$((PROJECT_PORT_NUM + 1))
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            set -e
 
-          # Export the calculated port for the deploy script
-          export NGINX_PORT_443=$NGINX_PORT_443_CALCULATED
+            cd ${{ secrets.SERVER_PATH }}
 
-          chmod +x deployment/deploy.sh
-          ./deployment/deploy.sh
+            echo "🔄 Pulling latest code..."
+            git pull origin main
 
-      - name: Setup Reverse Proxy
-        if: ${{ env.SETUP_REVERSE_PROXY == 'true' }}
-        run: |
-          # Copy setup script to VPS
-          scp deployment/setup-reverse-proxy.sh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}:/tmp/
+            echo "📦 Installing Composer dependencies..."
+            composer install --no-dev --prefer-dist --optimize-autoloader
 
-          # Run the setup script on VPS
-          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} << 'EOF'
-            chmod +x /tmp/setup-reverse-proxy.sh
-            cd /tmp
+            echo "🔧 Running migrations..."
+            php artisan migrate --force
 
-            # Get domain from environment variables or use defaults
-            DOMAIN="${{ vars.DOMAIN || 'nexshift.sandbox.novarelabs.dev' }}"
-            API_DOMAIN="${{ vars.API_DOMAIN || 'api.nexshift.sandbox.novarelabs.dev' }}"
-            PROJECT_PORT="${{ vars.PROJECT_PORT || '8080' }}"
+            echo "🧹 Clearing caches..."
+            php artisan optimize:clear
 
-            # Run setup script with our specific domain
-            ./setup-reverse-proxy.sh "$DOMAIN" "$API_DOMAIN" "$PROJECT_PORT"
+            echo "⚙️ Optimizing Laravel..."
+            php artisan optimize
+
+            echo "📦 Installing Node dependencies..."
+            npm ci --omit=dev
+
+            echo "🏗 Building frontend..."
+            npm run build
+
+            echo "♻️ Restarting PHP-FPM..."
+            sudo systemctl restart php8.2-fpm
+
+            echo "🚀 Deployment complete!"
           EOF
-
-      - name: Deployment Summary
-        run: |
-          # Calculate HTTPS port from PROJECT_PORT
-          PROJECT_PORT_NUM=${{ vars.PROJECT_PORT || 8080 }}
-          NGINX_PORT_443_NUM=$((PROJECT_PORT_NUM + 1))
-
-          # Get domain information
-          DOMAIN="${{ vars.DOMAIN || 'nexshift.sandbox.novarelabs.dev' }}"
-          API_DOMAIN="${{ vars.API_DOMAIN || 'api.nexshift.sandbox.novarelabs.dev' }}"
-
-          echo "🚀 Deployment completed!"
-          echo "Environment: $DEPLOY_ENV"
-          echo "Project: $PROJECT_NAME"
-          echo "Project Port: $PROJECT_PORT"
-          echo "Nginx HTTP Port: $NGINX_PORT_80"
-          echo "Nginx HTTPS Port: $NGINX_PORT_443_NUM"
-          echo "Main Domain: $DOMAIN"
-          echo "API Domain: $API_DOMAIN"
-          echo "Force Rebuild: $FORCE_REBUILD"
-          echo "Clear Volumes: $CLEAR_VOLUMES"
-          echo "Seed Data: $SEED_DATA"
-          echo "Force Cleanup: $FORCE_CLEANUP"
-          echo ""
-          echo "Reverse Proxy Setup:"
-          echo "  Main Domain: $DOMAIN"
-          echo "  API Domain: $API_DOMAIN"
-          echo "  Internal Port: $PROJECT_PORT"
-          echo ""
-          echo "Access URLs:"
-          echo "  HTTP: http://$VPS_HOST:$NGINX_PORT_80"
-          echo "  HTTPS: https://$VPS_HOST:$NGINX_PORT_443_NUM"
-          if [ -n "$DOMAIN" ]; then
-            echo "  Main Domain: https://$DOMAIN"
-            echo "  API Domain: https://$API_DOMAIN"
-          fi
-          echo ""
-          echo "Next Steps:"
-          echo "  1. Set up SSL certificates:"
-          echo "     sudo certbot --nginx -d $DOMAIN"
-          echo "     sudo certbot --nginx -d $API_DOMAIN"
-          echo "  2. Update DNS records to point to your VPS"
-          echo "  3. Access your application at https://$DOMAIN"

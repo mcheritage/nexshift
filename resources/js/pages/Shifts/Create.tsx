@@ -94,7 +94,14 @@ export default function CreateShift({}: CreateShiftProps) {
         
         console.log('Submitting form data:', data);
         
-        post('/shifts');
+        post('/shifts', {
+            onSuccess: () => {
+                console.log('Shift created successfully');
+            },
+            onError: (errors) => {
+                console.error('Shift creation errors:', errors);
+            }
+        });
     };
 
     const addSkill = (skill: string, type: 'required' | 'preferred') => {

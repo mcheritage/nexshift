@@ -19,6 +19,10 @@ return new class extends Migration
             $table->enum('gender', ['male', 'female', 'other'])->nullable();
             $table->string('email')->unique();
             $table->string('role')->default('care_home_admin');
+            $table->enum('status', ['pending', 'approved', 'rejected', 'suspended'])->default('approved');
+            $table->uuid('approved_by')->nullable();
+            $table->timestamp('approved_at')->nullable();
+            $table->text('rejection_reason')->nullable();
             $table->string('phone_number')->nullable();
             $table->text('bio')->nullable();
             $table->json('qualifications')->nullable(); // Store as JSON array

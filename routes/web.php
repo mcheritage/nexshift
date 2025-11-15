@@ -131,6 +131,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/carehomes/{careHome}', [App\Http\Controllers\Admin\CareHomeManagementController::class, 'show'])->name('carehomes.show');
         Route::post('/carehomes', [App\Http\Controllers\Admin\CareHomeManagementController::class, 'store'])->name('carehomes.store');
         Route::put('/carehomes/{careHome}', [App\Http\Controllers\Admin\CareHomeManagementController::class, 'update'])->name('carehomes.update');
+        Route::patch('/carehomes/{careHome}/approve', [App\Http\Controllers\Admin\CareHomeManagementController::class, 'approve'])->name('carehomes.approve');
+        Route::patch('/carehomes/{careHome}/reject', [App\Http\Controllers\Admin\CareHomeManagementController::class, 'reject'])->name('carehomes.reject');
+        Route::patch('/carehomes/{careHome}/suspend', [App\Http\Controllers\Admin\CareHomeManagementController::class, 'suspend'])->name('carehomes.suspend');
+        Route::patch('/carehomes/{careHome}/unsuspend', [App\Http\Controllers\Admin\CareHomeManagementController::class, 'unsuspend'])->name('carehomes.unsuspend');
         Route::delete('/carehomes/{careHome}', [App\Http\Controllers\Admin\CareHomeManagementController::class, 'destroy'])->name('carehomes.destroy');
         
         // Health Care Worker Management
@@ -139,6 +143,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/healthcare-workers', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'store'])->name('healthcare-workers.store');
         Route::put('/healthcare-workers/{healthCareWorker}', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'update'])->name('healthcare-workers.update');
         Route::patch('/healthcare-workers/{healthCareWorker}/password', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'updatePassword'])->name('healthcare-workers.update-password');
+        Route::patch('/healthcare-workers/{healthCareWorker}/approve', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'approve'])->name('healthcare-workers.approve');
+        Route::patch('/healthcare-workers/{healthCareWorker}/reject', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'reject'])->name('healthcare-workers.reject');
+        Route::patch('/healthcare-workers/{healthCareWorker}/suspend', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'suspend'])->name('healthcare-workers.suspend');
+        Route::patch('/healthcare-workers/{healthCareWorker}/unsuspend', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'unsuspend'])->name('healthcare-workers.unsuspend');
         Route::delete('/healthcare-workers/{healthCareWorker}', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'destroy'])->name('healthcare-workers.destroy');
     });
 });

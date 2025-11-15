@@ -36,8 +36,14 @@ class RegisteredCareHomeController extends Controller
 
         $user = $authService->registerCareHome($payload);
 
-        Auth::login($user);
+        // Refresh the user to ensure the care_home relationship is loaded
+        $user->refresh();
+        $user->load('care_home');
 
-        return redirect()->intended(route('documents.index', absolute: false));
+        Auth::login($user);
+        
+        $request->session()->regenerate();
+
+        return redirect()->route('dashboard')->with('success', 'Care home registered successfully. Your account is pending approval.');
     }
 }

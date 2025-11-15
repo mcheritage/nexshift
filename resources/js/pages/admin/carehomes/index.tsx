@@ -15,7 +15,10 @@ import {
     Trash2,
     FileText,
     Download,
-    Search
+    Search,
+    CheckCircle,
+    XCircle,
+    Clock
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
@@ -33,6 +36,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface CareHome {
     id: string;
     name: string;
+    status: string;
     created_at: string;
     users: {
         id: string;
@@ -87,12 +91,36 @@ export default function CareHomesIndex({ careHomes }: Props) {
     };
 
     const handleDelete = (careHomeId: string) => {
-        if (confirm('Are you sure you want to delete this care home? This action cannot be undone.')) {
+        if (confirm('Are you sure you want to delete this care home? This will also delete all associated users and documents.')) {
             router.delete(`/admin/carehomes/${careHomeId}`);
         }
     };
 
-    const getCompletionPercentage = (careHome: CareHome) => {
+    const handleApprove = (careHomeId: string) => {
+        if (confirm('Are you sure you want to approve this care home?')) {
+            router.patch(`/admin/carehomes/${careHomeId}/approve`);
+        }
+    };
+
+    const handleReject = (careHomeId: string) => {
+        const reason = prompt('Please provide a reason for rejection:');
+        if (reason) {
+            router.patch(`/admin/carehomes/${careHomeId}/reject`, { reason });
+        }
+    };
+
+    const handleSuspend = (careHomeId: string) => {
+        const reason = prompt('Please provide a reason for suspension:');
+        if (reason) {
+            router.patch(`/admin/carehomes/${careHomeId}/suspend`, { reason });
+        }
+    };
+
+    const handleUnsuspend = (careHomeId: string) => {
+        if (confirm('Are you sure you want to unsuspend this care home?')) {
+            router.patch(`/admin/carehomes/${careHomeId}/unsuspend`);
+        }
+    };    const getCompletionPercentage = (careHome: CareHome) => {
         const totalRequired = 18; // Based on DocumentType::getAllRequired()
         return Math.round((careHome.approved_documents_count / totalRequired) * 100);
     };
@@ -237,6 +265,7 @@ export default function CareHomesIndex({ careHomes }: Props) {
                                 <TableRow>
                                     <TableHead>Care Home</TableHead>
                                     <TableHead>Administrator</TableHead>
+                                    <TableHead>Status</TableHead>
                                     <TableHead>Total Documents</TableHead>
                                     <TableHead>Approved Documents</TableHead>
                                     <TableHead>Completion</TableHead>
@@ -247,7 +276,7 @@ export default function CareHomesIndex({ careHomes }: Props) {
                             <TableBody>
                                 {filteredCareHomes.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-8">
+                                        <TableCell colSpan={8} className="text-center py-8">
                                             <div className="flex flex-col items-center">
                                                 <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
                                                 <h3 className="text-lg font-semibold mb-2">No Care Homes Found</h3>
@@ -286,6 +315,28 @@ export default function CareHomesIndex({ careHomes }: Props) {
                                                     )}
                                                 </div>
                                             </TableCell>
+                                            <TableCell>
+                                                <Badge 
+                                                    variant={
+                                                        careHome.status === 'approved' ? 'default' : 
+                                                        careHome.status === 'pending' ? 'secondary' : 
+                                                        careHome.status === 'suspended' ? 'secondary' :
+                                                        'destructive'
+                                                    }
+                                                    className={
+                                                        careHome.status === 'approved' ? 'bg-green-600 hover:bg-green-700' :
+                                                        careHome.status === 'pending' ? 'bg-yellow-600 hover:bg-yellow-700' :
+                                                        careHome.status === 'suspended' ? 'bg-orange-600 hover:bg-orange-700' :
+                                                        'bg-red-600 hover:bg-red-700'
+                                                    }
+                                                >
+                                                    {careHome.status === 'approved' && <CheckCircle className="h-3 w-3 mr-1" />}
+                                                    {careHome.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
+                                                    {careHome.status === 'suspended' && <XCircle className="h-3 w-3 mr-1" />}
+                                                    {careHome.status === 'rejected' && <XCircle className="h-3 w-3 mr-1" />}
+                                                    {careHome.status.charAt(0).toUpperCase() + careHome.status.slice(1)}
+                                                </Badge>
+                                            </TableCell>
                                             <TableCell>{careHome.documents_count}</TableCell>
                                             <TableCell>
                                                 <span className="text-green-600 font-medium">
@@ -306,6 +357,50 @@ export default function CareHomesIndex({ careHomes }: Props) {
                                             <TableCell>{new Date(careHome.created_at).toLocaleDateString()}</TableCell>
                                             <TableCell>
                                                 <div className="flex gap-2 justify-end">
+                                                    {careHome.status === 'pending' && (
+                                                        <>
+                                                            <Button 
+                                                                variant="outline" 
+                                                                size="sm"
+                                                                onClick={() => handleApprove(careHome.id)}
+                                                                className="text-green-600 hover:text-green-700"
+                                                            >
+                                                                <CheckCircle className="h-4 w-4 mr-1" />
+                                                                Approve
+                                                            </Button>
+                                                            <Button 
+                                                                variant="outline" 
+                                                                size="sm"
+                                                                onClick={() => handleReject(careHome.id)}
+                                                                className="text-red-600 hover:text-red-700"
+                                                            >
+                                                                <XCircle className="h-4 w-4 mr-1" />
+                                                                Reject
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                                    {careHome.status === 'approved' && (
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm"
+                                                            onClick={() => handleSuspend(careHome.id)}
+                                                            className="text-orange-600 hover:text-orange-700"
+                                                        >
+                                                            <XCircle className="h-4 w-4 mr-1" />
+                                                            Suspend
+                                                        </Button>
+                                                    )}
+                                                    {careHome.status === 'suspended' && (
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm"
+                                                            onClick={() => handleUnsuspend(careHome.id)}
+                                                            className="text-green-600 hover:text-green-700"
+                                                        >
+                                                            <CheckCircle className="h-4 w-4 mr-1" />
+                                                            Unsuspend
+                                                        </Button>
+                                                    )}
                                                     <Button asChild variant="outline" size="sm">
                                                         <a href={`/admin/carehomes/${careHome.id}/documents`}>
                                                             <FileText className="h-4 w-4 mr-2" />

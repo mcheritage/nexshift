@@ -19,8 +19,19 @@ class ShiftController extends BaseApiController
     {
         $user = $this->requireAuthenticatedUser($request);
 
+        // Only approved healthcare workers can see shifts
+        if (!$user->isApproved()) {
+            return response()->json([
+                'error' => 'Your account must be approved by an administrator before you can view shifts.',
+                'approval_status' => $user->approval_status
+            ], 403);
+        }
 
         $query = Shift::with(['careHome', 'selectedWorker'])
+            ->whereHas('careHome', function($q) {
+                // Only show shifts from approved care homes
+                $q->where('approval_status', 'approved');
+            })
             ->available()
             ->orderBy('shift_date', 'asc')
             ->orderBy('start_time', 'asc');
@@ -74,7 +85,19 @@ class ShiftController extends BaseApiController
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
+        // Only approved healthcare workers can see shifts
+        if (!$user->isApproved()) {
+            return response()->json([
+                'error' => 'Your account must be approved by an administrator before you can view shifts.',
+                'approval_status' => $user->approval_status
+            ], 403);
+        }
+
         $shift = Shift::with(['careHome', 'selectedWorker', 'applications'])
+            ->whereHas('careHome', function($q) {
+                // Only show shifts from approved care homes
+                $q->where('approval_status', 'approved');
+            })
             ->available()
             ->findOrFail($id);
 
@@ -99,6 +122,7 @@ class ShiftController extends BaseApiController
     public function careHomes(): JsonResponse
     {
         $careHomes = \App\Models\CareHome::select('id', 'name')
+            ->where('status', 'approved')
             ->whereHas('shifts', function ($query) {
                 $query->available();
             })
