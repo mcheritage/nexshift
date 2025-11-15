@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { DocumentType } from '@/types/document'
 import { type SharedData } from '@/types'
 import { usePage } from '@inertiajs/react'
-import { X, Download, Upload } from 'lucide-react'
+import { X, Download, Upload, AlertCircle } from 'lucide-react'
 
 interface DocumentUploadMultiProps {
   documentType: DocumentType
@@ -144,14 +144,23 @@ export function DocumentUploadMulti({
     window.open(`/documents/download/${documentId}`, '_blank')
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, hasIssues: boolean = false) => {
     switch (status) {
       case 'approved':
+        if (hasIssues) {
+          return <Badge variant="destructive" className="text-xs flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            Requires Attention
+          </Badge>
+        }
         return <Badge variant="default" className="bg-green-500 text-xs">Approved</Badge>
       case 'pending':
         return <Badge variant="secondary" className="text-xs">Pending</Badge>
       case 'rejected':
-        return <Badge variant="destructive" className="text-xs">Rejected</Badge>
+        return <Badge variant="destructive" className="text-xs flex items-center gap-1">
+          <AlertCircle className="h-3 w-3" />
+          Requires Attention
+        </Badge>
       default:
         return null
     }
@@ -215,43 +224,71 @@ export function DocumentUploadMulti({
         {/* Uploaded Files List */}
         {uploadedDocuments.length > 0 && (
           <div className="space-y-2">
-            {uploadedDocuments.map((doc) => (
-              <div 
-                key={doc.id}
-                className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
-              >
-                <div className="flex items-center space-x-2 flex-1 min-w-0">
-                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
-                    📄 {doc.original_name}
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                    ({(doc.file_size / 1024 / 1024).toFixed(1)} MB)
-                  </span>
-                  {getStatusBadge(doc.status)}
+            {uploadedDocuments.map((doc) => {
+              const hasIssues = !!(doc.rejection_reason || doc.action_required)
+              return (
+              <div key={doc.id} className="space-y-2">
+                <div 
+                  className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                >
+                  <div className="flex items-center space-x-2 flex-1 min-w-0">
+                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                      📄 {doc.original_name}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                      ({(doc.file_size / 1024 / 1024).toFixed(1)} MB)
+                    </span>
+                    {getStatusBadge(doc.status, hasIssues)}
+                  </div>
+                  <div className="flex space-x-1 ml-2 flex-shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDownload(doc.id)}
+                      className="h-8 w-8 p-0"
+                      title="Download"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    {doc.status !== 'approved' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(doc.id)}
+                        disabled={isUploading}
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                        title="Delete"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex space-x-1 ml-2 flex-shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDownload(doc.id)}
-                    className="h-8 w-8 p-0"
-                    title="Download"
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(doc.id)}
-                    disabled={isUploading}
-                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
-                    title="Delete"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
+                
+                {/* Show rejection details if there are issues */}
+                {hasIssues && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <div className="space-y-1">
+                        {doc.rejection_reason && (
+                          <div>
+                            <span className="font-semibold">Rejection Reason: </span>
+                            <span>{doc.rejection_reason}</span>
+                          </div>
+                        )}
+                        {doc.action_required && (
+                          <div>
+                            <span className="font-semibold">Action Required: </span>
+                            <span>{doc.action_required}</span>
+                          </div>
+                        )}
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
-            ))}
+            )})}
           </div>
         )}
 
