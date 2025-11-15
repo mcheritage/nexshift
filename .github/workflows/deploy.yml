@@ -53,7 +53,8 @@ jobs:
             echo "🏗 Building frontend..."
             npm run build
 
-            echo "✅ Build complete!"
+            echo "♻️ Restarting PHP-FPM..."
+            sudo systemctl restart php8.2-fpm
 
             echo "🚀 Deployment complete!"
           EOF
