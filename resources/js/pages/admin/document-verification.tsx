@@ -2,9 +2,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { 
     Clock, 
     CheckCircle, 
@@ -12,8 +13,12 @@ import {
     AlertTriangle, 
     FileText, 
     Building2,
-    UserCheck
+    UserCheck,
+    Eye,
+    Download,
+    User
 } from 'lucide-react';
+import { format } from 'date-fns';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -45,6 +50,26 @@ interface Document {
     uploaded_at: string;
 }
 
+interface PendingDocument {
+    id: number;
+    document_type: string;
+    document_type_display: string;
+    original_name: string;
+    file_size: number;
+    mime_type: string;
+    status: string;
+    status_display: string;
+    status_color: string;
+    status_icon: string;
+    uploaded_at: string;
+    owner: {
+        id: string;
+        name: string;
+        email: string;
+    };
+    owner_type: 'care_home' | 'healthcare_worker';
+}
+
 interface DocumentStats {
     total_documents: number;
     pending_documents: number;
@@ -62,6 +87,7 @@ interface VerificationStatus {
 }
 
 interface Props {
+    pendingDocuments: PendingDocument[];
     careHomes: CareHome[];
     documentStats: DocumentStats;
     verificationStatuses: VerificationStatus[];
@@ -81,7 +107,7 @@ const statusColors = {
     requires_attention: 'bg-orange-100 text-orange-800',
 };
 
-export default function AdminDocumentVerification({ careHomes, documentStats, verificationStatuses }: Props) {
+export default function AdminDocumentVerification({ pendingDocuments, careHomes, documentStats, verificationStatuses }: Props) {
     const getStatusIcon = (status: string) => {
         const IconComponent = statusIcons[status as keyof typeof statusIcons];
         return IconComponent ? <IconComponent className="h-4 w-4" /> : null;
@@ -95,6 +121,31 @@ export default function AdminDocumentVerification({ careHomes, documentStats, ve
         const totalRequired = 18; // Based on DocumentType::getAllRequired()
         const approvedCount = careHome.documents.filter(doc => doc.status === 'approved').length;
         return Math.round((approvedCount / totalRequired) * 100);
+    };
+
+    const formatFileSize = (bytes: number | string) => {
+        const numBytes = typeof bytes === 'string' ? parseInt(bytes, 10) : bytes;
+        if (numBytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(numBytes) / Math.log(k));
+        return Math.round(numBytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    };
+
+    const viewDocument = (docId: number) => {
+        window.open(`/admin/documents/${docId}/view`, '_blank');
+    };
+
+    const downloadDocument = (docId: number) => {
+        window.location.href = `/admin/documents/${docId}/download`;
+    };
+
+    const goToOwner = (doc: PendingDocument) => {
+        if (doc.owner_type === 'care_home') {
+            router.visit(`/admin/carehomes/${doc.owner.id}/documents`);
+        } else {
+            router.visit(`/admin/workers/${doc.owner.id}/documents`);
+        }
     };
 
     return (
@@ -112,7 +163,7 @@ export default function AdminDocumentVerification({ careHomes, documentStats, ve
                     </div>
                 </div>
 
-                {/* Stats Cards */}
+                {/* Stats Cards - same as before */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -164,6 +215,100 @@ export default function AdminDocumentVerification({ careHomes, documentStats, ve
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Pending Documents Table */}
+                {pendingDocuments && pendingDocuments.length > 0 ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Pending Documents for Review</CardTitle>
+                            <CardDescription>
+                                All documents awaiting verification from care homes and healthcare workers
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Document Type</TableHead>
+                                        <TableHead>File Name</TableHead>
+                                        <TableHead>Owner</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Size</TableHead>
+                                        <TableHead>Uploaded</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {pendingDocuments.map((doc) => (
+                                        <TableRow key={doc.id}>
+                                            <TableCell className="font-medium">
+                                                {doc.document_type_display}
+                                            </TableCell>
+                                            <TableCell className="max-w-xs truncate">
+                                                {doc.original_name}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">{doc.owner.name}</span>
+                                                    <span className="text-xs text-muted-foreground">{doc.owner.email}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline" className="gap-1">
+                                                    {doc.owner_type === 'care_home' ? (
+                                                        <><Building2 className="h-3 w-3" /> Care Home</>
+                                                    ) : (
+                                                        <><User className="h-3 w-3" /> Worker</>
+                                                    )}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">
+                                                {formatFileSize(doc.file_size)}
+                                            </TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">
+                                                {format(new Date(doc.uploaded_at), 'MMM d, yyyy')}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => viewDocument(doc.id)}
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => downloadDocument(doc.id)}
+                                                    >
+                                                        <Download className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="default"
+                                                        size="sm"
+                                                        onClick={() => goToOwner(doc)}
+                                                    >
+                                                        Review
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>No Pending Documents</CardTitle>
+                            <CardDescription>
+                                All documents have been reviewed
+                            </CardDescription>
+                        </CardHeader>
+                    </Card>
+                )}
 
                 {/* Information Card */}
                 <Card>

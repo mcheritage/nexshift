@@ -32,6 +32,14 @@ class CareHome extends Model
         return $this->hasMany(User::class);
     }
 
+    /**
+     * Get the primary administrator (first user) of the care home
+     */
+    public function user()
+    {
+        return $this->hasOne(User::class)->oldestOfMany();
+    }
+
     public function documents()
     {
         return $this->hasMany(Document::class);

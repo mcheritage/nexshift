@@ -118,7 +118,7 @@ Route::middleware(['auth'])->group(function () {
         // Document Verification
         Route::get('/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'index'])->name('documents.index');
         Route::get('/carehomes/{careHome}/documents', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'showCareHome'])->name('carehomes.documents');
-        Route::patch('/documents/{document}/status', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'updateStatus'])->name('documents.update-status');
+        Route::post('/documents/{document}/update-status', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'updateStatus'])->name('documents.update-status');
         Route::get('/documents/{document}/download', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'download'])->name('documents.download');
         Route::get('/documents/{document}/view', [App\Http\Controllers\Admin\DocumentVerificationController::class, 'view'])->name('documents.view');
         
