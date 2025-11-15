@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\TimesheetStatusChanged;
 use App\Models\Timesheet;
 use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -161,6 +163,18 @@ class TimesheetController extends Controller
         // Log activity
         ActivityLogService::logTimesheetApproved($timesheet, $timesheet->care_home_id);
 
+        // Send email notification to worker
+        try {
+            Mail::to($timesheet->user->email)->send(
+                new TimesheetStatusChanged($timesheet, 'approved')
+            );
+        } catch (\Exception $e) {
+            \Log::error('Failed to send timesheet approved email', [
+                'error' => $e->getMessage(),
+                'worker_email' => $timesheet->user->email,
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Timesheet approved successfully.');
     }
 
@@ -191,6 +205,18 @@ class TimesheetController extends Controller
             'approved_at' => now(),
         ]);
 
+        // Send email notification to worker
+        try {
+            Mail::to($timesheet->user->email)->send(
+                new TimesheetStatusChanged($timesheet, 'queried', $request->manager_notes)
+            );
+        } catch (\Exception $e) {
+            \Log::error('Failed to send timesheet query email', [
+                'error' => $e->getMessage(),
+                'worker_email' => $timesheet->user->email,
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Query sent to worker successfully.');
     }
 
@@ -220,6 +246,18 @@ class TimesheetController extends Controller
             'approved_by' => $user->id,
             'approved_at' => now(),
         ]);
+
+        // Send email notification to worker
+        try {
+            Mail::to($timesheet->user->email)->send(
+                new TimesheetStatusChanged($timesheet, 'rejected', $request->manager_notes)
+            );
+        } catch (\Exception $e) {
+            \Log::error('Failed to send timesheet rejected email', [
+                'error' => $e->getMessage(),
+                'worker_email' => $timesheet->user->email,
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Timesheet rejected successfully.');
     }

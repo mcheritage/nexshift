@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\UserStatusChanged;
 use App\Models\CareHome;
 use App\Models\Document;
 use App\Models\StatusChange;
@@ -11,6 +12,7 @@ use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -211,6 +213,20 @@ class CareHomeManagementController extends Controller
                 $careHome->id
             );
 
+            // Send email notification to care home administrator
+            if ($careHome->user) {
+                try {
+                    Mail::to($careHome->user->email)->send(
+                        new UserStatusChanged($careHome->user, $oldStatus, 'approved', 'approve')
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send user status email', [
+                        'error' => $e->getMessage(),
+                        'user_email' => $careHome->user->email,
+                    ]);
+                }
+            }
+
             return redirect()->back()->with('success', 'Care home approved successfully');
 
         } catch (\Exception $e) {
@@ -259,6 +275,20 @@ class CareHomeManagementController extends Controller
                 $request->reason,
                 $careHome->id
             );
+
+            // Send email notification to care home administrator
+            if ($careHome->user) {
+                try {
+                    Mail::to($careHome->user->email)->send(
+                        new UserStatusChanged($careHome->user, $oldStatus, 'rejected', 'reject', $request->reason)
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send user status email', [
+                        'error' => $e->getMessage(),
+                        'user_email' => $careHome->user->email,
+                    ]);
+                }
+            }
 
             return redirect()->back()->with('success', 'Care home rejected');
 
@@ -309,6 +339,20 @@ class CareHomeManagementController extends Controller
                 $careHome->id
             );
 
+            // Send email notification to care home administrator
+            if ($careHome->user) {
+                try {
+                    Mail::to($careHome->user->email)->send(
+                        new UserStatusChanged($careHome->user, $oldStatus, 'suspended', 'suspend', $request->reason)
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send user status email', [
+                        'error' => $e->getMessage(),
+                        'user_email' => $careHome->user->email,
+                    ]);
+                }
+            }
+
             return redirect()->back()->with('success', 'Care home suspended');
 
         } catch (\Exception $e) {
@@ -355,6 +399,20 @@ class CareHomeManagementController extends Controller
                 null,
                 $careHome->id
             );
+
+            // Send email notification to care home administrator
+            if ($careHome->user) {
+                try {
+                    Mail::to($careHome->user->email)->send(
+                        new UserStatusChanged($careHome->user, $oldStatus, 'approved', 'unsuspend')
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send user status email', [
+                        'error' => $e->getMessage(),
+                        'user_email' => $careHome->user->email,
+                    ]);
+                }
+            }
 
             return redirect()->back()->with('success', 'Care home unsuspended');
 
