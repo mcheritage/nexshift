@@ -150,6 +150,22 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(BankDetails::class);
     }
 
+    /**
+     * Get the user's wallet
+     */
+    public function wallet()
+    {
+        return $this->morphOne(Wallet::class, 'owner');
+    }
+
+    /**
+     * Get or create wallet for this user
+     */
+    public function getWallet(): Wallet
+    {
+        return Wallet::getOrCreateFor($this);
+    }
+
     public function getNameAttribute(): string {
         if($care_home = $this->care_home) {
             return $care_home->name;

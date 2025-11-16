@@ -37,6 +37,8 @@ class Timesheet extends Model
     ];
 
     protected $casts = [
+        'clock_in_time' => 'datetime',
+        'clock_out_time' => 'datetime',
         'approved_at' => 'datetime',
         'submitted_at' => 'datetime',
         'has_overtime' => 'boolean',
@@ -79,19 +81,6 @@ class Timesheet extends Model
     {
         return $this->belongsToMany(Invoice::class, 'invoice_timesheet')
             ->withTimestamps();
-    }
-
-    // Accessors to return just the time part for API responses
-    public function getClockInTimeAttribute($value)
-    {
-        if (!$value) return null;
-        return Carbon::parse($value)->format('H:i');
-    }
-    
-    public function getClockOutTimeAttribute($value)
-    {
-        if (!$value) return null;
-        return Carbon::parse($value)->format('H:i');
     }
 
     // Helper methods - use raw attributes to avoid accessor interference

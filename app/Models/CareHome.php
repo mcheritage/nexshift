@@ -50,6 +50,22 @@ class CareHome extends Model
         return $this->hasMany(Shift::class);
     }
 
+    /**
+     * Get the care home's wallet
+     */
+    public function wallet()
+    {
+        return $this->morphOne(Wallet::class, 'owner');
+    }
+
+    /**
+     * Get or create wallet for this care home
+     */
+    public function getWallet(): Wallet
+    {
+        return Wallet::getOrCreateFor($this);
+    }
+
     public function admin_user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'care_home_id');

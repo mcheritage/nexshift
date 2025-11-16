@@ -1,4 +1,4 @@
-import { Head, useForm, Link } from '@inertiajs/react';
+import { Head, useForm, Link, router } from '@inertiajs/react';
 import { SharedData } from '@/types';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
@@ -94,8 +94,7 @@ export default function TimesheetShow({ timesheet, statusOptions }: TimesheetSho
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [queryNotes, setQueryNotes] = useState('');
     const [rejectNotes, setRejectNotes] = useState('');
-
-    const { patch, processing } = useForm();
+    const [processing, setProcessing] = useState(false);
 
     const formatDateTime = (dateTimeString: string) => {
         try {
@@ -136,7 +135,10 @@ export default function TimesheetShow({ timesheet, statusOptions }: TimesheetSho
     };
 
     const handleApprove = () => {
-        patch(`/timesheets/${timesheet.id}/approve`);
+        setProcessing(true);
+        router.patch(`/timesheets/${timesheet.id}/approve`, {}, {
+            onFinish: () => setProcessing(false)
+        });
     };
 
     const handleQuery = () => {
@@ -145,12 +147,15 @@ export default function TimesheetShow({ timesheet, statusOptions }: TimesheetSho
             return;
         }
 
-        patch(`/timesheets/${timesheet.id}/query`, {
-            data: { manager_notes: queryNotes },
+        setProcessing(true);
+        router.patch(`/timesheets/${timesheet.id}/query`, {
+            manager_notes: queryNotes,
+        }, {
             onSuccess: () => {
                 setShowQueryModal(false);
                 setQueryNotes('');
-            }
+            },
+            onFinish: () => setProcessing(false)
         });
     };
 
@@ -160,12 +165,15 @@ export default function TimesheetShow({ timesheet, statusOptions }: TimesheetSho
             return;
         }
 
-        patch(`/timesheets/${timesheet.id}/reject`, {
-            data: { manager_notes: rejectNotes },
+        setProcessing(true);
+        router.patch(`/timesheets/${timesheet.id}/reject`, {
+            manager_notes: rejectNotes,
+        }, {
             onSuccess: () => {
                 setShowRejectModal(false);
                 setRejectNotes('');
-            }
+            },
+            onFinish: () => setProcessing(false)
         });
     };
 

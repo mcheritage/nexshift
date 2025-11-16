@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use App\Models\Timesheet;
+use App\Models\Wallet;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -193,9 +195,13 @@ class InvoiceController extends Controller
         }
 
         $invoice->load(['timesheets.worker', 'timesheets.shift', 'careHome']);
+        
+        // Get care home wallet balance
+        $wallet = Wallet::getOrCreateFor($careHome);
 
         return Inertia::render('Invoices/Show', [
             'invoice' => $invoice,
+            'wallet' => $wallet,
         ]);
     }
 
@@ -228,8 +234,84 @@ class InvoiceController extends Controller
             abort(403, 'Access denied');
         }
 
-        $invoice->markAsPaid();
+        // Check if already paid
+        if ($invoice->status === 'paid') {
+            return back()->with('error', 'Invoice is already paid');
+        }
 
-        return back()->with('success', 'Invoice marked as paid');
+        // Get care home wallet
+        $careHomeWallet = Wallet::getOrCreateFor($careHome);
+
+        // Check if care home has sufficient balance
+        if ($careHomeWallet->balance < $invoice->total) {
+            return back()->with('error', 'Insufficient balance. Your wallet balance is £' . number_format($careHomeWallet->balance, 2) . ' but the invoice total is £' . number_format($invoice->total, 2));
+        }
+
+        DB::transaction(function () use ($invoice, $careHome, $careHomeWallet) {
+            // Load timesheets with workers
+            $invoice->load('timesheets.worker');
+
+            // Group timesheets by worker to calculate individual payments
+            $workerPayments = $invoice->timesheets->groupBy('worker_id')->map(function ($timesheets) {
+                return [
+                    'worker' => $timesheets->first()->worker,
+                    'total_pay' => $timesheets->sum('total_pay'),
+                ];
+            });
+
+            // Process payment to each worker
+            foreach ($workerPayments as $workerId => $payment) {
+                $worker = $payment['worker'];
+                $amount = $payment['total_pay'];
+
+                // Get or create worker wallet
+                $workerWallet = Wallet::getOrCreateFor($worker);
+
+                // Debit from care home wallet
+                $careHomeWallet->debit(
+                    amount: $amount,
+                    category: 'invoice_payment',
+                    description: "Payment for invoice {$invoice->invoice_number} to {$worker->first_name} {$worker->last_name}",
+                    reason: "Invoice payment to healthcare worker",
+                    performedBy: auth()->user(),
+                    metadata: [
+                        'invoice_id' => $invoice->id,
+                        'worker_id' => $workerId,
+                    ]
+                );
+
+                // Credit to worker wallet
+                $workerWallet->credit(
+                    amount: $amount,
+                    category: 'timesheet_payment',
+                    description: "Payment received for invoice {$invoice->invoice_number}",
+                    reason: "Timesheet payment from {$careHome->name}",
+                    performedBy: auth()->user(),
+                    metadata: [
+                        'invoice_id' => $invoice->id,
+                        'care_home_id' => $careHome->id,
+                    ]
+                );
+                
+                // Create notification for worker
+                Notification::create([
+                    'user_id' => $workerId,
+                    'type' => 'payment_received',
+                    'title' => 'Payment Received',
+                    'message' => "You have received a payment of £" . number_format($amount, 2) . " from {$careHome->name} for invoice {$invoice->invoice_number}.",
+                    'data' => [
+                        'amount' => $amount,
+                        'invoice_id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'care_home_name' => $careHome->name,
+                    ],
+                ]);
+            }
+
+            // Mark invoice as paid
+            $invoice->markAsPaid();
+        });
+
+        return back()->with('success', 'Invoice paid successfully. Payments have been transferred to workers.');
     }
 }

@@ -313,7 +313,7 @@ class ActivityLogService
                 'timesheet_id' => $timesheet->id,
                 'shift_id' => $timesheet->shift_id,
                 'shift_title' => $timesheet->shift->title,
-                'worker_name' => "{$timesheet->healthcareWorker->first_name} {$timesheet->healthcareWorker->last_name}",
+                'worker_name' => "{$timesheet->worker->first_name} {$timesheet->worker->last_name}",
             ]
         );
     }
