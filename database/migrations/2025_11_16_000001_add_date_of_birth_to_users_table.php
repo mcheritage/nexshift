@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('documents', function (Blueprint $table) {
-            $table->string('label')->nullable()->after('document_type');
+        Schema::table('users', function (Blueprint $table) {
+            $table->date('date_of_birth')->nullable()->after('last_name');
         });
     }
 
@@ -21,11 +21,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('documents', function (Blueprint $table) {
-            $table->dropColumn('label');
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('date_of_birth');
         });
     }
 };
-
 
 

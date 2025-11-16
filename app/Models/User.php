@@ -41,6 +41,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $fillable = [
         'first_name',
         'last_name',
+        'date_of_birth',
         'other_names',
         'gender',
         'care_home_id',
@@ -63,6 +64,15 @@ class User extends Authenticatable implements MustVerifyEmail
         'approved_by',
         'approved_at',
         'rejection_reason',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'date_of_birth' => 'date',
     ];
 
     /**
