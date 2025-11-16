@@ -189,11 +189,11 @@
                 @endif
                 <div class="detail-row">
                     <span class="detail-label">Clock In:</span>
-                    <span class="detail-value">{{ \Carbon\Carbon::parse($timesheet->clock_in)->format('g:i A') }}</span>
+                    <span class="detail-value">{{ \Carbon\Carbon::parse($timesheet->clock_in_time)->format('g:i A') }}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Clock Out:</span>
-                    <span class="detail-value">{{ $timesheet->clock_out ? \Carbon\Carbon::parse($timesheet->clock_out)->format('g:i A') : 'Not clocked out' }}</span>
+                    <span class="detail-value">{{ $timesheet->clock_out_time ? \Carbon\Carbon::parse($timesheet->clock_out_time)->format('g:i A') : 'Not clocked out' }}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Hours Worked:</span>

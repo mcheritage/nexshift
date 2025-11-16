@@ -41,6 +41,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $fillable = [
         'first_name',
         'last_name',
+        'date_of_birth',
         'other_names',
         'gender',
         'care_home_id',
@@ -63,6 +64,15 @@ class User extends Authenticatable implements MustVerifyEmail
         'approved_by',
         'approved_at',
         'rejection_reason',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'date_of_birth' => 'date',
     ];
 
     /**
@@ -148,6 +158,22 @@ class User extends Authenticatable implements MustVerifyEmail
     public function bankDetails()
     {
         return $this->hasOne(BankDetails::class);
+    }
+
+    /**
+     * Get the user's wallet
+     */
+    public function wallet()
+    {
+        return $this->morphOne(Wallet::class, 'owner');
+    }
+
+    /**
+     * Get or create wallet for this user
+     */
+    public function getWallet(): Wallet
+    {
+        return Wallet::getOrCreateFor($this);
     }
 
     public function getNameAttribute(): string {

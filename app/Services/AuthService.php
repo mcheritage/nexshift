@@ -10,6 +10,7 @@ use App\Http\Resources\UserResource;
 use App\Mail\WelcomeEmail;
 use App\Models\CareHome;
 use App\Models\User;
+use App\Models\Wallet;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -35,6 +36,9 @@ class AuthService
                 'name' => $payload->name,
                 'status' => 'pending',
             ]);
+
+            // Create wallet for the care home
+            Wallet::getOrCreateFor($care_home);
 
             $user = $this->registerUser(new RegisterUserDto(
                 first_name: 'Admin',
@@ -67,6 +71,11 @@ class AuthService
             'role' => $role,
             'status' => $role === 'health_worker' ? 'pending' : 'approved',
         ]);
+
+        // Create wallet for the user (only for health workers)
+        if ($role === 'health_worker') {
+            Wallet::getOrCreateFor($user);
+        }
 
         // Don't fire Registered event - it triggers default Laravel verification email
         // event(new Registered($user));

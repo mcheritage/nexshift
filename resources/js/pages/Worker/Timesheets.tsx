@@ -160,7 +160,7 @@ export default function WorkerTimesheets({ timesheets, shiftsNeedingTimesheets }
                                         <div key={shift.id} className="flex items-center justify-between p-4 border rounded-lg bg-orange-50">
                                             <div className="space-y-1">
                                                 <div className="font-medium">
-                                                    {roleLabels[shift.role as keyof typeof roleLabels] || shift.role}
+                                                    {ROLE_LABELS[shift.role as keyof typeof ROLE_LABELS] || shift.role}
                                                 </div>
                                                 <div className="text-sm text-muted-foreground">
                                                     {shift.care_home.name}
@@ -208,7 +208,7 @@ export default function WorkerTimesheets({ timesheets, shiftsNeedingTimesheets }
                                                     {/* Shift Details */}
                                                     <div className="flex items-center gap-2">
                                                         <h3 className="font-medium">
-                                                            {roleLabels[timesheet.shift.role as keyof typeof roleLabels] || timesheet.shift.role}
+                                                            {ROLE_LABELS[timesheet.shift.role as keyof typeof ROLE_LABELS] || timesheet.shift.role}
                                                         </h3>
                                                         {getStatusBadge(timesheet.status)}
                                                     </div>

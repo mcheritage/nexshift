@@ -30,11 +30,10 @@ class ShiftController extends BaseApiController
         $query = Shift::with(['careHome', 'selectedWorker'])
             ->whereHas('careHome', function($q) {
                 // Only show shifts from approved care homes
-                $q->where('approval_status', 'approved');
+                $q->where('status', 'approved');
             })
             ->available()
-            ->orderBy('shift_date', 'asc')
-            ->orderBy('start_time', 'asc');
+            ->orderBy('start_datetime', 'asc');
 
         // Apply filters
         if ($request->has('role') && $request->role) {
@@ -46,11 +45,11 @@ class ShiftController extends BaseApiController
         }
 
         if ($request->has('date_from') && $request->date_from) {
-            $query->where('shift_date', '>=', $request->date_from);
+            $query->whereDate('start_datetime', '>=', $request->date_from);
         }
 
         if ($request->has('date_to') && $request->date_to) {
-            $query->where('shift_date', '<=', $request->date_to);
+            $query->whereDate('start_datetime', '<=', $request->date_to);
         }
 
         if ($request->has('urgent_only') && $request->urgent_only) {
@@ -96,7 +95,7 @@ class ShiftController extends BaseApiController
         $shift = Shift::with(['careHome', 'selectedWorker', 'applications'])
             ->whereHas('careHome', function($q) {
                 // Only show shifts from approved care homes
-                $q->where('approval_status', 'approved');
+                $q->where('status', 'approved');
             })
             ->available()
             ->findOrFail($id);

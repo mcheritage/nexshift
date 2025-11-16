@@ -76,6 +76,14 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/{invoice}/mark-sent', [App\Http\Controllers\InvoiceController::class, 'markAsSent'])->name('mark-sent');
         Route::patch('/{invoice}/mark-paid', [App\Http\Controllers\InvoiceController::class, 'markAsPaid'])->name('mark-paid');
     });
+
+    // Finances routes for care homes
+    Route::prefix('finances')->name('finances.')->group(function () {
+        Route::get('/', [App\Http\Controllers\CareHome\FinancesController::class, 'index'])->name('index');
+        Route::get('/invoices', [App\Http\Controllers\CareHome\FinancesController::class, 'invoices'])->name('invoices');
+        Route::get('/invoices/{invoice}', [App\Http\Controllers\CareHome\FinancesController::class, 'showInvoice'])->name('invoices.show');
+        Route::post('/invoices/{invoice}/pay', [App\Http\Controllers\CareHome\FinancesController::class, 'payInvoice'])->name('invoices.pay');
+    });
 });
 
 // Healthcare Worker routes (outside care home middleware)
@@ -106,6 +114,12 @@ Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worke
         Route::post('/upload', [App\Http\Controllers\WorkerDocumentController::class, 'store'])->name('store');
         Route::get('/{document}/download', [App\Http\Controllers\WorkerDocumentController::class, 'download'])->name('download');
         Route::delete('/{document}', [App\Http\Controllers\WorkerDocumentController::class, 'destroy'])->name('destroy');
+    });
+
+    // Finances routes for workers
+    Route::prefix('finances')->name('finances.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Worker\FinancesController::class, 'index'])->name('index');
+        Route::get('/transactions/{transaction}', [App\Http\Controllers\Worker\FinancesController::class, 'showTransaction'])->name('transactions.show');
     });
 });
 
@@ -150,6 +164,15 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/healthcare-workers/{healthCareWorker}/suspend', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'suspend'])->name('healthcare-workers.suspend');
         Route::patch('/healthcare-workers/{healthCareWorker}/unsuspend', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'unsuspend'])->name('healthcare-workers.unsuspend');
         Route::delete('/healthcare-workers/{healthCareWorker}', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'destroy'])->name('healthcare-workers.destroy');
+        
+        // Wallet Management
+        Route::get('/wallets', [App\Http\Controllers\Admin\WalletManagementController::class, 'index'])->name('wallets.index');
+        Route::get('/wallets/{wallet}', [App\Http\Controllers\Admin\WalletManagementController::class, 'show'])->name('wallets.show');
+        Route::get('/wallets/{ownerType}/{ownerId}/credit', [App\Http\Controllers\Admin\WalletManagementController::class, 'creditForm'])->name('wallets.credit-form');
+        Route::post('/wallets/credit', [App\Http\Controllers\Admin\WalletManagementController::class, 'credit'])->name('wallets.credit');
+        Route::get('/wallets/{ownerType}/{ownerId}/debit', [App\Http\Controllers\Admin\WalletManagementController::class, 'debitForm'])->name('wallets.debit-form');
+        Route::post('/wallets/debit', [App\Http\Controllers\Admin\WalletManagementController::class, 'debit'])->name('wallets.debit');
+        Route::get('/transactions/{transaction}/proof', [App\Http\Controllers\Admin\WalletManagementController::class, 'downloadProof'])->name('transactions.proof');
     });
 });
 
