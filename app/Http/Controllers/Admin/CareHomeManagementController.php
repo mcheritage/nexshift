@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\UserStatusChanged;
 use App\Models\CareHome;
 use App\Models\Document;
 use App\Models\StatusChange;
 use App\Models\User;
+use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -86,6 +89,10 @@ class CareHomeManagementController extends Controller
                 'email_verified_at' => now(),
             ]);
 
+            // Log activities
+            ActivityLogService::logCareHomeCreated($careHome);
+            ActivityLogService::logUserCreated($admin, $careHome->id);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Care home created successfully',
@@ -110,8 +117,16 @@ class CareHomeManagementController extends Controller
         ]);
 
         try {
+            $oldName = $careHome->name;
+            
             $careHome->update([
                 'name' => $request->name,
+            ]);
+
+            // Log activity
+            ActivityLogService::logCareHomeUpdated($careHome, [
+                'old_name' => $oldName,
+                'new_name' => $request->name,
             ]);
 
             return response()->json([
@@ -134,6 +149,9 @@ class CareHomeManagementController extends Controller
     public function destroy(CareHome $careHome): JsonResponse
     {
         try {
+            $careHomeName = $careHome->name;
+            $careHomeId = $careHome->id;
+            
             // Delete associated users
             $careHome->users()->delete();
             
@@ -142,6 +160,9 @@ class CareHomeManagementController extends Controller
             
             // Delete care home
             $careHome->delete();
+
+            // Log activity
+            ActivityLogService::logCareHomeDeleted($careHomeName, $careHomeId);
 
             return response()->json([
                 'success' => true,
@@ -182,6 +203,30 @@ class CareHomeManagementController extends Controller
                 'changed_by' => auth()->id(),
             ]);
 
+            // Log activity
+            ActivityLogService::logStatusChange(
+                $careHome,
+                $oldStatus,
+                'approved',
+                'approve',
+                null,
+                $careHome->id
+            );
+
+            // Send email notification to care home administrator
+            if ($careHome->user) {
+                try {
+                    Mail::to($careHome->user->email)->send(
+                        new UserStatusChanged($careHome->user, $oldStatus, 'approved', 'approve')
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send user status email', [
+                        'error' => $e->getMessage(),
+                        'user_email' => $careHome->user->email,
+                    ]);
+                }
+            }
+
             return redirect()->back()->with('success', 'Care home approved successfully');
 
         } catch (\Exception $e) {
@@ -220,6 +265,30 @@ class CareHomeManagementController extends Controller
                 'reason' => $request->reason,
                 'changed_by' => auth()->id(),
             ]);
+
+            // Log activity
+            ActivityLogService::logStatusChange(
+                $careHome,
+                $oldStatus,
+                'rejected',
+                'reject',
+                $request->reason,
+                $careHome->id
+            );
+
+            // Send email notification to care home administrator
+            if ($careHome->user) {
+                try {
+                    Mail::to($careHome->user->email)->send(
+                        new UserStatusChanged($careHome->user, $oldStatus, 'rejected', 'reject', $request->reason)
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send user status email', [
+                        'error' => $e->getMessage(),
+                        'user_email' => $careHome->user->email,
+                    ]);
+                }
+            }
 
             return redirect()->back()->with('success', 'Care home rejected');
 
@@ -260,6 +329,30 @@ class CareHomeManagementController extends Controller
                 'changed_by' => auth()->id(),
             ]);
 
+            // Log activity
+            ActivityLogService::logStatusChange(
+                $careHome,
+                $oldStatus,
+                'suspended',
+                'suspend',
+                $request->reason,
+                $careHome->id
+            );
+
+            // Send email notification to care home administrator
+            if ($careHome->user) {
+                try {
+                    Mail::to($careHome->user->email)->send(
+                        new UserStatusChanged($careHome->user, $oldStatus, 'suspended', 'suspend', $request->reason)
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send user status email', [
+                        'error' => $e->getMessage(),
+                        'user_email' => $careHome->user->email,
+                    ]);
+                }
+            }
+
             return redirect()->back()->with('success', 'Care home suspended');
 
         } catch (\Exception $e) {
@@ -293,9 +386,33 @@ class CareHomeManagementController extends Controller
                 'old_status' => $oldStatus,
                 'new_status' => 'approved',
                 'action' => 'unsuspend',
-                'reason' => $request->reason,
+                'reason' => null,
                 'changed_by' => auth()->id(),
             ]);
+
+            // Log activity
+            ActivityLogService::logStatusChange(
+                $careHome,
+                $oldStatus,
+                'approved',
+                'unsuspend',
+                null,
+                $careHome->id
+            );
+
+            // Send email notification to care home administrator
+            if ($careHome->user) {
+                try {
+                    Mail::to($careHome->user->email)->send(
+                        new UserStatusChanged($careHome->user, $oldStatus, 'approved', 'unsuspend')
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send user status email', [
+                        'error' => $e->getMessage(),
+                        'user_email' => $careHome->user->email,
+                    ]);
+                }
+            }
 
             return redirect()->back()->with('success', 'Care home unsuspended');
 

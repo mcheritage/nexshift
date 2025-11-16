@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\UserStatusChanged;
 use App\Models\CareHome;
 use App\Models\StatusChange;
 use App\Models\User;
+use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -83,6 +86,9 @@ class HealthCareWorkerController extends Controller
 
             $healthCareWorker->load('care_home');
 
+            // Log activity
+            ActivityLogService::logUserCreated($healthCareWorker, $request->care_home_id);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Health care worker created successfully',
@@ -111,12 +117,26 @@ class HealthCareWorkerController extends Controller
         ]);
 
         try {
+            $oldData = [
+                'first_name' => $healthCareWorker->first_name,
+                'last_name' => $healthCareWorker->last_name,
+                'email' => $healthCareWorker->email,
+                'care_home_id' => $healthCareWorker->care_home_id,
+                'gender' => $healthCareWorker->gender,
+            ];
+            
             $healthCareWorker->update([
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
                 'email' => $request->email,
                 'care_home_id' => $request->care_home_id,
                 'gender' => $request->gender,
+            ]);
+
+            // Log activity
+            ActivityLogService::logUserUpdated($healthCareWorker, [
+                'old' => $oldData,
+                'new' => $request->only(['first_name', 'last_name', 'email', 'care_home_id', 'gender']),
             ]);
 
             $healthCareWorker->load('care_home');
@@ -168,7 +188,14 @@ class HealthCareWorkerController extends Controller
     public function destroy(User $healthCareWorker): JsonResponse
     {
         try {
+            $userName = "{$healthCareWorker->first_name} {$healthCareWorker->last_name}";
+            $userEmail = $healthCareWorker->email;
+            $userId = $healthCareWorker->id;
+            
             $healthCareWorker->delete();
+
+            // Log activity
+            ActivityLogService::logUserDeleted($userName, $userEmail, $userId);
 
             return response()->json([
                 'success' => true,
@@ -209,6 +236,28 @@ class HealthCareWorkerController extends Controller
                 'changed_by' => auth()->id(),
             ]);
 
+            // Log activity
+            ActivityLogService::logStatusChange(
+                $healthCareWorker,
+                $oldStatus,
+                'approved',
+                'approve',
+                null,
+                $healthCareWorker->care_home_id
+            );
+
+            // Send email notification
+            try {
+                Mail::to($healthCareWorker->email)->send(
+                    new UserStatusChanged($healthCareWorker, $oldStatus, 'approved', 'approve')
+                );
+            } catch (\Exception $e) {
+                \Log::error('Failed to send user status email', [
+                    'error' => $e->getMessage(),
+                    'user_email' => $healthCareWorker->email,
+                ]);
+            }
+
             return redirect()->back()->with('success', 'Healthcare worker approved successfully');
 
         } catch (\Exception $e) {
@@ -247,6 +296,28 @@ class HealthCareWorkerController extends Controller
                 'reason' => $request->reason,
                 'changed_by' => auth()->id(),
             ]);
+
+            // Log activity
+            ActivityLogService::logStatusChange(
+                $healthCareWorker,
+                $oldStatus,
+                'rejected',
+                'reject',
+                $request->reason,
+                $healthCareWorker->care_home_id
+            );
+
+            // Send email notification
+            try {
+                Mail::to($healthCareWorker->email)->send(
+                    new UserStatusChanged($healthCareWorker, $oldStatus, 'rejected', 'reject', $request->reason)
+                );
+            } catch (\Exception $e) {
+                \Log::error('Failed to send user status email', [
+                    'error' => $e->getMessage(),
+                    'user_email' => $healthCareWorker->email,
+                ]);
+            }
 
             return redirect()->back()->with('success', 'Healthcare worker rejected');
 
@@ -287,6 +358,16 @@ class HealthCareWorkerController extends Controller
                 'changed_by' => auth()->id(),
             ]);
 
+            // Log activity
+            ActivityLogService::logStatusChange(
+                $healthCareWorker,
+                $oldStatus,
+                'suspended',
+                'suspend',
+                $request->reason,
+                $healthCareWorker->care_home_id
+            );
+
             return redirect()->back()->with('success', 'Healthcare worker suspended');
 
         } catch (\Exception $e) {
@@ -319,6 +400,16 @@ class HealthCareWorkerController extends Controller
                 'reason' => null,
                 'changed_by' => auth()->id(),
             ]);
+
+            // Log activity
+            ActivityLogService::logStatusChange(
+                $healthCareWorker,
+                $oldStatus,
+                'approved',
+                'unsuspend',
+                null,
+                $healthCareWorker->care_home_id
+            );
 
             return redirect()->back()->with('success', 'Healthcare worker unsuspended');
 

@@ -9,6 +9,7 @@ use App\Models\CareHome;
 use App\Models\Document;
 use App\Models\Notification;
 use App\Models\User;
+use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -181,6 +182,15 @@ class DocumentVerificationController extends Controller
 
         $document->update($updateData);
 
+        // Log activity
+        ActivityLogService::logDocumentStatusChange(
+            $document,
+            $oldStatus->value,
+            $newStatus->value,
+            $request->rejection_reason ?? $request->action_required,
+            $document->care_home_id
+        );
+
         // Send notification to care home administrator
         $this->sendStatusChangeNotification($document, $oldStatus, $newStatus);
 
@@ -193,7 +203,14 @@ class DocumentVerificationController extends Controller
     public function download(Document $document)
     {
         if (!Storage::disk('private')->exists($document->file_path)) {
-            abort(404);
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'error' => 'Document file not found. The file may have been deleted or is corrupted.',
+                    'document_id' => $document->id,
+                    'file_path' => $document->file_path
+                ], 404);
+            }
+            abort(404, 'Document file not found. The file may have been deleted or is corrupted.');
         }
 
         return Storage::disk('private')->download(
@@ -208,7 +225,14 @@ class DocumentVerificationController extends Controller
     public function view(Document $document)
     {
         if (!Storage::disk('private')->exists($document->file_path)) {
-            abort(404);
+            if (request()->expectsJson() || request()->wantsJson()) {
+                return response()->json([
+                    'error' => 'Document file not found. The file may have been deleted or is corrupted.',
+                    'document_id' => $document->id,
+                    'file_path' => $document->file_path
+                ], 404);
+            }
+            abort(404, 'Document file not found. The file may have been deleted or is corrupted.');
         }
 
         $file = Storage::disk('private')->get($document->file_path);

@@ -2,10 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\TimesheetStatusChanged;
+use App\Models\Invoice;
 use App\Models\Timesheet;
+use App\Models\Notification;
+use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -151,13 +157,66 @@ class TimesheetController extends Controller
             return redirect()->back()->with('error', 'This timesheet cannot be approved.');
         }
 
-        $timesheet->update([
-            'status' => Timesheet::STATUS_APPROVED,
-            'approved_by' => $user->id,
-            'approved_at' => now(),
-        ]);
+        // Load the worker and shift relationships
+        $timesheet->load('worker', 'shift');
 
-        return redirect()->back()->with('success', 'Timesheet approved successfully.');
+        DB::transaction(function () use ($timesheet, $user) {
+            $timesheet->update([
+                'status' => Timesheet::STATUS_APPROVED,
+                'approved_by' => $user->id,
+                'approved_at' => now(),
+            ]);
+
+            // Create invoice for this timesheet
+            $invoice = Invoice::create([
+                'care_home_id' => $timesheet->care_home_id,
+                'invoice_number' => Invoice::generateInvoiceNumber(),
+                'invoice_date' => now(),
+                'period_start' => $timesheet->clock_in_time->copy()->startOfDay(),
+                'period_end' => $timesheet->clock_out_time->copy()->endOfDay(),
+                'subtotal' => $timesheet->total_pay,
+                'tax_rate' => 0.00,
+                'tax_amount' => 0.00,
+                'total' => $timesheet->total_pay,
+                'status' => Invoice::STATUS_SENT,
+                'due_date' => now()->addDays(7),
+                'notes' => "Invoice for timesheet #{$timesheet->id} - {$timesheet->worker->first_name} {$timesheet->worker->last_name}",
+            ]);
+
+            // Link timesheet to invoice
+            $invoice->timesheets()->attach($timesheet->id);
+
+            // Log activity
+            ActivityLogService::logTimesheetApproved($timesheet, $timesheet->care_home_id);
+            
+            // Create notification for worker
+            Notification::create([
+                'user_id' => $timesheet->worker_id,
+                'type' => 'timesheet_approved',
+                'title' => 'Timesheet Approved',
+                'message' => "Your timesheet for {$timesheet->shift->title} on {$timesheet->clock_in_time->format('M d, Y')} has been approved. Payment of £" . number_format($timesheet->total_pay, 2) . " will be processed.",
+                'data' => [
+                    'timesheet_id' => $timesheet->id,
+                    'shift_title' => $timesheet->shift->title,
+                    'total_pay' => $timesheet->total_pay,
+                    'invoice_id' => $invoice->id,
+                ],
+            ]);
+        });
+
+        // Send email notification to worker
+        try {
+            Mail::to($timesheet->worker->email)->send(
+                new TimesheetStatusChanged($timesheet, 'approved')
+            );
+        } catch (\Exception $e) {
+            \Log::error('Failed to send timesheet approved email', [
+                'error' => $e->getMessage(),
+                'worker_email' => $timesheet->worker->email,
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Timesheet approved successfully and invoice created.');
     }
 
     /**
@@ -180,12 +239,39 @@ class TimesheetController extends Controller
             'manager_notes' => 'required|string|max:1000'
         ]);
 
+        $timesheet->load('shift');
+        
         $timesheet->update([
             'status' => Timesheet::STATUS_QUERIED,
             'manager_notes' => $request->manager_notes,
             'approved_by' => $user->id,
             'approved_at' => now(),
         ]);
+        
+        // Create notification for worker
+        Notification::create([
+            'user_id' => $timesheet->worker_id,
+            'type' => 'timesheet_queried',
+            'title' => 'Timesheet Query',
+            'message' => "Your timesheet for {$timesheet->shift->title} needs clarification. Please review the manager's notes and update your timesheet.",
+            'data' => [
+                'timesheet_id' => $timesheet->id,
+                'shift_title' => $timesheet->shift->title,
+                'manager_notes' => $request->manager_notes,
+            ],
+        ]);
+
+        // Send email notification to worker
+        try {
+            Mail::to($timesheet->worker->email)->send(
+                new TimesheetStatusChanged($timesheet, 'queried', $request->manager_notes)
+            );
+        } catch (\Exception $e) {
+            \Log::error('Failed to send timesheet query email', [
+                'error' => $e->getMessage(),
+                'worker_email' => $timesheet->worker->email,
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Query sent to worker successfully.');
     }
@@ -210,12 +296,39 @@ class TimesheetController extends Controller
             'manager_notes' => 'required|string|max:1000'
         ]);
 
+        $timesheet->load('shift');
+        
         $timesheet->update([
             'status' => Timesheet::STATUS_REJECTED,
             'manager_notes' => $request->manager_notes,
             'approved_by' => $user->id,
             'approved_at' => now(),
         ]);
+        
+        // Create notification for worker
+        Notification::create([
+            'user_id' => $timesheet->worker_id,
+            'type' => 'timesheet_rejected',
+            'title' => 'Timesheet Rejected',
+            'message' => "Your timesheet for {$timesheet->shift->title} has been rejected. Please review the manager's notes.",
+            'data' => [
+                'timesheet_id' => $timesheet->id,
+                'shift_title' => $timesheet->shift->title,
+                'manager_notes' => $request->manager_notes,
+            ],
+        ]);
+
+        // Send email notification to worker
+        try {
+            Mail::to($timesheet->worker->email)->send(
+                new TimesheetStatusChanged($timesheet, 'rejected', $request->manager_notes)
+            );
+        } catch (\Exception $e) {
+            \Log::error('Failed to send timesheet rejected email', [
+                'error' => $e->getMessage(),
+                'worker_email' => $timesheet->worker->email,
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Timesheet rejected successfully.');
     }

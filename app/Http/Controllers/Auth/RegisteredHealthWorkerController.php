@@ -36,10 +36,7 @@ class RegisteredHealthWorkerController extends Controller
 
         $user = $authService->registerUser($payload);
 
-        Auth::login($user);
-        
-        $request->session()->regenerate();
-
-        return redirect()->route('worker.dashboard')->with('info', 'Registration successful! Your account is pending approval. You will be able to view and apply for shifts once approved.');
+        // Don't auto-login - user must verify email first
+        return redirect()->route('login')->with('status', 'Registration successful! We\'ve sent a verification email to ' . $user->email . '. Please check your inbox and click the verification link before logging in.');
     }
 }

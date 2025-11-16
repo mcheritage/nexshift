@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\UserRoles;
 use App\Utils\Constants;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -25,7 +25,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string bio
  * @property CareHome $care_home
  */
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasUuids, HasApiTokens;
@@ -148,6 +148,22 @@ class User extends Authenticatable
     public function bankDetails()
     {
         return $this->hasOne(BankDetails::class);
+    }
+
+    /**
+     * Get the user's wallet
+     */
+    public function wallet()
+    {
+        return $this->morphOne(Wallet::class, 'owner');
+    }
+
+    /**
+     * Get or create wallet for this user
+     */
+    public function getWallet(): Wallet
+    {
+        return Wallet::getOrCreateFor($this);
     }
 
     public function getNameAttribute(): string {

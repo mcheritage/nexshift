@@ -172,7 +172,7 @@ export default function CreateTimesheet({ shift }: CreateTimesheetPageProps) {
                                 <div>
                                     <div className="text-sm text-muted-foreground">Role</div>
                                     <div className="font-medium">
-                                        {roleLabels[shift.role as keyof typeof roleLabels] || shift.role}
+                                        {ROLE_LABELS[shift.role as keyof typeof ROLE_LABELS] || shift.role}
                                     </div>
                                 </div>
                                 <div>

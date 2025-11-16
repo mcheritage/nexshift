@@ -36,14 +36,7 @@ class RegisteredCareHomeController extends Controller
 
         $user = $authService->registerCareHome($payload);
 
-        // Refresh the user to ensure the care_home relationship is loaded
-        $user->refresh();
-        $user->load('care_home');
-
-        Auth::login($user);
-        
-        $request->session()->regenerate();
-
-        return redirect()->route('dashboard')->with('success', 'Care home registered successfully. Your account is pending approval.');
+        // Don't auto-login - user must verify email first
+        return redirect()->route('login')->with('status', 'Care home registered successfully! We\'ve sent a verification email to ' . $user->email . '. Please check your inbox and click the verification link before logging in.');
     }
 }

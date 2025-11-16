@@ -34,8 +34,12 @@ class DocumentStatusChanged extends Mailable
      */
     public function envelope(): Envelope
     {
+        $entityName = $this->document->careHome 
+            ? $this->document->careHome->name 
+            : ($this->document->user ? $this->document->user->name : 'Your Account');
+
         return new Envelope(
-            subject: 'Document Verification Status Update - ' . $this->document->careHome->name,
+            subject: 'Document Verification Status Update - ' . $entityName,
         );
     }
 
@@ -49,6 +53,7 @@ class DocumentStatusChanged extends Mailable
             with: [
                 'document' => $this->document,
                 'careHome' => $this->document->careHome,
+                'worker' => $this->document->user,
                 'oldStatus' => $this->oldStatus,
                 'newStatus' => $this->newStatus,
             ],

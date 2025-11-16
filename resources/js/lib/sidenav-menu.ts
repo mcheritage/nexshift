@@ -15,6 +15,8 @@ import {
   Settings,
   Clock,
   Receipt,
+  Activity,
+  Wallet,
 } from "lucide-react";
 
 // Care Home Admin Navigation Items
@@ -38,6 +40,11 @@ const careHomeAdminNavItems: NavItem[] = [
     title: "Invoices",
     href: "/invoices",
     icon: Receipt,
+  },
+  {
+    title: "Finances",
+    href: "/finances",
+    icon: Wallet,
   },
   {
     title: "Documents",
@@ -64,9 +71,19 @@ const adminNavItems: NavItem[] = [
     icon: UserCheck,
   },
   {
+    title: "Wallets",
+    href: "/admin/wallets",
+    icon: Wallet,
+  },
+  {
     title: "Documents",
     href: "/admin/documents",
     icon: FileText,
+  },
+  {
+    title: "Activity Logs",
+    href: "/admin/activity-logs",
+    icon: Activity,
   },
 ];
 
@@ -101,6 +118,11 @@ const healthCareWorkerNavItems: NavItem[] = [
     title: "Timesheets",
     href: "/worker/timesheets",
     icon: Clock,
+  },
+  {
+    title: "My Finances",
+    href: "/worker/finances",
+    icon: Wallet,
   },
 ];
 
