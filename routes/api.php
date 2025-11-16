@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\BankDetailsController;
 use App\Http\Controllers\Api\ShiftController;
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\TimesheetController as ApiTimesheetController;
+use App\Http\Controllers\Api\EarningsController;
 
 Route::post('/auth/register', [RegisterUserController::class, 'store']);
 Route::post('/auth/login', [LoginController::class, 'login']);
@@ -67,4 +68,7 @@ Route::middleware(['auth:sanctum', 'health_care_worker'])->group(function () {
     Route::patch('/timesheets/{timesheet}', [ApiTimesheetController::class, 'update']);
     Route::post('/timesheets/{timesheet}/submit', [ApiTimesheetController::class, 'submit']);
 
+    // Earnings routes
+    Route::get('/earnings', [EarningsController::class, 'index']);
+    Route::get('/earnings/summary', [EarningsController::class, 'summary']);
 });
