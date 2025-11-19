@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ShiftController;
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\TimesheetController as ApiTimesheetController;
 use App\Http\Controllers\Api\EarningsController;
+use App\Http\Controllers\Api\NotificationController;
 
 Route::post('/auth/register', [RegisterUserController::class, 'store']);
 Route::post('/auth/login', [LoginController::class, 'login']);
@@ -71,4 +72,12 @@ Route::middleware(['auth:sanctum', 'health_care_worker'])->group(function () {
     // Earnings routes
     Route::get('/earnings', [EarningsController::class, 'index']);
     Route::get('/earnings/summary', [EarningsController::class, 'summary']);
+
+    // Notification routes
+    Route::get('/notifications/preferences', [NotificationController::class, 'getPreferences']);
+    Route::put('/notifications/preferences', [NotificationController::class, 'updatePreferences']);
+    Route::post('/notifications/register-player-id', [NotificationController::class, 'registerPlayerId']);
+    Route::get('/notifications/history', [NotificationController::class, 'getNotificationHistory']);
+    Route::post('/notifications/mark-read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/test', [NotificationController::class, 'sendTestNotification']);
 });
