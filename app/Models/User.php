@@ -64,6 +64,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'approved_by',
         'approved_at',
         'rejection_reason',
+        'notification_preferences',
+        'onesignal_player_id',
     ];
 
     /**
@@ -111,6 +113,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'available_nights' => 'boolean',
             'is_admin' => 'boolean',
             'approved_at' => 'datetime',
+            'notification_preferences' => 'array',
         ];
     }
 
