@@ -15,6 +15,10 @@ Route::get('/privacy-policy', function () {
     return Inertia::render('PrivacyPolicy');
 })->name('privacy-policy');
 
+Route::get('/account-deletion', function () {
+    return Inertia::render('AccountDeletion');
+})->name('account-deletion');
+
 
 
 // Auto-login route for testing (remove in production)
