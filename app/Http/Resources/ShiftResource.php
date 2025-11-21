@@ -20,9 +20,9 @@ class ShiftResource extends JsonResource
             'description' => $this->description,
             'role' => $this->role,
             'role_display' => $this->role_display,
-            'shift_date' => $this->shift_date->format('Y-m-d'),
-            'start_time' => $this->start_time,
-            'end_time' => $this->end_time,
+            'shift_date' => $this->start_datetime->format('Y-m-d'),
+            'start_time' => $this->start_datetime,
+            'end_time' => $this->end_datetime,
             'duration_hours' => (float) $this->duration_hours,
             'hourly_rate' => (float) $this->hourly_rate,
             'total_pay' => (float) $this->total_pay,
@@ -56,8 +56,8 @@ class ShiftResource extends JsonResource
             'is_available' => $this->isAvailable(),
             'can_accept_applications' => $this->canAcceptApplications(),
             'is_urgent_by_time' => $this->isUrgent(),
-            'start_date_time' => $this->start_date_time,
-            'end_date_time' => $this->end_date_time,
+            'start_date_time' => $this->start_datetime,
+            'end_date_time' => $this->end_datetime,
         ];
     }
 }
