@@ -11,6 +11,10 @@ Route::get('/', function () {
     return Inertia::render('LandingPage');
 })->name('home');
 
+Route::get('/privacy-policy', function () {
+    return Inertia::render('PrivacyPolicy');
+})->name('privacy-policy');
+
 
 
 // Auto-login route for testing (remove in production)
