@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             CareHomeSeeder::class,
             HealthCareWorkerProfileSeeder::class,
             ShiftSeeder::class,
+            // TestHealthWorkerSeeder::class, // Uncomment for mobile app deployment testing
         ]);
     }
 }
