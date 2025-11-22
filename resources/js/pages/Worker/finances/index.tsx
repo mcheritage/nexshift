@@ -33,7 +33,6 @@ interface Stats {
 interface EarningsBreakdown {
     timesheet_payments: number;
     manual_credits: number;
-    refunds: number;
 }
 
 interface Props {
@@ -48,7 +47,10 @@ interface Props {
 }
 
 export default function WorkerFinances({ wallet, transactions, stats, earningsBreakdown }: Props) {
-    const formatCurrency = (amount: number) => {
+    const formatCurrency = (amount: number | undefined) => {
+        if (amount === undefined || amount === null || isNaN(amount)) {
+            return '£0.00';
+        }
         return new Intl.NumberFormat('en-GB', {
             style: 'currency',
             currency: 'GBP'
@@ -177,17 +179,12 @@ export default function WorkerFinances({ wallet, transactions, stats, earningsBr
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Timesheet Payments */}
                                 <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-gray-700">
-                                            Timesheet Payments
-                                        </span>
-                                        <Badge className="bg-green-100 text-green-800">
-                                            Primary
-                                        </Badge>
-                                    </div>
+                                    <span className="text-sm font-medium text-gray-700">
+                                        Timesheet Payments
+                                    </span>
                                     <div className="text-2xl font-bold text-green-600">
                                         {formatCurrency(earningsBreakdown.timesheet_payments)}
                                     </div>
@@ -198,37 +195,14 @@ export default function WorkerFinances({ wallet, transactions, stats, earningsBr
 
                                 {/* Manual Credits */}
                                 <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-gray-700">
-                                            Manual Credits
-                                        </span>
-                                        <Badge className="bg-blue-100 text-blue-800">
-                                            Admin
-                                        </Badge>
-                                    </div>
+                                    <span className="text-sm font-medium text-gray-700">
+                                        Manual Credits
+                                    </span>
                                     <div className="text-2xl font-bold text-blue-600">
                                         {formatCurrency(earningsBreakdown.manual_credits)}
                                     </div>
                                     <p className="text-xs text-gray-500">
                                         Bonuses and adjustments
-                                    </p>
-                                </div>
-
-                                {/* Refunds */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-gray-700">
-                                            Refunds
-                                        </span>
-                                        <Badge className="bg-purple-100 text-purple-800">
-                                            Other
-                                        </Badge>
-                                    </div>
-                                    <div className="text-2xl font-bold text-purple-600">
-                                        {formatCurrency(earningsBreakdown.refunds)}
-                                    </div>
-                                    <p className="text-xs text-gray-500">
-                                        Refunded amounts
                                     </p>
                                 </div>
                             </div>
