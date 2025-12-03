@@ -85,7 +85,7 @@ class TimesheetController extends BaseApiController
     {
         $user = $this->requireAuthenticatedUser($request);
 
-        if ($user->role !== UserRoles::HEALTH_WORKER) {
+        if (!$user->isHealthCareWorker()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -311,7 +311,7 @@ class TimesheetController extends BaseApiController
     {
         $user = $this->requireAuthenticatedUser($request);
 
-        if ($user->role !== UserRoles::HEALTH_WORKER) {
+        if (!$user->isHealthCareWorker()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
