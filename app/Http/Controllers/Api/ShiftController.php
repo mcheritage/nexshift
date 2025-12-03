@@ -80,7 +80,7 @@ class ShiftController extends BaseApiController
         $user = $this->requireAuthenticatedUser($request);
         
         // Only healthcare workers can view shifts
-        if ($user->role !== UserRoles::HEALTH_WORKER) {
+        if (!$user->isHealthCareWorker()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
