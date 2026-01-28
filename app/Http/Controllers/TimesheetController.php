@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Services\PushNotificationService;
 
 class TimesheetController extends Controller
 {
@@ -160,7 +161,8 @@ class TimesheetController extends Controller
         // Load the worker and shift relationships
         $timesheet->load('worker', 'shift');
 
-        DB::transaction(function () use ($timesheet, $user) {
+        $invoiceId = null;
+        DB::transaction(function () use ($timesheet, $user, &$invoiceId) {
             $timesheet->update([
                 'status' => Timesheet::STATUS_APPROVED,
                 'approved_by' => $user->id,
@@ -185,6 +187,7 @@ class TimesheetController extends Controller
 
             // Link timesheet to invoice
             $invoice->timesheets()->attach($timesheet->id);
+            $invoiceId = $invoice->id;
 
             // Log activity
             ActivityLogService::logTimesheetApproved($timesheet, $timesheet->care_home_id);
@@ -199,10 +202,30 @@ class TimesheetController extends Controller
                     'timesheet_id' => $timesheet->id,
                     'shift_title' => $timesheet->shift->title,
                     'total_pay' => $timesheet->total_pay,
-                    'invoice_id' => $invoice->id,
+                    'invoice_id' => $invoiceId,
                 ],
             ]);
         });
+
+        // Push notification to worker (OneSignal)
+        try {
+            /** @var PushNotificationService $push */
+            $push = app(PushNotificationService::class);
+            $push->sendToUser(
+                $timesheet->worker_id,
+                'Timesheet Approved',
+                "Your timesheet for {$timesheet->shift->title} on {$timesheet->clock_in_time->format('M d, Y')} has been approved.",
+                [
+                    'type' => 'timesheet_approved',
+                    'timesheet_id' => $timesheet->id,
+                    'invoice_id' => $invoiceId,
+                ]
+            );
+        } catch (\Throwable $e) {
+            \Log::error('Failed to send OneSignal push for timesheet approval', [
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         // Send email notification to worker
         try {

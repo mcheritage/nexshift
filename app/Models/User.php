@@ -41,6 +41,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $fillable = [
         'first_name',
         'last_name',
+        'date_of_birth',
         'other_names',
         'gender',
         'care_home_id',
@@ -70,6 +71,17 @@ class User extends Authenticatable implements MustVerifyEmail
         'stripe_charges_enabled',
         'stripe_payouts_enabled',
         'stripe_requirements',
+        'notification_preferences',
+        'onesignal_player_id',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'date_of_birth' => 'date',
     ];
 
     /**
@@ -113,6 +125,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'stripe_charges_enabled' => 'boolean',
             'stripe_payouts_enabled' => 'boolean',
             'stripe_requirements' => 'array',
+            'notification_preferences' => 'array',
         ];
     }
 
