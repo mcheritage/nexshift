@@ -64,6 +64,13 @@ class User extends Authenticatable implements MustVerifyEmail
         'approved_by',
         'approved_at',
         'rejection_reason',
+        'stripe_account_id',
+        'stripe_onboarding_complete',
+        'stripe_account_type',
+        'stripe_connected_at',
+        'stripe_charges_enabled',
+        'stripe_payouts_enabled',
+        'stripe_requirements',
         'notification_preferences',
         'onesignal_player_id',
     ];
@@ -113,6 +120,11 @@ class User extends Authenticatable implements MustVerifyEmail
             'available_nights' => 'boolean',
             'is_admin' => 'boolean',
             'approved_at' => 'datetime',
+            'stripe_onboarding_complete' => 'boolean',
+            'stripe_connected_at' => 'datetime',
+            'stripe_charges_enabled' => 'boolean',
+            'stripe_payouts_enabled' => 'boolean',
+            'stripe_requirements' => 'array',
             'notification_preferences' => 'array',
         ];
     }
@@ -249,6 +261,53 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Check if the user is active (approved and not suspended)
      */
+
+    /**
+     * Check if user has a Stripe account connected
+     */
+    public function hasStripeAccount(): bool
+    {
+        return !empty($this->stripe_account_id);
+    }
+
+    /**
+     * Check if user has completed Stripe onboarding
+     */
+    public function hasCompletedStripeOnboarding(): bool
+    {
+        return $this->stripe_onboarding_complete === true;
+    }
+
+    /**
+     * Check if user can receive payments via Stripe
+     */
+    public function canReceivePayments(): bool
+    {
+        return $this->hasStripeAccount() 
+            && $this->hasCompletedStripeOnboarding()
+            && $this->stripe_charges_enabled
+            && $this->stripe_payouts_enabled;
+    }
+
+    /**
+     * Get Stripe connection status
+     */
+    public function getStripeStatus(): string
+    {
+        if (!$this->hasStripeAccount()) {
+            return 'not_connected';
+        }
+
+        if (!$this->hasCompletedStripeOnboarding()) {
+            return 'pending_onboarding';
+        }
+
+        if (!$this->canReceivePayments()) {
+            return 'incomplete_setup';
+        }
+
+        return 'active';
+    }
     public function isActive(): bool
     {
         return $this->status === 'approved';

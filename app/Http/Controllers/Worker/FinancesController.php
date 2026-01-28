@@ -47,10 +47,6 @@ class FinancesController extends Controller
                 ->where('type', 'credit')
                 ->where('category', 'manual_credit')
                 ->sum('amount'),
-            'refunds' => $wallet->transactions()
-                ->where('type', 'credit')
-                ->where('category', 'refund')
-                ->sum('amount'),
         ];
 
         return Inertia::render('Worker/finances/index', [

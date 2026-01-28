@@ -129,6 +129,17 @@ Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worke
         Route::get('/', [App\Http\Controllers\Worker\FinancesController::class, 'index'])->name('index');
         Route::get('/transactions/{transaction}', [App\Http\Controllers\Worker\FinancesController::class, 'showTransaction'])->name('transactions.show');
     });
+
+    // Stripe Connect routes for workers
+    Route::prefix('stripe')->name('stripe.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Worker\StripeController::class, 'index'])->name('index');
+        Route::get('/connect', [App\Http\Controllers\Worker\StripeController::class, 'connect'])->name('connect');
+        Route::get('/callback', [App\Http\Controllers\Worker\StripeController::class, 'callback'])->name('callback');
+        Route::get('/refresh', [App\Http\Controllers\Worker\StripeController::class, 'refresh'])->name('refresh');
+        Route::get('/dashboard', [App\Http\Controllers\Worker\StripeController::class, 'dashboard'])->name('dashboard');
+        Route::get('/status', [App\Http\Controllers\Worker\StripeController::class, 'status'])->name('status');
+        Route::post('/disconnect', [App\Http\Controllers\Worker\StripeController::class, 'disconnect'])->name('disconnect');
+    });
 });
 
 Route::middleware(['auth'])->group(function () {
