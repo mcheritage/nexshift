@@ -14,7 +14,8 @@ import {
     Plus,
     CheckCircle,
     XCircle,
-    Timer
+    Timer,
+    CreditCard
 } from 'lucide-react';
 import { ROLE_LABELS } from '@/constants/roles';
 
@@ -183,7 +184,7 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                 </div>
 
                 {/* Quick Actions */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Browse Shifts */}
                     <Card>
                         <CardHeader>
@@ -219,6 +220,26 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                             <Link href="/worker/applications">
                                 <Button variant="outline" className="w-full">
                                     View Applications
+                                </Button>
+                            </Link>
+                        </CardContent>
+                    </Card>
+
+                    {/* Stripe Connect */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center">
+                                <CreditCard className="h-5 w-5 mr-2" />
+                                Payment Setup
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-gray-600 dark:text-gray-300 mb-4">
+                                Connect your Stripe account to receive payments for shifts.
+                            </p>
+                            <Link href="/worker/stripe">
+                                <Button className="w-full">
+                                    Setup Payments
                                 </Button>
                             </Link>
                         </CardContent>
