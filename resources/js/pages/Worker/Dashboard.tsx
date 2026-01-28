@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { SharedData } from '@/types';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
@@ -15,9 +15,11 @@ import {
     CheckCircle,
     XCircle,
     Timer,
-    CreditCard
+    CreditCard,
+    Send
 } from 'lucide-react';
 import { ROLE_LABELS } from '@/constants/roles';
+import { useState } from 'react';
 
 interface Application {
     id: string;
@@ -70,6 +72,10 @@ const statusColors = {
 };
 
 export default function WorkerDashboard({ availableShifts, myApplications, stats, isApproved, approvalStatus }: WorkerDashboardProps) {
+    const [selectedShift, setSelectedShift] = useState<string | null>(null);
+    const [applicationMessage, setApplicationMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-GB', { 
@@ -283,10 +289,20 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="ml-4">
+                                        <div className="ml-4 flex flex-col items-end gap-2">
                                             <Badge variant="secondary">
                                                 {ROLE_LABELS[shift.role as keyof typeof ROLE_LABELS] || shift.role}
                                             </Badge>
+                                            {isApproved && (
+                                                <Button
+                                                    onClick={() => setSelectedShift(shift.id)}
+                                                    size="sm"
+                                                    className="bg-blue-600 hover:bg-blue-700"
+                                                >
+                                                    <Send className="h-4 w-4 mr-2" />
+                                                    Apply Now
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -375,6 +391,59 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                             </Link>
                         </CardContent>
                     </Card>
+                )}
+
+                {/* Application Modal */}
+                {selectedShift && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+                            <h3 className="text-lg font-semibold mb-4">Apply for Shift</h3>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Cover Message (Optional)
+                                </label>
+                                <textarea
+                                    value={applicationMessage}
+                                    onChange={(e) => setApplicationMessage(e.target.value)}
+                                    placeholder="Tell the care home why you're a good fit for this shift..."
+                                    rows={4}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                />
+                            </div>
+                            <div className="flex justify-end space-x-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setSelectedShift(null);
+                                        setApplicationMessage('');
+                                    }}
+                                    disabled={isSubmitting}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={async () => {
+                                        if (isSubmitting) return;
+                                        setIsSubmitting(true);
+                                        router.post(`/worker/shifts/${selectedShift}/apply`, {
+                                            message: applicationMessage
+                                        }, {
+                                            onSuccess: () => {
+                                                setSelectedShift(null);
+                                                setApplicationMessage('');
+                                            },
+                                            onFinish: () => {
+                                                setIsSubmitting(false);
+                                            }
+                                        });
+                                    }}
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? 'Applying...' : 'Submit Application'}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </AppLayout>

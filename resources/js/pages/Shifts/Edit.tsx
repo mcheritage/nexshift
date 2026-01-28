@@ -13,7 +13,27 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Calendar, Clock, MapPin, Coins, Users, AlertTriangle, Plus, X } from 'lucide-react';
 import { ROLE_OPTIONS } from '@/constants/roles';
 
-interface CreateShiftProps extends SharedData {}
+interface Shift {
+    id: string;
+    title: string;
+    role: string;
+    shift_date: string;
+    start_time: string;
+    end_time: string;
+    ends_next_day: boolean;
+    hourly_rate: string;
+    location: string;
+    required_skills: string[];
+    preferred_skills: string[];
+    additional_requirements: string;
+    notes: string;
+    is_urgent: boolean;
+    status: string;
+}
+
+interface EditShiftProps extends SharedData {
+    shift: Shift;
+}
 
 const commonSkills = [
     'Medication Administration',
@@ -59,29 +79,32 @@ const generateMinuteOptions = () => {
 const hourOptions = generateHourOptions();
 const minuteOptions = generateMinuteOptions();
 
-export default function CreateShift({}: CreateShiftProps) {
+export default function EditShift({ shift }: EditShiftProps) {
     const [customSkill, setCustomSkill] = useState('');
     
-    const { data, setData, post, processing, errors } = useForm({
-        title: '',
-        role: '',
-        shift_date: '',
-        start_time: '',
-        end_time: '',
-        start_hour: '',
-        start_minute: '00',
-        end_hour: '',
-        end_minute: '00',
-        ends_next_day: false,
-        hourly_rate: '',
-        location: '',
-        required_skills: [] as string[],
-        preferred_skills: [] as string[],
-        additional_requirements: '',
-        notes: '',
-        is_urgent: false,
-        status: 'draft',
-        quantity: 1
+    // Parse start and end times
+    const [startHour, startMinute] = shift.start_time ? shift.start_time.split(':') : ['', '00'];
+    const [endHour, endMinute] = shift.end_time ? shift.end_time.split(':') : ['', '00'];
+    
+    const { data, setData, put, processing, errors } = useForm({
+        title: shift.title || '',
+        role: shift.role || '',
+        shift_date: shift.shift_date || '',
+        start_time: shift.start_time || '',
+        end_time: shift.end_time || '',
+        start_hour: startHour || '',
+        start_minute: startMinute || '00',
+        end_hour: endHour || '',
+        end_minute: endMinute || '00',
+        ends_next_day: shift.ends_next_day || false,
+        hourly_rate: shift.hourly_rate || '',
+        location: shift.location || '',
+        required_skills: shift.required_skills || [] as string[],
+        preferred_skills: shift.preferred_skills || [] as string[],
+        additional_requirements: shift.additional_requirements || '',
+        notes: shift.notes || '',
+        is_urgent: shift.is_urgent || false,
+        status: shift.status || 'draft'
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -93,14 +116,14 @@ export default function CreateShift({}: CreateShiftProps) {
             return;
         }
         
-        console.log('Submitting form data:', data);
+        console.log('Updating shift:', data);
         
-        post('/shifts', {
+        put(`/shifts/${shift.id}`, {
             onSuccess: () => {
-                console.log('Shift created successfully');
+                console.log('Shift updated successfully');
             },
             onError: (errors) => {
-                console.error('Shift creation errors:', errors);
+                console.error('Shift update errors:', errors);
             }
         });
     };
@@ -237,7 +260,7 @@ export default function CreateShift({}: CreateShiftProps) {
 
     return (
         <AppLayout>
-            <Head title="Post New Shift" />
+            <Head title="Edit Shift" />
             
             <div className="max-w-4xl mx-auto space-y-6">
                 {/* Header */}
@@ -250,8 +273,8 @@ export default function CreateShift({}: CreateShiftProps) {
                     </Link>
                     
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Post New Shift</h1>
-                        <p className="text-gray-600 dark:text-gray-400 mt-1">Create a new shift posting to attract qualified healthcare workers</p>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Edit Shift</h1>
+                        <p className="text-gray-600 dark:text-gray-400 mt-1">Update shift details and requirements</p>
                     </div>
                 </div>
 
@@ -455,7 +478,7 @@ export default function CreateShift({}: CreateShiftProps) {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <Label htmlFor="hourly_rate">Hourly Rate (£) *</Label>
                                     <div className="relative">
@@ -472,23 +495,6 @@ export default function CreateShift({}: CreateShiftProps) {
                                         />
                                     </div>
                                     {errors.hourly_rate && <p className="text-sm text-red-600 mt-1">{errors.hourly_rate}</p>}
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="quantity">Number of Shifts *</Label>
-                                    <Input
-                                        id="quantity"
-                                        type="number"
-                                        min="1"
-                                        max="50"
-                                        value={data.quantity}
-                                        onChange={(e) => setData('quantity', parseInt(e.target.value) || 1)}
-                                        placeholder="1"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        💡 Create multiple identical shifts
-                                    </p>
-                                    {errors.quantity && <p className="text-sm text-red-600 mt-1">{errors.quantity}</p>}
                                 </div>
 
                                 <div>
@@ -619,7 +625,7 @@ export default function CreateShift({}: CreateShiftProps) {
                                 disabled={processing}
                                 onClick={() => setData('status', 'published')}
                             >
-                                {processing ? 'Publishing...' : 'Publish Shift'}
+                                {processing ? 'Updating...' : 'Update Shift'}
                             </Button>
                         </div>
                     </div>

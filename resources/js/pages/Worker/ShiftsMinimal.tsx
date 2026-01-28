@@ -231,13 +231,18 @@ export default function WorkerShiftsMinimal({ shifts, filters, roleOptions, isAp
                                         <p className="text-xs text-gray-500 mb-2">
                                             {shift.applications_count} applicant(s)
                                         </p>
-                                        {!shift.user_has_applied && (
+                                        {!shift.user_has_applied && isApproved && (
                                             <Button
                                                 onClick={() => setSelectedShift(shift.id)}
                                                 size="sm"
                                             >
                                                 Apply Now
                                             </Button>
+                                        )}
+                                        {!shift.user_has_applied && !isApproved && (
+                                            <p className="text-xs text-gray-500 italic">
+                                                Approval required
+                                            </p>
                                         )}
                                     </div>
                                 </div>
