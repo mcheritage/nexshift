@@ -90,6 +90,13 @@ class ShiftSeeder extends Seeder
             }
             $durationHours = $endTime->diffInHours($startTime, true);
 
+            // Build full datetimes for the shift (handle overnight)
+            $startDatetime = $shiftDate->copy()->setTimeFromTimeString($pattern['start']);
+            $endDatetime = $shiftDate->copy()->setTimeFromTimeString($pattern['end']);
+            if ($endDatetime->lte($startDatetime)) {
+                $endDatetime->addDay();
+            }
+
             // Generate shift titles
             $titles = [
                 'Daily Care Support',
@@ -150,9 +157,8 @@ class ShiftSeeder extends Seeder
                 'title' => $title,
                 'description' => $description,
                 'role' => $role,
-                'shift_date' => $shiftDate->format('Y-m-d'),
-                'start_time' => $pattern['start'],
-                'end_time' => $pattern['end'],
+                'start_datetime' => $startDatetime->format('Y-m-d H:i:s'),
+                'end_datetime' => $endDatetime->format('Y-m-d H:i:s'),
                 'duration_hours' => $durationHours,
                 'hourly_rate' => $pattern['rate'],
                 'total_pay' => $pattern['rate'] * $durationHours,
@@ -164,7 +170,7 @@ class ShiftSeeder extends Seeder
                 'is_urgent' => $isUrgent,
                 'is_recurring' => rand(1, 4) === 1, // 25% recurring
                 'recurrence_pattern' => rand(1, 4) === 1 ? (rand(1, 2) === 1 ? 'weekly' : 'monthly') : null,
-                'application_deadline' => $shiftDate->subHours(2)->format('Y-m-d H:i:s'),
+                'application_deadline' => $startDatetime->copy()->subHours(2)->format('Y-m-d H:i:s'),
                 'published_at' => $status === 'published' ? Carbon::now()->subDays(rand(0, 7))->format('Y-m-d H:i:s') : null,
                 'created_by' => $adminUser->id,
             ];

@@ -32,8 +32,8 @@ class TimesheetSeeder extends Seeder
 
         // Get some shifts for the care home
         $shifts = Shift::where('care_home_id', $careHome->id)
-            ->where('shift_date', '>=', now()->subDays(30))
-            ->where('shift_date', '<=', now()->addDays(7))
+            ->where('start_datetime', '>=', now()->subDays(30))
+            ->where('start_datetime', '<=', now()->addDays(7))
             ->limit(10)
             ->get();
 
@@ -57,14 +57,15 @@ class TimesheetSeeder extends Seeder
             $roles = ['Registered Nurse', 'Care Assistant', 'Senior Care Worker', 'Night Shift Nurse'];
             
             foreach ($shiftDates as $index => $date) {
+                $startDatetime = $date->copy()->setTime(8, 0, 0);
+                $endDatetime = $date->copy()->setTime(16, 0, 0);
                 Shift::create([
                     'id' => \Str::uuid(),
                     'title' => 'Sample Shift ' . ($index + 1),
                     'description' => 'Sample shift for timesheet testing',
                     'role' => $roles[array_rand($roles)],
-                    'shift_date' => $date->format('Y-m-d'),
-                    'start_time' => '08:00',
-                    'end_time' => '16:00',
+                    'start_datetime' => $startDatetime,
+                    'end_datetime' => $endDatetime,
                     'hourly_rate' => rand(1200, 1800) / 100, // £12.00 - £18.00
                     'care_home_id' => $careHome->id,
                     'status' => 'published',
@@ -100,9 +101,8 @@ class TimesheetSeeder extends Seeder
                 // Generate random status based on weights
                 $randomStatus = $this->getWeightedRandomStatus($statusWeights);
                 
-                $shiftDate = Carbon::parse($shift->shift_date);
-                $startTime = $shiftDate->copy()->setTimeFromTimeString($shift->start_time);
-                $endTime = $shiftDate->copy()->setTimeFromTimeString($shift->end_time);
+                $startTime = Carbon::parse($shift->start_datetime);
+                $endTime = Carbon::parse($shift->end_datetime);
                 
                 // Add some variation to actual clock in/out times
                 $actualClockIn = $startTime->copy()->addMinutes(rand(-10, 15));

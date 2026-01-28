@@ -41,6 +41,7 @@ class AuthController extends BaseApiController
         $user->update([
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
+            'date_of_birth' => $request->date_of_birth,
             'phone_number' => $request->phone_number,
             'gender' => $request->gender,
             'bio' => $request->bio,

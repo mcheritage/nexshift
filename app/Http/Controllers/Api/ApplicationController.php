@@ -20,7 +20,7 @@ class ApplicationController extends BaseApiController
         $user = $this->requireAuthenticatedUser($request);
         
         // Only healthcare workers can apply for shifts
-        if ($user->role !== UserRoles::HEALTH_WORKER) {
+        if (!$user->isHealthCareWorker()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -152,7 +152,7 @@ class ApplicationController extends BaseApiController
         $user = $this->requireAuthenticatedUser($request);
         
         // Only healthcare workers can withdraw their applications
-        if ($user->role !== UserRoles::HEALTH_WORKER) {
+        if (!$user->isHealthCareWorker()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
