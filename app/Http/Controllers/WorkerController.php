@@ -70,6 +70,7 @@ class WorkerController extends Controller
             'stats' => $stats,
             'isApproved' => $isApproved,
             'approvalStatus' => $user->status,
+            'stripeConnected' => !empty($user->stripe_account_id),
         ]);
     }
 
@@ -617,5 +618,124 @@ class WorkerController extends Controller
         }
 
         return redirect()->route('worker.timesheets')->with('success', 'Timesheet submitted for approval');
+    }
+
+    /**
+     * Show Stripe connection page
+     */
+    public function stripe(): Response
+    {
+        $user = Auth::user();
+        
+        return Inertia::render('Worker/Stripe', [
+            'stripeConnected' => !empty($user->stripe_account_id),
+            'stripeAccountId' => $user->stripe_account_id,
+        ]);
+    }
+
+    /**
+     * Initiate Stripe Connect onboarding
+     */
+    public function stripeConnect()
+    {
+        $user = Auth::user();
+
+        try {
+            \Stripe\Stripe::setApiKey(config('stripe.secret_key'));
+
+            // Create Stripe Connect account if doesn't exist
+            if (!$user->stripe_account_id) {
+                $account = \Stripe\Account::create([
+                    'type' => 'express',
+                    'country' => 'GB',
+                    'email' => $user->email,
+                    'capabilities' => [
+                        'card_payments' => ['requested' => true],
+                        'transfers' => ['requested' => true],
+                    ],
+                    'business_type' => 'individual',
+                    'individual' => [
+                        'first_name' => $user->first_name,
+                        'last_name' => $user->last_name,
+                        'email' => $user->email,
+                    ],
+                ]);
+
+                $user->update(['stripe_account_id' => $account->id]);
+            }
+
+            // Create account link for onboarding
+            $accountLink = \Stripe\AccountLink::create([
+                'account' => $user->stripe_account_id,
+                'refresh_url' => route('worker.stripe'),
+                'return_url' => route('worker.stripe.callback'),
+                'type' => 'account_onboarding',
+            ]);
+
+            return redirect($accountLink->url);
+
+        } catch (\Exception $e) {
+            \Log::error('Stripe Connect creation failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Failed to connect to Stripe: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Handle Stripe Connect callback
+     */
+    public function stripeCallback(Request $request)
+    {
+        $user = Auth::user();
+
+        try {
+            \Stripe\Stripe::setApiKey(config('stripe.secret_key'));
+            $account = \Stripe\Account::retrieve($user->stripe_account_id);
+
+            if ($account->charges_enabled && $account->payouts_enabled) {
+                return redirect()->route('worker.stripe')
+                    ->with('success', 'Stripe account connected successfully!');
+            }
+
+            return redirect()->route('worker.stripe')
+                ->with('error', 'Stripe account setup incomplete. Please try again.');
+
+        } catch (\Exception $e) {
+            \Log::error('Stripe Connect callback failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return redirect()->route('worker.stripe')
+                ->with('error', 'Failed to verify Stripe connection.');
+        }
+    }
+
+    /**
+     * Create Stripe dashboard login link
+     */
+    public function stripeDashboard()
+    {
+        $user = Auth::user();
+
+        if (!$user->stripe_account_id) {
+            return back()->with('error', 'No Stripe account connected');
+        }
+
+        try {
+            \Stripe\Stripe::setApiKey(config('stripe.secret_key'));
+            
+            $loginLink = \Stripe\Account::createLoginLink($user->stripe_account_id);
+
+            return redirect($loginLink->url);
+
+        } catch (\Exception $e) {
+            \Log::error('Stripe dashboard link creation failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Failed to access Stripe dashboard: ' . $e->getMessage());
+        }
     }
 }
