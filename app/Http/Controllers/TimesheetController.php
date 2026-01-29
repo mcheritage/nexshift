@@ -161,33 +161,12 @@ class TimesheetController extends Controller
         // Load the worker and shift relationships
         $timesheet->load('worker', 'shift');
 
-        $invoiceId = null;
-        DB::transaction(function () use ($timesheet, $user, &$invoiceId) {
+        DB::transaction(function () use ($timesheet, $user) {
             $timesheet->update([
                 'status' => Timesheet::STATUS_APPROVED,
                 'approved_by' => $user->id,
                 'approved_at' => now(),
             ]);
-
-            // Create invoice for this timesheet
-            $invoice = Invoice::create([
-                'care_home_id' => $timesheet->care_home_id,
-                'invoice_number' => Invoice::generateInvoiceNumber(),
-                'invoice_date' => now(),
-                'period_start' => $timesheet->clock_in_time->copy()->startOfDay(),
-                'period_end' => $timesheet->clock_out_time->copy()->endOfDay(),
-                'subtotal' => $timesheet->total_pay,
-                'tax_rate' => 0.00,
-                'tax_amount' => 0.00,
-                'total' => $timesheet->total_pay,
-                'status' => Invoice::STATUS_SENT,
-                'due_date' => now()->addDays(7),
-                'notes' => "Invoice for timesheet #{$timesheet->id} - {$timesheet->worker->first_name} {$timesheet->worker->last_name}",
-            ]);
-
-            // Link timesheet to invoice
-            $invoice->timesheets()->attach($timesheet->id);
-            $invoiceId = $invoice->id;
 
             // Log activity
             ActivityLogService::logTimesheetApproved($timesheet, $timesheet->care_home_id);
@@ -197,12 +176,11 @@ class TimesheetController extends Controller
                 'user_id' => $timesheet->worker_id,
                 'type' => 'timesheet_approved',
                 'title' => 'Timesheet Approved',
-                'message' => "Your timesheet for {$timesheet->shift->title} on {$timesheet->clock_in_time->format('M d, Y')} has been approved. Payment of £" . number_format($timesheet->total_pay, 2) . " will be processed.",
+                'message' => "Your timesheet for {$timesheet->shift->title} on {$timesheet->clock_in_time->format('M d, Y')} has been approved. Payment will be processed once invoiced.",
                 'data' => [
                     'timesheet_id' => $timesheet->id,
                     'shift_title' => $timesheet->shift->title,
                     'total_pay' => $timesheet->total_pay,
-                    'invoice_id' => $invoiceId,
                 ],
             ]);
         });
@@ -218,7 +196,6 @@ class TimesheetController extends Controller
                 [
                     'type' => 'timesheet_approved',
                     'timesheet_id' => $timesheet->id,
-                    'invoice_id' => $invoiceId,
                 ]
             );
         } catch (\Throwable $e) {
