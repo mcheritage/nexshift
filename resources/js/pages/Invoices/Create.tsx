@@ -119,7 +119,22 @@ export default function CreateInvoice({ availableTimesheets }: CreateInvoiceProp
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('invoices.store'));
+        
+        if (selectedTimesheets.length === 0) {
+            alert('Please select at least one timesheet');
+            return;
+        }
+        
+        console.log('Submitting invoice with data:', data);
+        
+        post(route('invoices.store'), {
+            onSuccess: () => {
+                console.log('Invoice created successfully');
+            },
+            onError: (errors) => {
+                console.error('Invoice creation errors:', errors);
+            },
+        });
     };
 
     return (
@@ -140,6 +155,18 @@ export default function CreateInvoice({ availableTimesheets }: CreateInvoiceProp
                         <p className="text-muted-foreground">Select approved timesheets to include in the invoice</p>
                     </div>
                 </div>
+
+                {/* Display global errors */}
+                {errors && Object.keys(errors).length > 0 && (
+                    <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+                        <p className="font-semibold mb-2">Error creating invoice:</p>
+                        <ul className="list-disc list-inside space-y-1">
+                            {Object.entries(errors).map(([key, value]) => (
+                                <li key={key} className="text-sm">{value}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Left Column - Timesheets Selection */}

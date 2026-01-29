@@ -62,6 +62,7 @@ interface WorkerDashboardProps extends SharedData {
     };
     isApproved?: boolean;
     approvalStatus?: string;
+    stripeConnected?: boolean;
 }
 
 const statusColors = {
@@ -71,7 +72,7 @@ const statusColors = {
     'withdrawn': 'bg-gray-100 text-gray-800',
 };
 
-export default function WorkerDashboard({ availableShifts, myApplications, stats, isApproved, approvalStatus }: WorkerDashboardProps) {
+export default function WorkerDashboard({ availableShifts, myApplications, stats, isApproved, approvalStatus, stripeConnected }: WorkerDashboardProps) {
     const [selectedShift, setSelectedShift] = useState<string | null>(null);
     const [applicationMessage, setApplicationMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -101,6 +102,33 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                         Find and apply for healthcare shifts
                     </p>
                 </div>
+
+                {/* Stripe Connection Warning */}
+                {isApproved && !stripeConnected && (
+                    <Card className="border-orange-200 bg-orange-50 dark:bg-orange-900/10 dark:border-orange-800">
+                        <CardContent className="p-6">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-start">
+                                    <CreditCard className="h-6 w-6 text-orange-600 dark:text-orange-500 mt-0.5 mr-3 flex-shrink-0" />
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-400 mb-2">
+                                            Payment Setup Required
+                                        </h3>
+                                        <p className="text-orange-800 dark:text-orange-300 mb-3">
+                                            You haven't connected your Stripe account yet. You won't be able to receive payments for completed shifts until you set up your payment method.
+                                        </p>
+                                        <Link href="/worker/stripe">
+                                            <Button className="bg-orange-600 hover:bg-orange-700">
+                                                <CreditCard className="h-4 w-4 mr-2" />
+                                                Connect Stripe Now
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Approval Status Warning */}
                 {!isApproved && approvalStatus === 'pending' && (
@@ -192,15 +220,15 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                 {/* Quick Actions */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Browse Shifts */}
-                    <Card>
+                    <Card className="flex flex-col">
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <Calendar className="h-5 w-5 mr-2" />
                                 Browse Available Shifts
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <p className="text-gray-600 dark:text-gray-300 mb-4">
+                        <CardContent className="flex flex-col flex-1">
+                            <p className="text-gray-600 dark:text-gray-300 mb-4 flex-1">
                                 Find healthcare shifts that match your skills and availability.
                             </p>
                             <Link href="/worker/shifts">
@@ -212,15 +240,15 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                     </Card>
 
                     {/* My Applications */}
-                    <Card>
+                    <Card className="flex flex-col">
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <Eye className="h-5 w-5 mr-2" />
                                 My Applications
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <p className="text-gray-600 dark:text-gray-300 mb-4">
+                        <CardContent className="flex flex-col flex-1">
+                            <p className="text-gray-600 dark:text-gray-300 mb-4 flex-1">
                                 Track the status of your shift applications and responses.
                             </p>
                             <Link href="/worker/applications">
@@ -232,22 +260,45 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                     </Card>
 
                     {/* Stripe Connect */}
-                    <Card>
+                    <Card className="flex flex-col">
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <CreditCard className="h-5 w-5 mr-2" />
                                 Payment Setup
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <p className="text-gray-600 dark:text-gray-300 mb-4">
-                                Connect your Stripe account to receive payments for shifts.
-                            </p>
-                            <Link href="/worker/stripe">
-                                <Button className="w-full">
-                                    Setup Payments
-                                </Button>
-                            </Link>
+                        <CardContent className="flex flex-col flex-1">
+                            {stripeConnected ? (
+                                <>
+                                    <div className="flex-1">
+                                        <div className="flex items-center mb-2">
+                                            <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                                            <p className="text-green-600 font-medium">
+                                                Payment method connected
+                                            </p>
+                                        </div>
+                                        <p className="text-gray-600 dark:text-gray-300 mb-4 text-sm">
+                                            Your Stripe account is set up. You can receive payments for completed shifts.
+                                        </p>
+                                    </div>
+                                    <Link href="/worker/stripe">
+                                        <Button variant="outline" className="w-full">
+                                            Manage Payments
+                                        </Button>
+                                    </Link>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-gray-600 dark:text-gray-300 mb-4 flex-1">
+                                        Connect your Stripe account to receive payments for shifts.
+                                    </p>
+                                    <Link href="/worker/stripe">
+                                        <Button className="w-full">
+                                            Setup Payments
+                                        </Button>
+                                    </Link>
+                                </>
+                            )}
                         </CardContent>
                     </Card>
                 </div>

@@ -83,6 +83,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{invoice}', [App\Http\Controllers\InvoiceController::class, 'show'])->name('show');
         Route::patch('/{invoice}/mark-sent', [App\Http\Controllers\InvoiceController::class, 'markAsSent'])->name('mark-sent');
         Route::patch('/{invoice}/mark-paid', [App\Http\Controllers\InvoiceController::class, 'markAsPaid'])->name('mark-paid');
+        Route::post('/{invoice}/stripe-checkout', [App\Http\Controllers\InvoiceController::class, 'createStripeCheckout'])->name('stripe-checkout');
+        Route::get('/{invoice}/stripe-success', [App\Http\Controllers\InvoiceController::class, 'stripeSuccess'])->name('stripe-success');
     });
 
     // Finances routes for care homes
@@ -131,15 +133,10 @@ Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worke
     });
 
     // Stripe Connect routes for workers
-    Route::prefix('stripe')->name('stripe.')->group(function () {
-        Route::get('/', [App\Http\Controllers\Worker\StripeController::class, 'index'])->name('index');
-        Route::get('/connect', [App\Http\Controllers\Worker\StripeController::class, 'connect'])->name('connect');
-        Route::get('/callback', [App\Http\Controllers\Worker\StripeController::class, 'callback'])->name('callback');
-        Route::get('/refresh', [App\Http\Controllers\Worker\StripeController::class, 'refresh'])->name('refresh');
-        Route::get('/dashboard', [App\Http\Controllers\Worker\StripeController::class, 'dashboard'])->name('dashboard');
-        Route::get('/status', [App\Http\Controllers\Worker\StripeController::class, 'status'])->name('status');
-        Route::post('/disconnect', [App\Http\Controllers\Worker\StripeController::class, 'disconnect'])->name('disconnect');
-    });
+    Route::get('/stripe', [App\Http\Controllers\WorkerController::class, 'stripe'])->name('stripe');
+    Route::post('/stripe/connect', [App\Http\Controllers\WorkerController::class, 'stripeConnect'])->name('stripe.connect');
+    Route::get('/stripe/callback', [App\Http\Controllers\WorkerController::class, 'stripeCallback'])->name('stripe.callback');
+    Route::post('/stripe/dashboard', [App\Http\Controllers\WorkerController::class, 'stripeDashboard'])->name('stripe.dashboard');
 });
 
 Route::middleware(['auth'])->group(function () {
