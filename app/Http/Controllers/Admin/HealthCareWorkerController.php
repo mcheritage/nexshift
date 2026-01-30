@@ -53,8 +53,23 @@ class HealthCareWorkerController extends Controller
     {
         $healthCareWorker->load(['care_home', 'statusChanges.changedBy']);
 
+        // Add Stripe status information
+        $stripeStatus = null;
+        if ($healthCareWorker->stripe_account_id) {
+            $stripeStatus = [
+                'connected' => true,
+                'account_id' => $healthCareWorker->stripe_account_id,
+                'onboarding_complete' => $healthCareWorker->stripe_onboarding_complete,
+                'charges_enabled' => $healthCareWorker->stripe_charges_enabled,
+                'payouts_enabled' => $healthCareWorker->stripe_payouts_enabled,
+                'connected_at' => $healthCareWorker->stripe_connected_at,
+                'account_type' => $healthCareWorker->stripe_account_type,
+            ];
+        }
+
         return Inertia::render('admin/healthcare-workers/show', [
             'healthCareWorker' => $healthCareWorker,
+            'stripeStatus' => $stripeStatus,
         ]);
     }
 

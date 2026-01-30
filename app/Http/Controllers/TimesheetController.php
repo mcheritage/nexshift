@@ -37,7 +37,7 @@ class TimesheetController extends Controller
         }
 
         // Get filters from request
-        $status = $request->get('status', 'submitted'); // Default to 'submitted'
+        $status = $request->get('status', ''); // Default to showing all statuses
         $search = $request->get('search');
         $dateFrom = $request->get('date_from');
         $dateTo = $request->get('date_to');
@@ -72,11 +72,15 @@ class TimesheetController extends Controller
                 'approved' => Timesheet::where('care_home_id', $careHome->id)->where('status', 'approved')->count(),
                 'queried' => Timesheet::where('care_home_id', $careHome->id)->where('status', 'queried')->count(),
                 'rejected' => Timesheet::where('care_home_id', $careHome->id)->where('status', 'rejected')->count(),
+                'paid' => Timesheet::where('care_home_id', $careHome->id)->where('status', 'paid')->count(),
                 'total_pending_pay' => Timesheet::where('care_home_id', $careHome->id)
                     ->where('status', 'submitted')
                     ->sum('total_pay'),
                 'total_approved_pay' => Timesheet::where('care_home_id', $careHome->id)
                     ->where('status', 'approved')
+                    ->sum('total_pay'),
+                'total_paid' => Timesheet::where('care_home_id', $careHome->id)
+                    ->where('status', 'paid')
                     ->sum('total_pay'),
             ];
 
@@ -95,7 +99,8 @@ class TimesheetController extends Controller
                     'submitted' => 'Submitted',
                     'approved' => 'Approved',
                     'queried' => 'Queried',
-                    'rejected' => 'Rejected'
+                    'rejected' => 'Rejected',
+                    'paid' => 'Paid'
                 ]
             ]);
         } catch (\Exception $e) {
@@ -136,7 +141,8 @@ class TimesheetController extends Controller
                     'submitted' => 'Submitted',
                     'approved' => 'Approved',
                     'queried' => 'Queried',
-                    'rejected' => 'Rejected'
+                    'rejected' => 'Rejected',
+                    'paid' => 'Paid'
                 ]
             ]);
         }
@@ -161,33 +167,15 @@ class TimesheetController extends Controller
         // Load the worker and shift relationships
         $timesheet->load('worker', 'shift');
 
-        $invoiceId = null;
-        DB::transaction(function () use ($timesheet, $user, &$invoiceId) {
+        DB::transaction(function () use ($timesheet, $user) {
             $timesheet->update([
                 'status' => Timesheet::STATUS_APPROVED,
                 'approved_by' => $user->id,
                 'approved_at' => now(),
             ]);
 
-            // Create invoice for this timesheet
-            $invoice = Invoice::create([
-                'care_home_id' => $timesheet->care_home_id,
-                'invoice_number' => Invoice::generateInvoiceNumber(),
-                'invoice_date' => now(),
-                'period_start' => $timesheet->clock_in_time->copy()->startOfDay(),
-                'period_end' => $timesheet->clock_out_time->copy()->endOfDay(),
-                'subtotal' => $timesheet->total_pay,
-                'tax_rate' => 0.00,
-                'tax_amount' => 0.00,
-                'total' => $timesheet->total_pay,
-                'status' => Invoice::STATUS_SENT,
-                'due_date' => now()->addDays(7),
-                'notes' => "Invoice for timesheet #{$timesheet->id} - {$timesheet->worker->first_name} {$timesheet->worker->last_name}",
-            ]);
-
-            // Link timesheet to invoice
-            $invoice->timesheets()->attach($timesheet->id);
-            $invoiceId = $invoice->id;
+            // Log status change to history
+            $timesheet->logStatusChange(Timesheet::STATUS_APPROVED, $user->id);
 
             // Log activity
             ActivityLogService::logTimesheetApproved($timesheet, $timesheet->care_home_id);
@@ -197,12 +185,11 @@ class TimesheetController extends Controller
                 'user_id' => $timesheet->worker_id,
                 'type' => 'timesheet_approved',
                 'title' => 'Timesheet Approved',
-                'message' => "Your timesheet for {$timesheet->shift->title} on {$timesheet->clock_in_time->format('M d, Y')} has been approved. Payment of £" . number_format($timesheet->total_pay, 2) . " will be processed.",
+                'message' => "Your timesheet for {$timesheet->shift->title} on {$timesheet->clock_in_time->format('M d, Y')} has been approved. Payment will be processed once invoiced.",
                 'data' => [
                     'timesheet_id' => $timesheet->id,
                     'shift_title' => $timesheet->shift->title,
                     'total_pay' => $timesheet->total_pay,
-                    'invoice_id' => $invoiceId,
                 ],
             ]);
         });
@@ -218,7 +205,6 @@ class TimesheetController extends Controller
                 [
                     'type' => 'timesheet_approved',
                     'timesheet_id' => $timesheet->id,
-                    'invoice_id' => $invoiceId,
                 ]
             );
         } catch (\Throwable $e) {
@@ -267,10 +253,11 @@ class TimesheetController extends Controller
         $timesheet->update([
             'status' => Timesheet::STATUS_QUERIED,
             'manager_notes' => $request->manager_notes,
-            'approved_by' => $user->id,
-            'approved_at' => now(),
         ]);
-        
+
+        // Log status change to history
+        $timesheet->logStatusChange(Timesheet::STATUS_QUERIED, $user->id, $request->manager_notes);
+
         // Create notification for worker
         Notification::create([
             'user_id' => $timesheet->worker_id,
@@ -324,10 +311,11 @@ class TimesheetController extends Controller
         $timesheet->update([
             'status' => Timesheet::STATUS_REJECTED,
             'manager_notes' => $request->manager_notes,
-            'approved_by' => $user->id,
-            'approved_at' => now(),
         ]);
-        
+
+        // Log status change to history
+        $timesheet->logStatusChange(Timesheet::STATUS_REJECTED, $user->id, $request->manager_notes);
+
         // Create notification for worker
         Notification::create([
             'user_id' => $timesheet->worker_id,
@@ -398,7 +386,7 @@ class TimesheetController extends Controller
             abort(403, 'Access denied');
         }
 
-        $timesheet->load(['worker.care_home', 'shift.careHome', 'approver', 'careHome']);
+        $timesheet->load(['worker.care_home', 'shift.careHome', 'approver', 'careHome', 'statusHistory.changedBy']);
 
         return Inertia::render('Timesheets/Show', [
             'timesheet' => $timesheet,
@@ -408,6 +396,7 @@ class TimesheetController extends Controller
                 'approved' => 'Approved',
                 'queried' => 'Queried',
                 'rejected' => 'Rejected',
+                'paid' => 'Paid',
             ]
         ]);
     }

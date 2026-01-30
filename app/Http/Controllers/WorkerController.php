@@ -70,6 +70,7 @@ class WorkerController extends Controller
             'stats' => $stats,
             'isApproved' => $isApproved,
             'approvalStatus' => $user->status,
+            'stripeConnected' => !empty($user->stripe_account_id),
         ]);
     }
 
@@ -439,7 +440,7 @@ class WorkerController extends Controller
             $clockOutDateTime->addDay();
         }
 
-        Timesheet::create([
+        $timesheet = Timesheet::create([
             'shift_id' => $shift->id,
             'worker_id' => $user->id,
             'care_home_id' => $shift->care_home_id,
@@ -457,6 +458,9 @@ class WorkerController extends Controller
             'submitted_at' => $submittedAt,
         ]);
 
+        // Log initial status to history
+        $timesheet->logStatusChange($status, $user->id);
+
         return redirect()->route('worker.timesheets')->with('success', 'Timesheet created successfully');
     }
 
@@ -471,12 +475,21 @@ class WorkerController extends Controller
             abort(403, 'You are not authorized to edit this timesheet');
         }
 
-        if (!in_array($timesheet->status, ['draft', 'queried'])) {
+        if (!in_array($timesheet->status, ['draft', 'queried', 'rejected'])) {
             abort(403, 'This timesheet cannot be edited');
         }
 
+        $timesheet->load('shift.careHome');
+        
+        // Format times for HTML time input (HH:mm format)
+        $timesheetData = $timesheet->toArray();
+        $timesheetData['clock_in_time'] = $timesheet->clock_in_time ? 
+            Carbon::parse($timesheet->clock_in_time)->format('H:i') : '';
+        $timesheetData['clock_out_time'] = $timesheet->clock_out_time ? 
+            Carbon::parse($timesheet->clock_out_time)->format('H:i') : '';
+
         return Inertia::render('Worker/EditTimesheet', [
-            'timesheet' => $timesheet->load('shift.careHome'),
+            'timesheet' => $timesheetData,
         ]);
     }
 
@@ -491,7 +504,7 @@ class WorkerController extends Controller
             abort(403, 'You are not authorized to edit this timesheet');
         }
 
-        if (!in_array($timesheet->status, ['draft', 'queried'])) {
+        if (!in_array($timesheet->status, ['draft', 'queried', 'rejected'])) {
             abort(403, 'This timesheet cannot be edited');
         }
 
@@ -551,11 +564,20 @@ class WorkerController extends Controller
 
         // If submitting for approval, update status and submission time
         if ($request->boolean('submit_for_approval')) {
+            $previousStatus = $timesheet->status;
             $updateData['status'] = 'submitted';
             $updateData['submitted_at'] = Carbon::now();
+            
+            // Update the timesheet first
+            $timesheet->update($updateData);
+            
+            // Log status change
+            $timesheet->logStatusChange('submitted', $user->id, 
+                $previousStatus === 'queried' ? 'Resubmitted after query' : null
+            );
+        } else {
+            $timesheet->update($updateData);
         }
-
-        $timesheet->update($updateData);
 
         return redirect()->route('worker.timesheets')->with('success', 'Timesheet updated successfully');
     }
@@ -571,14 +593,25 @@ class WorkerController extends Controller
             abort(403, 'You are not authorized to submit this timesheet');
         }
 
-        if (!in_array($timesheet->status, ['draft', 'queried'])) {
+        if (!in_array($timesheet->status, ['draft', 'queried', 'rejected'])) {
             abort(403, 'This timesheet cannot be submitted');
         }
 
+        $previousStatus = $timesheet->status;
+        
         $timesheet->update([
             'status' => 'submitted',
             'submitted_at' => Carbon::now(),
         ]);
+
+        // Log status change
+        $noteText = null;
+        if ($previousStatus === 'queried') {
+            $noteText = 'Resubmitted after query';
+        } elseif ($previousStatus === 'rejected') {
+            $noteText = 'Resubmitted after rejection';
+        }
+        $timesheet->logStatusChange('submitted', $user->id, $noteText);
 
         // Load the shift with care home
         $timesheet->load('shift.careHome.users');
@@ -617,5 +650,133 @@ class WorkerController extends Controller
         }
 
         return redirect()->route('worker.timesheets')->with('success', 'Timesheet submitted for approval');
+    }
+
+    /**
+     * Show Stripe connection page
+     */
+    public function stripe(): Response
+    {
+        $user = Auth::user();
+        
+        return Inertia::render('Worker/Stripe', [
+            'stripeConnected' => !empty($user->stripe_account_id),
+            'stripeAccountId' => $user->stripe_account_id,
+        ]);
+    }
+
+    /**
+     * Initiate Stripe Connect onboarding
+     */
+    public function stripeConnect()
+    {
+        $user = Auth::user();
+
+        try {
+            \Stripe\Stripe::setApiKey(config('stripe.secret_key'));
+
+            // Create Stripe Connect account if doesn't exist
+            if (!$user->stripe_account_id) {
+                $account = \Stripe\Account::create([
+                    'type' => 'express',
+                    'country' => 'GB',
+                    'email' => $user->email,
+                    'capabilities' => [
+                        'card_payments' => ['requested' => true],
+                        'transfers' => ['requested' => true],
+                    ],
+                    'business_type' => 'individual',
+                    'individual' => [
+                        'first_name' => $user->first_name,
+                        'last_name' => $user->last_name,
+                        'email' => $user->email,
+                    ],
+                ]);
+
+                $user->update(['stripe_account_id' => $account->id]);
+            }
+
+            // Create account link for onboarding
+            $accountLink = \Stripe\AccountLink::create([
+                'account' => $user->stripe_account_id,
+                'refresh_url' => route('worker.stripe'),
+                'return_url' => route('worker.stripe.callback'),
+                'type' => 'account_onboarding',
+            ]);
+
+            return redirect($accountLink->url);
+
+        } catch (\Exception $e) {
+            \Log::error('Stripe Connect creation failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Failed to connect to Stripe: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Handle Stripe Connect callback
+     */
+    public function stripeCallback(Request $request)
+    {
+        $user = Auth::user();
+
+        try {
+            \Stripe\Stripe::setApiKey(config('stripe.secret_key'));
+            $account = \Stripe\Account::retrieve($user->stripe_account_id);
+
+            if ($account->charges_enabled && $account->payouts_enabled) {
+                return redirect()->route('worker.stripe')
+                    ->with('success', 'Stripe account connected successfully!');
+            }
+
+            return redirect()->route('worker.stripe')
+                ->with('error', 'Stripe account setup incomplete. Please try again.');
+
+        } catch (\Exception $e) {
+            \Log::error('Stripe Connect callback failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return redirect()->route('worker.stripe')
+                ->with('error', 'Failed to verify Stripe connection.');
+        }
+    }
+
+    /**
+     * Create Stripe dashboard login link
+     */
+    public function stripeDashboard()
+    {
+        $user = Auth::user();
+
+        if (!$user->stripe_account_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No Stripe account connected'
+            ], 400);
+        }
+
+        try {
+            \Stripe\Stripe::setApiKey(config('stripe.secret_key'));
+            
+            $loginLink = \Stripe\Account::createLoginLink($user->stripe_account_id);
+
+            return response()->json([
+                'success' => true,
+                'url' => $loginLink->url
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Stripe dashboard link creation failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to access Stripe dashboard: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
