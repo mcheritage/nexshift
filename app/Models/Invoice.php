@@ -47,6 +47,7 @@ class Invoice extends Model
 
     // Status constants
     public const STATUS_DRAFT = 'draft';
+    public const STATUS_PENDING = 'pending';
     public const STATUS_SENT = 'sent';
     public const STATUS_PAID = 'paid';
     public const STATUS_OVERDUE = 'overdue';

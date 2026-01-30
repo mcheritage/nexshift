@@ -57,13 +57,14 @@ class InvoiceController extends Controller
         $stats = [
             'total' => Invoice::where('care_home_id', $careHome->id)->count(),
             'draft' => Invoice::where('care_home_id', $careHome->id)->where('status', 'draft')->count(),
+            'pending' => Invoice::where('care_home_id', $careHome->id)->where('status', 'pending')->count(),
             'sent' => Invoice::where('care_home_id', $careHome->id)->where('status', 'sent')->count(),
             'paid' => Invoice::where('care_home_id', $careHome->id)->where('status', 'paid')->count(),
             'overdue' => Invoice::where('care_home_id', $careHome->id)->where('status', 'overdue')->count(),
             'uninvoiced_timesheets' => $availableTimesheets->count(),
             'uninvoiced_total' => $availableTimesheets->sum('total_pay'),
             'total_outstanding' => Invoice::where('care_home_id', $careHome->id)
-                ->whereIn('status', ['sent', 'overdue'])
+                ->whereIn('status', ['pending', 'sent', 'overdue'])
                 ->sum('total'),
             'total_paid' => Invoice::where('care_home_id', $careHome->id)
                 ->where('status', 'paid')
@@ -90,6 +91,7 @@ class InvoiceController extends Controller
             ],
             'statusOptions' => [
                 'draft' => 'Draft',
+                'pending' => 'Pending',
                 'sent' => 'Sent',
                 'paid' => 'Paid',
                 'overdue' => 'Overdue',
@@ -174,7 +176,7 @@ class InvoiceController extends Controller
                 'tax_rate' => $taxRate,
                 'tax_amount' => $taxAmount,
                 'total' => $total,
-                'status' => 'draft',
+                'status' => 'pending',
                 'due_date' => now()->addDays(7),
                 'notes' => "Invoice for {$timesheets->count()} approved timesheet(s)",
             ]);
