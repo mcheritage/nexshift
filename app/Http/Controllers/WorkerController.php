@@ -752,7 +752,10 @@ class WorkerController extends Controller
         $user = Auth::user();
 
         if (!$user->stripe_account_id) {
-            return back()->with('error', 'No Stripe account connected');
+            return response()->json([
+                'success' => false,
+                'message' => 'No Stripe account connected'
+            ], 400);
         }
 
         try {
@@ -760,14 +763,20 @@ class WorkerController extends Controller
             
             $loginLink = \Stripe\Account::createLoginLink($user->stripe_account_id);
 
-            return redirect($loginLink->url);
+            return response()->json([
+                'success' => true,
+                'url' => $loginLink->url
+            ]);
 
         } catch (\Exception $e) {
             \Log::error('Stripe dashboard link creation failed', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
             ]);
-            return back()->with('error', 'Failed to access Stripe dashboard: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to access Stripe dashboard: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

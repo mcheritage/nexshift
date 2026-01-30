@@ -16,8 +16,34 @@ export default function Stripe({ stripeConnected, stripeAccountId }: StripePageP
         router.post(route('worker.stripe.connect'));
     };
 
-    const handleStripeDashboard = () => {
-        router.post(route('worker.stripe.dashboard'));
+    const handleStripeDashboard = async () => {
+        try {
+            const response = await fetch(route('worker.stripe.dashboard'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                alert(errorData.message || 'Failed to access Stripe dashboard');
+                return;
+            }
+
+            const data = await response.json();
+
+            if (data.success && data.url) {
+                window.open(data.url, '_blank');
+            } else {
+                alert(data.message || 'Failed to access Stripe dashboard');
+            }
+        } catch (error: any) {
+            console.error('Error accessing Stripe dashboard:', error);
+            alert('Failed to access Stripe dashboard: ' + (error.message || 'Unknown error'));
+        }
     };
 
     return (
