@@ -19,11 +19,10 @@ export default function Stripe({ stripeConnected, stripeAccountId }: StripePageP
     const handleStripeDashboard = async () => {
         try {
             const response = await fetch(route('worker.stripe.dashboard'), {
-                method: 'POST',
+                method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
             });
 
