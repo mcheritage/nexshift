@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
 
 class Timesheet extends Model
@@ -84,6 +85,11 @@ class Timesheet extends Model
             ->withTimestamps();
     }
 
+    public function statusHistory(): HasMany
+    {
+        return $this->hasMany(TimesheetStatusHistory::class)->orderBy('created_at', 'desc');
+    }
+
     // Helper methods - use raw attributes to avoid accessor interference
     public function calculateTotalHours(): float
     {
@@ -126,7 +132,18 @@ class Timesheet extends Model
 
     public function isEditable(): bool
     {
-        return in_array($this->status, [self::STATUS_DRAFT, self::STATUS_QUERIED]);
+        return in_array($this->status, [self::STATUS_DRAFT, self::STATUS_QUERIED, self::STATUS_REJECTED]);
+    }
+
+    // Log status change to history
+    public function logStatusChange(string $newStatus, ?string $changedBy = null, ?string $notes = null): void
+    {
+        TimesheetStatusHistory::create([
+            'timesheet_id' => $this->id,
+            'changed_by' => $changedBy,
+            'status' => $newStatus,
+            'notes' => $notes,
+        ]);
     }
 
     // Scopes
