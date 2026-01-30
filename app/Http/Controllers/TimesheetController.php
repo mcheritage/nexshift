@@ -37,7 +37,7 @@ class TimesheetController extends Controller
         }
 
         // Get filters from request
-        $status = $request->get('status', 'submitted'); // Default to 'submitted'
+        $status = $request->get('status', ''); // Default to showing all statuses
         $search = $request->get('search');
         $dateFrom = $request->get('date_from');
         $dateTo = $request->get('date_to');
@@ -72,11 +72,15 @@ class TimesheetController extends Controller
                 'approved' => Timesheet::where('care_home_id', $careHome->id)->where('status', 'approved')->count(),
                 'queried' => Timesheet::where('care_home_id', $careHome->id)->where('status', 'queried')->count(),
                 'rejected' => Timesheet::where('care_home_id', $careHome->id)->where('status', 'rejected')->count(),
+                'paid' => Timesheet::where('care_home_id', $careHome->id)->where('status', 'paid')->count(),
                 'total_pending_pay' => Timesheet::where('care_home_id', $careHome->id)
                     ->where('status', 'submitted')
                     ->sum('total_pay'),
                 'total_approved_pay' => Timesheet::where('care_home_id', $careHome->id)
                     ->where('status', 'approved')
+                    ->sum('total_pay'),
+                'total_paid' => Timesheet::where('care_home_id', $careHome->id)
+                    ->where('status', 'paid')
                     ->sum('total_pay'),
             ];
 

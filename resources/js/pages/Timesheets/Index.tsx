@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { SharedData } from '@/types';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
@@ -97,7 +97,7 @@ const statusColors = {
 
 export default function TimesheetsIndex({ timesheets, stats, filters, statusOptions }: TimesheetsIndexProps) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
-    const [statusFilter, setStatusFilter] = useState(filters.status || 'submitted');
+    const [statusFilter, setStatusFilter] = useState(filters.status || '');
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
     const [dateTo, setDateTo] = useState(filters.date_to || '');
     const [selectedTimesheets, setSelectedTimesheets] = useState<string[]>([]);
@@ -105,8 +105,7 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
     const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
     const [queryNotes, setQueryNotes] = useState('');
     const [rejectNotes, setRejectNotes] = useState('');
-
-    const { patch, processing } = useForm();
+    const [processing, setProcessing] = useState(false);
 
     const formatDateTime = (dateTimeString: string) => {
         try {
@@ -131,7 +130,10 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
     };
 
     const handleApprove = (timesheetId: string) => {
-        patch(`/timesheets/${timesheetId}/approve`);
+        setProcessing(true);
+        router.patch(`/timesheets/${timesheetId}/approve`, {}, {
+            onFinish: () => setProcessing(false)
+        });
     };
 
     const handleQuery = (timesheetId: string) => {
@@ -140,12 +142,15 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
             return;
         }
 
-        patch(`/timesheets/${timesheetId}/query`, {
-            data: { manager_notes: queryNotes },
+        setProcessing(true);
+        router.patch(`/timesheets/${timesheetId}/query`, {
+            manager_notes: queryNotes
+        }, {
             onSuccess: () => {
                 setShowQueryModal(null);
                 setQueryNotes('');
-            }
+            },
+            onFinish: () => setProcessing(false)
         });
     };
 
@@ -155,12 +160,15 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
             return;
         }
 
-        patch(`/timesheets/${timesheetId}/reject`, {
-            data: { manager_notes: rejectNotes },
+        setProcessing(true);
+        router.patch(`/timesheets/${timesheetId}/reject`, {
+            manager_notes: rejectNotes
+        }, {
             onSuccess: () => {
                 setShowRejectModal(null);
                 setRejectNotes('');
-            }
+            },
+            onFinish: () => setProcessing(false)
         });
     };
 
@@ -170,11 +178,14 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
             return;
         }
 
-        patch('/timesheets/bulk-approve', {
-            data: { timesheet_ids: selectedTimesheets },
+        setProcessing(true);
+        router.patch('/timesheets/bulk-approve', {
+            timesheet_ids: selectedTimesheets
+        }, {
             onSuccess: () => {
                 setSelectedTimesheets([]);
-            }
+            },
+            onFinish: () => setProcessing(false)
         });
     };
 
@@ -221,7 +232,7 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
                 </div>
 
                 {/* Statistics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                     <Card>
                         <CardContent className="p-6 text-center">
                             <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
@@ -229,6 +240,18 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
                             <div className="text-xs text-gray-500 mt-1">
                                 {formatCurrency(stats.total_pending_pay)} pending
                             </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-6 text-center">
+                            <div className="text-2xl font-bold text-orange-600">{stats.queried}</div>
+                            <div className="text-sm text-gray-600">Queried</div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-6 text-center">
+                            <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
+                            <div className="text-sm text-gray-600">Rejected</div>
                         </CardContent>
                     </Card>
                     <Card>
@@ -242,8 +265,11 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
                     </Card>
                     <Card>
                         <CardContent className="p-6 text-center">
-                            <div className="text-2xl font-bold text-orange-600">{stats.queried}</div>
-                            <div className="text-sm text-gray-600">Queried</div>
+                            <div className="text-2xl font-bold text-emerald-600">{stats.paid}</div>
+                            <div className="text-sm text-gray-600">Paid</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                                {formatCurrency(stats.total_paid || 0)} paid
+                            </div>
                         </CardContent>
                     </Card>
                     <Card>
@@ -277,7 +303,7 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
                                     onChange={(e) => setStatusFilter(e.target.value)}
                                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                                 >
-                                    <option value="">All Statuses</option>
+                                    <option value="">All Timesheets</option>
                                     {Object.entries(statusOptions).map(([value, label]) => (
                                         <option key={value} value={value}>{label}</option>
                                     ))}
@@ -337,7 +363,7 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
-                            <CardTitle>Timesheets ({timesheets?.data?.length || 0})</CardTitle>
+                            <CardTitle>Timesheets ({timesheets?.total || timesheets?.data?.length || 0})</CardTitle>
                             {timesheets?.data?.some(t => t.status === 'submitted') && (
                                 <label className="flex items-center text-sm">
                                     <input

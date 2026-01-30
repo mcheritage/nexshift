@@ -44,7 +44,6 @@ export default function CreateInvoice({ availableTimesheets }: CreateInvoiceProp
         period_end: '',
         invoice_date: new Date().toISOString().split('T')[0],
         due_date: '',
-        tax_rate: '20',
         notes: '',
     });
 
@@ -99,8 +98,7 @@ export default function CreateInvoice({ availableTimesheets }: CreateInvoiceProp
         .filter(t => selectedTimesheets.includes(t.id))
         .reduce((sum, t) => sum + parseFloat(t.total_pay.toString()), 0);
 
-    const taxAmount = (selectedTotal * parseFloat(data.tax_rate)) / 100;
-    const total = selectedTotal + taxAmount;
+    const total = selectedTotal;
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-GB', {
@@ -316,23 +314,6 @@ export default function CreateInvoice({ availableTimesheets }: CreateInvoiceProp
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="tax_rate">VAT Rate (%)</Label>
-                                    <Input
-                                        id="tax_rate"
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        max="100"
-                                        value={data.tax_rate}
-                                        onChange={(e) => setData('tax_rate', e.target.value)}
-                                        required
-                                    />
-                                    {errors.tax_rate && (
-                                        <p className="text-red-600 text-sm mt-1">{errors.tax_rate}</p>
-                                    )}
-                                </div>
-
-                                <div>
                                     <Label htmlFor="notes">Notes (Optional)</Label>
                                     <textarea
                                         id="notes"
@@ -355,14 +336,6 @@ export default function CreateInvoice({ availableTimesheets }: CreateInvoiceProp
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-600">Selected Timesheets:</span>
                                     <span className="font-medium">{selectedTimesheets.length}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">Subtotal:</span>
-                                    <span className="font-medium">{formatCurrency(selectedTotal)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">VAT ({data.tax_rate}%):</span>
-                                    <span className="font-medium">{formatCurrency(taxAmount)}</span>
                                 </div>
                                 <div className="border-t pt-3 flex justify-between">
                                     <span className="font-semibold">Total:</span>

@@ -211,14 +211,6 @@ export default function ShowInvoice({ invoice }: ShowInvoiceProps) {
 
                         <div className="flex justify-end">
                             <div className="w-64 space-y-2">
-                                <div className="flex justify-between py-2 border-t">
-                                    <span className="text-gray-600">Subtotal:</span>
-                                    <span className="font-medium">{formatCurrency(invoice.subtotal)}</span>
-                                </div>
-                                <div className="flex justify-between py-2">
-                                    <span className="text-gray-600">VAT ({invoice.tax_rate}%):</span>
-                                    <span className="font-medium">{formatCurrency(invoice.tax_amount)}</span>
-                                </div>
                                 <div className="flex justify-between py-3 border-t-2 border-gray-300">
                                     <span className="font-bold text-lg">Total:</span>
                                     <span className="font-bold text-xl">{formatCurrency(invoice.total)}</span>
