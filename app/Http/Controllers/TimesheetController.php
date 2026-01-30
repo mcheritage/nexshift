@@ -170,6 +170,9 @@ class TimesheetController extends Controller
                 'approved_at' => now(),
             ]);
 
+            // Log status change to history
+            $timesheet->logStatusChange(Timesheet::STATUS_APPROVED, $user->id);
+
             // Log activity
             ActivityLogService::logTimesheetApproved($timesheet, $timesheet->care_home_id);
             
@@ -246,10 +249,11 @@ class TimesheetController extends Controller
         $timesheet->update([
             'status' => Timesheet::STATUS_QUERIED,
             'manager_notes' => $request->manager_notes,
-            'approved_by' => $user->id,
-            'approved_at' => now(),
         ]);
-        
+
+        // Log status change to history
+        $timesheet->logStatusChange(Timesheet::STATUS_QUERIED, $user->id, $request->manager_notes);
+
         // Create notification for worker
         Notification::create([
             'user_id' => $timesheet->worker_id,
@@ -303,10 +307,11 @@ class TimesheetController extends Controller
         $timesheet->update([
             'status' => Timesheet::STATUS_REJECTED,
             'manager_notes' => $request->manager_notes,
-            'approved_by' => $user->id,
-            'approved_at' => now(),
         ]);
-        
+
+        // Log status change to history
+        $timesheet->logStatusChange(Timesheet::STATUS_REJECTED, $user->id, $request->manager_notes);
+
         // Create notification for worker
         Notification::create([
             'user_id' => $timesheet->worker_id,
@@ -377,7 +382,7 @@ class TimesheetController extends Controller
             abort(403, 'Access denied');
         }
 
-        $timesheet->load(['worker.care_home', 'shift.careHome', 'approver', 'careHome']);
+        $timesheet->load(['worker.care_home', 'shift.careHome', 'approver', 'careHome', 'statusHistory.changedBy']);
 
         return Inertia::render('Timesheets/Show', [
             'timesheet' => $timesheet,

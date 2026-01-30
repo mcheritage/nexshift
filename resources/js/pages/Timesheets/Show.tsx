@@ -47,6 +47,18 @@ interface CareHome {
     address?: string;
 }
 
+interface StatusHistory {
+    id: string;
+    status: string;
+    notes?: string;
+    created_at: string;
+    changed_by?: {
+        id: string;
+        first_name: string;
+        last_name: string;
+    };
+}
+
 interface Timesheet {
     id: string;
     status: string;
@@ -69,6 +81,7 @@ interface Timesheet {
     worker: Worker;
     shift: Shift;
     care_home: CareHome;
+    status_history?: StatusHistory[];
     approver?: {
         id: string;
         first_name: string;
@@ -455,59 +468,45 @@ export default function TimesheetShow({ timesheet, statusOptions }: TimesheetSho
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-3">
-                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                                <span className="font-medium">Created</span>
-                                <span className="text-sm text-gray-600">
-                                    {formatDateTime(timesheet.created_at)}
-                                </span>
-                            </div>
-                            
-                            {timesheet.submitted_at && (
-                                <div className="flex items-center justify-between p-3 bg-yellow-50 rounded">
-                                    <span className="font-medium">Submitted</span>
-                                    <span className="text-sm text-gray-600">
-                                        {formatDateTime(timesheet.submitted_at)}
-                                    </span>
-                                </div>
-                            )}
-                            
-                            {timesheet.queried_at && (
-                                <div className="flex items-center justify-between p-3 bg-orange-50 rounded">
-                                    <span className="font-medium">Queried</span>
-                                    <span className="text-sm text-gray-600">
-                                        {formatDateTime(timesheet.queried_at)}
-                                    </span>
-                                </div>
-                            )}
-                            
-                            {timesheet.approved_at && (
-                                <div className="flex items-center justify-between p-3 bg-green-50 rounded">
-                                    <div>
-                                        <span className="font-medium">Approved</span>
-                                        {timesheet.approver && (
-                                            <div className="text-sm text-gray-600">
-                                                by {timesheet.approver.first_name} {timesheet.approver.last_name}
+                            {timesheet.status_history && timesheet.status_history.length > 0 ? (
+                                timesheet.status_history.map((history) => {
+                                    const statusColorMap: Record<string, string> = {
+                                        'draft': 'bg-gray-50',
+                                        'submitted': 'bg-yellow-50',
+                                        'approved': 'bg-green-50',
+                                        'queried': 'bg-orange-50',
+                                        'rejected': 'bg-red-50',
+                                        'paid': 'bg-emerald-50',
+                                    };
+                                    
+                                    return (
+                                        <div key={history.id} className={`p-3 rounded ${statusColorMap[history.status] || 'bg-gray-50'}`}>
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <span className="font-medium capitalize">{history.status}</span>
+                                                    {history.changed_by && (
+                                                        <div className="text-sm text-gray-600 mt-1">
+                                                            by {history.changed_by.first_name} {history.changed_by.last_name}
+                                                        </div>
+                                                    )}
+                                                    {history.notes && (
+                                                        <div className="text-sm text-gray-700 mt-2 italic">
+                                                            "{history.notes}"
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <span className="text-sm text-gray-600 whitespace-nowrap ml-4">
+                                                    {formatDateTime(history.created_at)}
+                                                </span>
                                             </div>
-                                        )}
-                                    </div>
-                                    <span className="text-sm text-gray-600">
-                                        {formatDateTime(timesheet.approved_at)}
-                                    </span>
-                                </div>
-                            )}
-                            
-                            {timesheet.rejected_at && (
-                                <div className="flex items-center justify-between p-3 bg-red-50 rounded">
-                                    <div>
-                                        <span className="font-medium">Rejected</span>
-                                        {timesheet.approver && (
-                                            <div className="text-sm text-gray-600">
-                                                by {timesheet.approver.first_name} {timesheet.approver.last_name}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <span className="text-sm text-gray-600">
-                                        {formatDateTime(timesheet.rejected_at)}
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="p-3 bg-gray-50 rounded">
+                                    <span className="font-medium">Created</span>
+                                    <span className="text-sm text-gray-600 ml-4">
+                                        {formatDateTime(timesheet.created_at)}
                                     </span>
                                 </div>
                             )}

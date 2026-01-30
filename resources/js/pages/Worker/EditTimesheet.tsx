@@ -59,6 +59,7 @@ interface EditTimesheetPageProps extends SharedData {
 const statusColors = {
     'draft': 'bg-gray-100 text-gray-800',
     'queried': 'bg-yellow-100 text-yellow-800',
+    'rejected': 'bg-red-100 text-red-800',
 };
 
 export default function EditTimesheet({ timesheet }: EditTimesheetPageProps) {
@@ -199,6 +200,24 @@ export default function EditTimesheet({ timesheet }: EditTimesheetPageProps) {
                             </CardHeader>
                             <CardContent>
                                 <p className="text-yellow-700">{timesheet.manager_notes}</p>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Manager Notes (if rejected) */}
+                    {timesheet.status === 'rejected' && timesheet.manager_notes && (
+                        <Card className="border-red-200 bg-red-50">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-red-800">
+                                    <AlertTriangle className="h-5 w-5" />
+                                    Timesheet Rejected
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-red-700">{timesheet.manager_notes}</p>
+                                <p className="text-sm text-red-600 mt-2">
+                                    Please review the feedback and update your timesheet before resubmitting.
+                                </p>
                             </CardContent>
                         </Card>
                     )}

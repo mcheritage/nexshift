@@ -427,6 +427,11 @@ class InvoiceController extends Controller
 
                     // Mark all timesheets as paid
                     $invoice->timesheets()->update(['status' => 'paid']);
+                    
+                    // Log status change for each timesheet
+                    foreach ($invoice->timesheets as $timesheet) {
+                        $timesheet->logStatusChange('paid', null, "Paid via invoice {$invoice->invoice_number}");
+                    }
 
                     // Get the PaymentIntent to access charge ID
                     $paymentIntent = \Stripe\PaymentIntent::retrieve(
