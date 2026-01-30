@@ -425,6 +425,9 @@ class InvoiceController extends Controller
                         'stripe_payment_intent_id' => $session->payment_intent,
                     ]);
 
+                    // Mark all timesheets as paid
+                    $invoice->timesheets()->update(['status' => 'paid']);
+
                     // Get the PaymentIntent to access charge ID
                     $paymentIntent = \Stripe\PaymentIntent::retrieve(
                         $session->payment_intent

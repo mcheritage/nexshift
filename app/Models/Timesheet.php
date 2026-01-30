@@ -55,6 +55,7 @@ class Timesheet extends Model
     public const STATUS_APPROVED = 'approved';
     public const STATUS_QUERIED = 'queried';
     public const STATUS_REJECTED = 'rejected';
+    public const STATUS_PAID = 'paid';
 
     // Relationships
     public function shift(): BelongsTo

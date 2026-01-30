@@ -95,7 +95,8 @@ class TimesheetController extends Controller
                     'submitted' => 'Submitted',
                     'approved' => 'Approved',
                     'queried' => 'Queried',
-                    'rejected' => 'Rejected'
+                    'rejected' => 'Rejected',
+                    'paid' => 'Paid'
                 ]
             ]);
         } catch (\Exception $e) {
@@ -136,7 +137,8 @@ class TimesheetController extends Controller
                     'submitted' => 'Submitted',
                     'approved' => 'Approved',
                     'queried' => 'Queried',
-                    'rejected' => 'Rejected'
+                    'rejected' => 'Rejected',
+                    'paid' => 'Paid'
                 ]
             ]);
         }
@@ -385,6 +387,7 @@ class TimesheetController extends Controller
                 'approved' => 'Approved',
                 'queried' => 'Queried',
                 'rejected' => 'Rejected',
+                'paid' => 'Paid',
             ]
         ]);
     }
