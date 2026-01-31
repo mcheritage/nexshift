@@ -56,14 +56,14 @@ class FinancesController extends Controller
 
         // Get timesheet statistics
         $timesheetStats = [
-            // Total hours worked (approved and paid timesheets)
+            // Total hours worked (only paid timesheets)
             'total_hours_worked' => (float) Timesheet::where('worker_id', $user->id)
-                ->whereIn('status', [Timesheet::STATUS_APPROVED, Timesheet::STATUS_PAID])
+                ->where('status', Timesheet::STATUS_PAID)
                 ->sum('total_hours'),
             
-            // Hours this month
+            // Hours this month (only paid)
             'hours_this_month' => (float) Timesheet::where('worker_id', $user->id)
-                ->whereIn('status', [Timesheet::STATUS_APPROVED, Timesheet::STATUS_PAID])
+                ->where('status', Timesheet::STATUS_PAID)
                 ->whereMonth('approved_at', now()->month)
                 ->whereYear('approved_at', now()->year)
                 ->sum('total_hours'),
@@ -75,22 +75,27 @@ class FinancesController extends Controller
                 ->whereYear('approved_at', now()->subMonth()->year)
                 ->sum('total_hours'),
             
-            // Pending hours (submitted but not approved)
-            'pending_hours' => (float) Timesheet::where('worker_id', $user->id)
+            // Pending approval hours (submitted but not approved)
+            'pending_approval_hours' => (float) Timesheet::where('worker_id', $user->id)
                 ->where('status', Timesheet::STATUS_SUBMITTED)
+                ->sum('total_hours'),
+            
+            // Pending payment hours (approved but not paid)
+            'pending_payment_hours' => (float) Timesheet::where('worker_id', $user->id)
+                ->where('status', Timesheet::STATUS_APPROVED)
                 ->sum('total_hours'),
         ];
 
         // Calculate earnings stats from timesheets
         $stats = [
-            // Total earned from approved/paid timesheets
+            // Total earned from paid timesheets only
             'total_earned' => (float) Timesheet::where('worker_id', $user->id)
-                ->whereIn('status', [Timesheet::STATUS_APPROVED, Timesheet::STATUS_PAID])
+                ->where('status', Timesheet::STATUS_PAID)
                 ->sum('total_pay'),
             
-            // Monthly earnings from approved/paid timesheets
+            // Monthly earnings from paid timesheets only
             'monthly_earnings' => (float) Timesheet::where('worker_id', $user->id)
-                ->whereIn('status', [Timesheet::STATUS_APPROVED, Timesheet::STATUS_PAID])
+                ->where('status', Timesheet::STATUS_PAID)
                 ->whereMonth('approved_at', now()->month)
                 ->whereYear('approved_at', now()->year)
                 ->sum('total_pay'),
@@ -102,9 +107,14 @@ class FinancesController extends Controller
                 ->whereYear('approved_at', now()->subMonth()->year)
                 ->sum('total_pay'),
             
-            // Pending earnings (from submitted timesheets)
-            'pending_earnings' => (float) Timesheet::where('worker_id', $user->id)
+            // Pending approval earnings (from submitted timesheets)
+            'pending_approval_earnings' => (float) Timesheet::where('worker_id', $user->id)
                 ->where('status', Timesheet::STATUS_SUBMITTED)
+                ->sum('total_pay'),
+            
+            // Pending payment earnings (from approved but not paid timesheets)
+            'pending_payment_earnings' => (float) Timesheet::where('worker_id', $user->id)
+                ->where('status', Timesheet::STATUS_APPROVED)
                 ->sum('total_pay'),
             
             // Total approved timesheets (approved + paid)

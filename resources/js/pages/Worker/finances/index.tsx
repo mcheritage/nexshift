@@ -11,7 +11,8 @@ interface Stats {
     total_earned: number;
     monthly_earnings: number;
     last_month_earnings: number;
-    pending_earnings: number;
+    pending_approval_earnings: number;
+    pending_payment_earnings: number;
     total_approved_timesheets: number;
 }
 
@@ -19,7 +20,8 @@ interface TimesheetStats {
     total_hours_worked: number;
     hours_this_month: number;
     hours_last_month: number;
-    pending_hours: number;
+    pending_approval_hours: number;
+    pending_payment_hours: number;
 }
 
 interface StripeBalance {
@@ -166,7 +168,7 @@ export default function WorkerFinances({
                     )}
 
                     {/* Main Stats Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
                         {/* Total Hours Worked */}
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -221,20 +223,38 @@ export default function WorkerFinances({
                             </CardContent>
                         </Card>
 
-                        {/* Pending Earnings */}
+                        {/* Pending Approval */}
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">
-                                    Pending
+                                    Pending Approval
+                                </CardTitle>
+                                <Activity className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-yellow-600">
+                                    {formatCurrency(stats.pending_approval_earnings)}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {timesheetStats.pending_approval_hours.toFixed(1)} hrs awaiting approval
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        {/* Pending Payment */}
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">
+                                    Pending Payment
                                 </CardTitle>
                                 <Activity className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold text-orange-600">
-                                    {formatCurrency(stats.pending_earnings)}
+                                    {formatCurrency(stats.pending_payment_earnings)}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    {timesheetStats.pending_hours.toFixed(1)} hrs pending approval
+                                    {timesheetStats.pending_payment_hours.toFixed(1)} hrs approved, not paid
                                 </p>
                             </CardContent>
                         </Card>
