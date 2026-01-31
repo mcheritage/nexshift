@@ -665,8 +665,25 @@ class WorkerController extends Controller
     {
         $user = Auth::user();
         
+        $stripeConnected = false;
+        
+        if ($user->stripe_account_id) {
+            try {
+                \Stripe\Stripe::setApiKey(config('stripe.secret_key'));
+                $account = \Stripe\Account::retrieve($user->stripe_account_id);
+                
+                // Check if account is fully onboarded
+                $stripeConnected = $account->charges_enabled && $account->payouts_enabled;
+            } catch (\Exception $e) {
+                \Log::error('Failed to retrieve Stripe account', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+        
         return Inertia::render('Worker/Stripe', [
-            'stripeConnected' => !empty($user->stripe_account_id),
+            'stripeConnected' => $stripeConnected,
             'stripeAccountId' => $user->stripe_account_id,
         ]);
     }
