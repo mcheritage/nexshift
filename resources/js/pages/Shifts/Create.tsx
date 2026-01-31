@@ -213,7 +213,13 @@ export default function CreateShift({}: CreateShiftProps) {
             }
             
             const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-            return hours > 0 ? `${hours.toFixed(1)} hours` : '';
+            
+            // Subtract unpaid breaks
+            const breakMinutes = data.break_duration || 0;
+            const breakHours = breakMinutes / 60;
+            const billableHours = data.break_paid ? hours : (hours - breakHours);
+            
+            return billableHours > 0 ? `${billableHours.toFixed(1)} hours` : '';
         }
         return '';
     };
@@ -231,8 +237,14 @@ export default function CreateShift({}: CreateShiftProps) {
                 end.setDate(end.getDate() + 1);
             }
             const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            
+            // Subtract unpaid breaks
+            const breakMinutes = data.break_duration || 0;
+            const breakHours = breakMinutes / 60;
+            const billableHours = data.break_paid ? hours : (hours - breakHours);
+            
             const rate = parseFloat(data.hourly_rate);
-            return hours > 0 && rate > 0 ? `£${(hours * rate).toFixed(2)}` : '';
+            return billableHours > 0 && rate > 0 ? `£${(billableHours * rate).toFixed(2)}` : '';
         }
         return '';
     };
