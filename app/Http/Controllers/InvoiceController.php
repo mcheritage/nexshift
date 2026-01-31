@@ -503,6 +503,22 @@ class InvoiceController extends Controller
                                     ],
                                 ]);
                                 
+                                // Send email to worker
+                                try {
+                                    \Mail::to($payment['worker']->email)->send(
+                                        new \App\Mail\PaymentReceived(
+                                            $payment['amount'],
+                                            $invoice,
+                                            $careHome->name
+                                        )
+                                    );
+                                } catch (\Exception $e) {
+                                    \Log::error('Failed to send payment received email to worker', [
+                                        'worker_id' => $payment['worker']->id,
+                                        'error' => $e->getMessage(),
+                                    ]);
+                                }
+                                
                                 \Log::info('Stripe transfer created successfully', [
                                     'transfer_id' => $transfer->id,
                                     'worker_id' => $payment['worker']->id,
@@ -531,6 +547,18 @@ class InvoiceController extends Controller
                         }
                     }
                 });
+
+                // Send email to care home confirming payment
+                try {
+                    \Mail::to($careHome->email)->send(
+                        new \App\Mail\InvoicePaid($invoice)
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send invoice paid email to care home', [
+                        'care_home_id' => $careHome->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
 
                 return redirect()->route('invoices.show', $invoice)
                     ->with('success', 'Payment successful! Funds are being transferred to workers.');
