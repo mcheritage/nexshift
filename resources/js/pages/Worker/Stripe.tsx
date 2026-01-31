@@ -13,36 +13,32 @@ interface StripePageProps extends SharedData {
 
 export default function Stripe({ stripeConnected, stripeAccountId }: StripePageProps) {
     const handleConnectStripe = () => {
-        router.post(route('worker.stripe.connect'));
+        // Use form submission to handle the redirect to Stripe
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = route('worker.stripe.connect');
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+        }
+        
+        document.body.appendChild(form);
+        form.submit();
     };
 
-    const handleStripeDashboard = async () => {
-        try {
-            const response = await fetch(route('worker.stripe.dashboard'), {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                alert(errorData.message || 'Failed to access Stripe dashboard');
-                return;
-            }
-
-            const data = await response.json();
-
-            if (data.success && data.url) {
-                window.open(data.url, '_blank');
-            } else {
-                alert(data.message || 'Failed to access Stripe dashboard');
-            }
-        } catch (error: any) {
-            console.error('Error accessing Stripe dashboard:', error);
-            alert('Failed to access Stripe dashboard: ' + (error.message || 'Unknown error'));
+    const handleStripeDashboard = () => {
+        if (!stripeConnected || !stripeAccountId) {
+            alert('No Stripe account connected. Please connect your Stripe account first.');
+            return;
         }
+        
+        window.location.href = route('worker.stripe.dashboard');
     };
 
     return (
