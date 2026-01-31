@@ -428,17 +428,19 @@ export default function CreateShift({}: CreateShiftProps) {
                 </div>
 
                                 <div className="space-y-3">
-                                    <div className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id="ends_next_day"
-                                            checked={data.ends_next_day}
-                                            onCheckedChange={(checked) => setData('ends_next_day', !!checked)}
-                                        />
-                                        <Label htmlFor="ends_next_day" className="flex items-center gap-2">
-                                            <Clock className="h-4 w-4 text-blue-500" />
-                                            Shift ends the next day (Night shift)
-                                        </Label>
-                                    </div>
+                                    {data.ends_next_day && (
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="ends_next_day"
+                                                checked={data.ends_next_day}
+                                                disabled
+                                            />
+                                            <Label htmlFor="ends_next_day" className="flex items-center gap-2 text-gray-600">
+                                                <Clock className="h-4 w-4 text-blue-500" />
+                                                Shift ends the next day (Night shift)
+                                            </Label>
+                                        </div>
+                                    )}
 
                                     {data.shift_date && getStartTime() && getEndTime() && (
                                         <div className="p-3 bg-blue-50 border border-blue-200 rounded-md text-sm">
