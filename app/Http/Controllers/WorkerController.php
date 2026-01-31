@@ -659,7 +659,7 @@ class WorkerController extends Controller
     }
 
     /**
-     * Show Stripe connection page
+     * Show Stripe connection page - checks if account is fully onboarded
      */
     public function stripe(): Response
     {
