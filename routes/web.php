@@ -60,6 +60,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Application management routes for care homes
     Route::prefix('applications')->name('applications.')->group(function () {
+        Route::get('/pending', [App\Http\Controllers\ApplicationController::class, 'pendingApplications'])->name('pending');
         Route::get('/shift/{shift}', [App\Http\Controllers\ApplicationController::class, 'index'])->name('index');
         Route::patch('/{application}/accept', [App\Http\Controllers\ApplicationController::class, 'accept'])->name('accept');
         Route::patch('/{application}/reject', [App\Http\Controllers\ApplicationController::class, 'reject'])->name('reject');

@@ -19,6 +19,50 @@ use Inertia\Response;
 class ApplicationController extends Controller
 {
     /**
+     * Display all shifts with pending applications
+     */
+    public function pendingApplications(): Response
+    {
+        $user = Auth::user();
+        $careHome = $user->care_home;
+
+        if (!$careHome) {
+            abort(403, 'Access denied: No care home associated');
+        }
+
+        // Get all shifts with pending applications
+        $shifts = Shift::where('care_home_id', $careHome->id)
+            ->whereHas('applications', function($query) {
+                $query->where('status', Application::STATUS_PENDING);
+            })
+            ->with(['applications' => function($query) {
+                $query->where('status', Application::STATUS_PENDING)
+                    ->with(['worker' => function($q) {
+                        $q->select([
+                            'id', 'first_name', 'last_name', 'email', 
+                            'phone_number', 'profile_photo'
+                        ]);
+                    }])
+                    ->orderBy('applied_at', 'desc');
+            }])
+            ->withCount(['applications as pending_applications_count' => function($query) {
+                $query->where('status', Application::STATUS_PENDING);
+            }])
+            ->orderBy('start_datetime', 'asc')
+            ->get();
+
+        $stats = [
+            'total_shifts' => $shifts->count(),
+            'total_applications' => $shifts->sum('pending_applications_count'),
+        ];
+
+        return Inertia::render('Applications/Pending', [
+            'shifts' => $shifts,
+            'stats' => $stats,
+        ]);
+    }
+
+    /**
      * Display applications for a specific shift (for care home managers)
      */
     public function index(Shift $shift): Response
