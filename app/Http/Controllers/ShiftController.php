@@ -129,6 +129,8 @@ class ShiftController extends Controller
             'start_time' => 'required|string',
             'end_time' => 'required|string',
             'ends_next_day' => 'boolean',
+            'break_duration' => 'nullable|integer|min:0|max:720',
+            'break_paid' => 'boolean',
             'hourly_rate' => 'required|numeric|min:10|max:100',
             'location' => 'required|string|max:255',
             'required_skills' => 'nullable|array',
@@ -152,7 +154,14 @@ class ShiftController extends Controller
         }
         
         $durationHours = $endDateTime->diffInHours($startDateTime, true);
-        $totalPay = $durationHours * $validated['hourly_rate'];
+        $breakDuration = $validated['break_duration'] ?? 0;
+        $breakPaid = $validated['break_paid'] ?? true;
+        
+        // Calculate billable hours (subtract unpaid break time)
+        // Convert break minutes to hours
+        $breakHours = $breakDuration / 60;
+        $billableHours = $breakPaid ? $durationHours : ($durationHours - $breakHours);
+        $totalPay = $billableHours * $validated['hourly_rate'];
 
         // Prepare data for database insertion
         $shiftData = [
@@ -164,6 +173,8 @@ class ShiftController extends Controller
             'start_datetime' => $startDateTime,
             'end_datetime' => $endDateTime,
             'duration_hours' => $durationHours,
+            'break_duration' => $breakDuration,
+            'break_paid' => $breakPaid,
             'hourly_rate' => $validated['hourly_rate'],
             'total_pay' => $totalPay,
             'required_skills' => $validated['required_skills'] ?? [],
