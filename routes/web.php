@@ -136,7 +136,7 @@ Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worke
     Route::get('/stripe', [App\Http\Controllers\WorkerController::class, 'stripe'])->name('stripe');
     Route::post('/stripe/connect', [App\Http\Controllers\WorkerController::class, 'stripeConnect'])->name('stripe.connect');
     Route::get('/stripe/callback', [App\Http\Controllers\WorkerController::class, 'stripeCallback'])->name('stripe.callback');
-    Route::post('/stripe/dashboard', [App\Http\Controllers\WorkerController::class, 'stripeDashboard'])->name('stripe.dashboard');
+    Route::get('/stripe/dashboard', [App\Http\Controllers\WorkerController::class, 'stripeDashboard'])->name('stripe.dashboard');
 });
 
 Route::middleware(['auth'])->group(function () {

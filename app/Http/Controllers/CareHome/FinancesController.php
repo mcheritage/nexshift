@@ -138,6 +138,22 @@ class FinancesController extends Controller
                             'care_home' => $careHome->name,
                         ]),
                     ]);
+                    
+                    // Send email to worker
+                    try {
+                        \Mail::to($worker->email)->send(
+                            new \App\Mail\PaymentReceived(
+                                $timesheet->total_pay,
+                                $invoice,
+                                $careHome->name
+                            )
+                        );
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to send payment received email to worker', [
+                            'worker_id' => $worker->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                 }
 
                 // Mark invoice as paid
@@ -154,6 +170,18 @@ class FinancesController extends Controller
                     'invoice_id' => $invoice->id,
                 ]);
             });
+
+            // Send email to care home confirming payment
+            try {
+                \Mail::to($careHome->email)->send(
+                    new \App\Mail\InvoicePaid($invoice)
+                );
+            } catch (\Exception $e) {
+                \Log::error('Failed to send invoice paid email to care home', [
+                    'care_home_id' => $careHome->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             return redirect()->back()->with('success', 'Invoice paid successfully using wallet balance.');
 

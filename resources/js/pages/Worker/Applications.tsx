@@ -33,11 +33,11 @@ interface WorkerApplicationsProps extends SharedData {
         links: any[];
         meta: any;
     };
-    applicationsByStatus: {
-        pending: Application[];
-        accepted: Application[];
-        rejected: Application[];
-        withdrawn: Application[];
+    stats: {
+        pending: number;
+        accepted: number;
+        rejected: number;
+        withdrawn: number;
     };
 }
 
@@ -55,7 +55,7 @@ const statusLabels = {
     'withdrawn': 'Withdrawn',
 };
 
-export default function WorkerApplications({ applications, applicationsByStatus }: WorkerApplicationsProps) {
+export default function WorkerApplications({ applications, stats }: WorkerApplicationsProps) {
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-GB', { 
@@ -79,7 +79,7 @@ export default function WorkerApplications({ applications, applicationsByStatus 
         <AppLayout>
             <Head title="My Applications" />
             
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <div className="container mx-auto px-4 py-6 space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
@@ -106,25 +106,25 @@ export default function WorkerApplications({ applications, applicationsByStatus 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <Card>
                         <CardContent className="p-6 text-center">
-                            <div className="text-2xl font-bold text-yellow-600">{applicationsByStatus.pending?.length || 0}</div>
+                            <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
                             <div className="text-sm text-gray-600 dark:text-gray-300">Pending</div>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardContent className="p-6 text-center">
-                            <div className="text-2xl font-bold text-green-600">{applicationsByStatus.accepted?.length || 0}</div>
+                            <div className="text-2xl font-bold text-green-600">{stats.accepted}</div>
                             <div className="text-sm text-gray-600 dark:text-gray-300">Accepted</div>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardContent className="p-6 text-center">
-                            <div className="text-2xl font-bold text-red-600">{applicationsByStatus.rejected?.length || 0}</div>
+                            <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
                             <div className="text-sm text-gray-600 dark:text-gray-300">Rejected</div>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardContent className="p-6 text-center">
-                            <div className="text-2xl font-bold text-gray-600">{applicationsByStatus.withdrawn?.length || 0}</div>
+                            <div className="text-2xl font-bold text-gray-600">{stats.withdrawn}</div>
                             <div className="text-sm text-gray-600 dark:text-gray-300">Withdrawn</div>
                         </CardContent>
                     </Card>

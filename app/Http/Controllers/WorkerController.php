@@ -40,6 +40,8 @@ class WorkerController extends Controller
             ->whereDoesntHave('applications', function ($query) use ($user) {
                 $query->where('worker_id', $user->id);
             })
+            // Exclude shifts that have already been filled
+            ->whereNull('selected_worker_id')
             ->orderBy('start_datetime')
             ->limit(10)
             ->get() : collect();
@@ -56,7 +58,9 @@ class WorkerController extends Controller
             'available_shifts' => $isApproved ? Shift::where('status', Shift::STATUS_PUBLISHED)
                 ->whereHas('careHome', function($q) {
                     $q->where('status', 'approved');
-                })->count() : 0,
+                })
+                ->whereNull('selected_worker_id')
+                ->count() : 0,
             'my_applications' => Application::where('worker_id', $user->id)->count(),
             'accepted_applications' => Application::where('worker_id', $user->id)
                 ->where('status', Application::STATUS_ACCEPTED)->count(),
@@ -91,7 +95,9 @@ class WorkerController extends Controller
                     $q->where('status', 'approved');
                 })
                 ->with(['careHome'])
-                ->withCount('applications');
+                ->withCount('applications')
+                // Exclude shifts that have already been filled
+                ->whereNull('selected_worker_id');
 
             // Apply filters
             if ($request->filled('role')) {
@@ -245,17 +251,17 @@ class WorkerController extends Controller
             ->orderBy('applied_at', 'desc')
             ->paginate(15);
 
-        // Group by status
-        $applicationsByStatus = [
-            'pending' => $applications->where('status', Application::STATUS_PENDING),
-            'accepted' => $applications->where('status', Application::STATUS_ACCEPTED),
-            'rejected' => $applications->where('status', Application::STATUS_REJECTED),
-            'withdrawn' => $applications->where('status', Application::STATUS_WITHDRAWN),
+        // Count by status from all applications, not just paginated ones
+        $stats = [
+            'pending' => Application::where('worker_id', $user->id)->where('status', Application::STATUS_PENDING)->count(),
+            'accepted' => Application::where('worker_id', $user->id)->where('status', Application::STATUS_ACCEPTED)->count(),
+            'rejected' => Application::where('worker_id', $user->id)->where('status', Application::STATUS_REJECTED)->count(),
+            'withdrawn' => Application::where('worker_id', $user->id)->where('status', Application::STATUS_WITHDRAWN)->count(),
         ];
 
         return Inertia::render('Worker/Applications', [
             'applications' => $applications,
-            'applicationsByStatus' => $applicationsByStatus,
+            'stats' => $stats,
         ]);
     }
 
@@ -752,10 +758,7 @@ class WorkerController extends Controller
         $user = Auth::user();
 
         if (!$user->stripe_account_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No Stripe account connected'
-            ], 400);
+            return redirect()->back()->with('error', 'No Stripe account connected');
         }
 
         try {
@@ -763,20 +766,15 @@ class WorkerController extends Controller
             
             $loginLink = \Stripe\Account::createLoginLink($user->stripe_account_id);
 
-            return response()->json([
-                'success' => true,
-                'url' => $loginLink->url
-            ]);
+            // Redirect to the Stripe dashboard URL
+            return redirect()->away($loginLink->url);
 
         } catch (\Exception $e) {
             \Log::error('Stripe dashboard link creation failed', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
             ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to access Stripe dashboard: ' . $e->getMessage()
-            ], 500);
+            return redirect()->back()->with('error', 'Failed to access Stripe dashboard: ' . $e->getMessage());
         }
     }
 }
