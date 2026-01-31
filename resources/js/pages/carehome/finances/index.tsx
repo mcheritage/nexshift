@@ -4,16 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Wallet, FileText, Activity, TrendingDown, AlertCircle } from 'lucide-react';
+import { CreditCard, FileText, DollarSign, Calendar, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
-interface WalletData {
-    id: number;
-    balance: number;
-    total_credited: number;
-    total_debited: number;
-}
 
 interface Timesheet {
     id: string;
@@ -31,53 +24,34 @@ interface Invoice {
     invoice_number: string;
     total: number;
     due_date: string;
+    paid_at?: string;
     status: string;
     timesheets: Timesheet[];
-}
-
-interface Transaction {
-    id: string;
-    transaction_id: string;
-    type: 'credit' | 'debit';
-    category: string;
-    description: string;
-    amount: number;
-    balance_after: number;
-    created_at: string;
-    performed_by: {
-        name: string;
-    } | null;
 }
 
 interface Stats {
     pending_invoices_count: number;
     pending_invoices_total: number;
+    total_spent: number;
     monthly_spent: number;
 }
 
 interface Props {
-    wallet: WalletData;
     unpaidInvoices: {
         data: Invoice[];
     };
-    transactions: {
-        data: Transaction[];
+    recentInvoices: {
+        data: Invoice[];
     };
     stats: Stats;
 }
 
-export default function CareHomeFinances({ wallet, unpaidInvoices, transactions, stats }: Props) {
+export default function CareHomeFinances({ unpaidInvoices, recentInvoices, stats }: Props) {
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-GB', {
             style: 'currency',
             currency: 'GBP'
         }).format(amount);
-    };
-
-    const getBalanceColor = (balance: number) => {
-        if (balance > 1000) return 'text-green-600';
-        if (balance > 0) return 'text-gray-600';
-        return 'text-red-600';
     };
 
     const getInvoiceStatusColor = (status: string) => {
@@ -107,36 +81,54 @@ export default function CareHomeFinances({ wallet, unpaidInvoices, transactions,
                     <div className="mb-6">
                         <h1 className="text-3xl font-bold text-gray-900">Finances</h1>
                         <p className="mt-1 text-sm text-gray-600">
-                            Manage your wallet, invoices, and transaction history
+                            Track your spending and manage invoices with Stripe payments
                         </p>
                     </div>
 
-                    {/* Low Balance Warning */}
-                    {wallet.balance < 100 && (
+                    {/* Pending Invoices Warning */}
+                    {stats.pending_invoices_count > 0 && (
                         <Alert className="mb-6 bg-yellow-50 border-yellow-200">
                             <AlertCircle className="h-4 w-4 text-yellow-600" />
                             <AlertDescription className="text-yellow-800">
-                                Your wallet balance is low. Please top up to avoid payment delays.
+                                You have {stats.pending_invoices_count} unpaid invoice{stats.pending_invoices_count !== 1 ? 's' : ''} totaling {formatCurrency(stats.pending_invoices_total)}
                             </AlertDescription>
                         </Alert>
                     )}
 
                     {/* Stats Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                        {/* Wallet Balance */}
+                        {/* Total Spent */}
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">
-                                    Wallet Balance
+                                    Total Spent
                                 </CardTitle>
-                                <Wallet className="h-4 w-4 text-muted-foreground" />
+                                <DollarSign className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className={`text-2xl font-bold ${getBalanceColor(wallet.balance)}`}>
-                                    {formatCurrency(wallet.balance)}
+                                <div className="text-2xl font-bold text-gray-900">
+                                    {formatCurrency(stats.total_spent)}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Available for payments
+                                    All-time via Stripe
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        {/* This Month */}
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">
+                                    This Month
+                                </CardTitle>
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-blue-600">
+                                    {formatCurrency(stats.monthly_spent)}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Paid this month
                                 </p>
                             </CardContent>
                         </Card>
@@ -159,38 +151,20 @@ export default function CareHomeFinances({ wallet, unpaidInvoices, transactions,
                             </CardContent>
                         </Card>
 
-                        {/* Monthly Spent */}
+                        {/* Payment Method */}
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">
-                                    This Month
+                                    Payment Method
                                 </CardTitle>
-                                <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                                <CreditCard className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-red-600">
-                                    {formatCurrency(stats.monthly_spent)}
+                                <div className="text-2xl font-bold text-indigo-600">
+                                    Stripe
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Total spent
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        {/* Total Transactions */}
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
-                                    Transactions
-                                </CardTitle>
-                                <Activity className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-gray-900">
-                                    {transactions.data.length}
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Recent activities
+                                    Secure payments
                                 </p>
                             </CardContent>
                         </Card>
@@ -268,12 +242,8 @@ export default function CareHomeFinances({ wallet, unpaidInvoices, transactions,
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <Link href={route('finances.invoices.show', invoice.id)}>
-                                                        <Button
-                                                            size="sm"
-                                                            variant={wallet.balance >= invoice.total ? 'default' : 'outline'}
-                                                            disabled={wallet.balance < invoice.total}
-                                                        >
-                                                            {wallet.balance >= invoice.total ? 'Pay Now' : 'Insufficient Balance'}
+                                                        <Button size="sm">
+                                                            Pay with Stripe
                                                         </Button>
                                                     </Link>
                                                 </TableCell>
@@ -285,64 +255,63 @@ export default function CareHomeFinances({ wallet, unpaidInvoices, transactions,
                         </CardContent>
                     </Card>
 
-                    {/* Recent Transactions */}
+                    {/* Recent Paid Invoices */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Recent Transactions</CardTitle>
+                            <CardTitle>Recent Payments</CardTitle>
                             <CardDescription>
-                                Your latest financial activities
+                                Your latest paid invoices via Stripe
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            {transactions.data.length === 0 ? (
+                            {recentInvoices.data.length === 0 ? (
                                 <div className="text-center py-8">
-                                    <Activity className="mx-auto h-12 w-12 text-gray-400" />
-                                    <p className="mt-2 text-sm text-gray-600">No transactions yet</p>
-                                    <p className="text-xs text-gray-500">Transaction history will appear here</p>
+                                    <FileText className="mx-auto h-12 w-12 text-gray-400" />
+                                    <p className="mt-2 text-sm text-gray-600">No payments yet</p>
+                                    <p className="text-xs text-gray-500">Your payment history will appear here</p>
                                 </div>
                             ) : (
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Date</TableHead>
-                                            <TableHead>Type</TableHead>
-                                            <TableHead>Description</TableHead>
+                                            <TableHead>Invoice #</TableHead>
+                                            <TableHead>Workers</TableHead>
+                                            <TableHead>Paid Date</TableHead>
+                                            <TableHead>Status</TableHead>
                                             <TableHead className="text-right">Amount</TableHead>
-                                            <TableHead className="text-right">Balance After</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {transactions.data.map((transaction) => (
-                                            <TableRow key={transaction.id}>
-                                                <TableCell>
-                                                    {format(new Date(transaction.created_at), 'MMM dd, yyyy HH:mm')}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge
-                                                        className={
-                                                            transaction.type === 'credit'
-                                                                ? 'bg-green-100 text-green-800'
-                                                                : 'bg-red-100 text-red-800'
-                                                        }
+                                        {recentInvoices.data.map((invoice) => (
+                                            <TableRow key={invoice.id}>
+                                                <TableCell className="font-medium">
+                                                    <Link 
+                                                        href={route('finances.invoices.show', invoice.id)}
+                                                        className="text-blue-600 hover:underline"
                                                     >
-                                                        {transaction.type}
-                                                    </Badge>
+                                                        {invoice.invoice_number}
+                                                    </Link>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="max-w-xs truncate" title={transaction.description}>
-                                                        {transaction.description}
+                                                    <div className="text-sm">
+                                                        {invoice.timesheets.map((ts, idx) => (
+                                                            <span key={ts.id}>
+                                                                {ts.worker.first_name} {ts.worker.last_name}
+                                                                {idx < invoice.timesheets.length - 1 && ', '}
+                                                            </span>
+                                                        ))}
                                                     </div>
                                                 </TableCell>
-                                                <TableCell
-                                                    className={`text-right font-medium ${
-                                                        transaction.type === 'credit' ? 'text-green-600' : 'text-red-600'
-                                                    }`}
-                                                >
-                                                    {transaction.type === 'credit' ? '+' : '-'}
-                                                    {formatCurrency(transaction.amount)}
+                                                <TableCell>
+                                                    {invoice.paid_at && format(new Date(invoice.paid_at), 'MMM dd, yyyy')}
                                                 </TableCell>
-                                                <TableCell className="text-right">
-                                                    {formatCurrency(transaction.balance_after)}
+                                                <TableCell>
+                                                    <Badge className="bg-green-100 text-green-800">
+                                                        Paid
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium text-green-600">
+                                                    {formatCurrency(invoice.total)}
                                                 </TableCell>
                                             </TableRow>
                                         ))}
