@@ -4,12 +4,22 @@ namespace App\Http\Controllers\Worker;
 
 use App\Http\Controllers\Controller;
 use App\Models\Wallet;
+use App\Models\Timesheet;
+use App\Services\StripeConnectService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Carbon\Carbon;
 
 class FinancesController extends Controller
 {
+    protected StripeConnectService $stripeService;
+
+    public function __construct(StripeConnectService $stripeService)
+    {
+        $this->stripeService = $stripeService;
+    }
+
     /**
      * Display worker finances dashboard
      */
@@ -17,43 +27,108 @@ class FinancesController extends Controller
     {
         $user = Auth::user();
 
-        // Get or create wallet
-        $wallet = Wallet::getOrCreateFor($user);
+        // Get Stripe account status
+        $stripeStatus = null;
+        $stripeBalance = null;
+        
+        if ($user->stripe_account_id) {
+            try {
+                $stripeStatus = $this->stripeService->updateAccountStatus($user);
+                
+                // Get Stripe balance if account is fully set up
+                if ($user->stripe_onboarding_complete && $user->stripe_payouts_enabled) {
+                    try {
+                        $stripeBalance = $this->stripeService->getAccountBalance($user);
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to get Stripe balance', [
+                            'user_id' => $user->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to get Stripe status', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
-        // Get recent transactions
-        $transactions = $wallet->transactions()
-            ->with(['performedBy', 'invoice', 'timesheet'])
-            ->latest()
-            ->paginate(15);
+        // Get timesheet statistics
+        $timesheetStats = [
+            // Total hours worked (approved and paid timesheets)
+            'total_hours_worked' => (float) Timesheet::where('worker_id', $user->id)
+                ->whereIn('status', [Timesheet::STATUS_APPROVED, Timesheet::STATUS_PAID])
+                ->sum('total_hours'),
+            
+            // Hours this month
+            'hours_this_month' => (float) Timesheet::where('worker_id', $user->id)
+                ->whereIn('status', [Timesheet::STATUS_APPROVED, Timesheet::STATUS_PAID])
+                ->whereMonth('approved_at', now()->month)
+                ->whereYear('approved_at', now()->year)
+                ->sum('total_hours'),
+            
+            // Hours last month
+            'hours_last_month' => (float) Timesheet::where('worker_id', $user->id)
+                ->whereIn('status', [Timesheet::STATUS_APPROVED, Timesheet::STATUS_PAID])
+                ->whereMonth('approved_at', now()->subMonth()->month)
+                ->whereYear('approved_at', now()->subMonth()->year)
+                ->sum('total_hours'),
+            
+            // Pending hours (submitted but not approved)
+            'pending_hours' => (float) Timesheet::where('worker_id', $user->id)
+                ->where('status', Timesheet::STATUS_SUBMITTED)
+                ->sum('total_hours'),
+        ];
 
-        // Calculate stats
+        // Calculate earnings stats from timesheets
         $stats = [
-            'wallet_balance' => $wallet->balance,
-            'total_earned' => $wallet->total_credited,
-            'monthly_earnings' => $wallet->transactions()
-                ->where('type', 'credit')
-                ->whereMonth('created_at', now()->month)
-                ->sum('amount'),
-            'total_transactions' => $wallet->transactions()->count(),
+            // Total earned from approved/paid timesheets
+            'total_earned' => (float) Timesheet::where('worker_id', $user->id)
+                ->whereIn('status', [Timesheet::STATUS_APPROVED, Timesheet::STATUS_PAID])
+                ->sum('total_pay'),
+            
+            // Monthly earnings from approved/paid timesheets
+            'monthly_earnings' => (float) Timesheet::where('worker_id', $user->id)
+                ->whereIn('status', [Timesheet::STATUS_APPROVED, Timesheet::STATUS_PAID])
+                ->whereMonth('approved_at', now()->month)
+                ->whereYear('approved_at', now()->year)
+                ->sum('total_pay'),
+            
+            // Last month earnings
+            'last_month_earnings' => (float) Timesheet::where('worker_id', $user->id)
+                ->whereIn('status', [Timesheet::STATUS_APPROVED, Timesheet::STATUS_PAID])
+                ->whereMonth('approved_at', now()->subMonth()->month)
+                ->whereYear('approved_at', now()->subMonth()->year)
+                ->sum('total_pay'),
+            
+            // Pending earnings (from submitted timesheets)
+            'pending_earnings' => (float) Timesheet::where('worker_id', $user->id)
+                ->where('status', Timesheet::STATUS_SUBMITTED)
+                ->sum('total_pay'),
+            
+            // Total approved timesheets (approved + paid)
+            'total_approved_timesheets' => Timesheet::where('worker_id', $user->id)
+                ->whereIn('status', [Timesheet::STATUS_APPROVED, Timesheet::STATUS_PAID])
+                ->count(),
         ];
 
-        // Get earnings breakdown by category
-        $earningsBreakdown = [
-            'timesheet_payments' => $wallet->transactions()
-                ->where('type', 'credit')
-                ->where('category', 'timesheet_payment')
-                ->sum('amount'),
-            'manual_credits' => $wallet->transactions()
-                ->where('type', 'credit')
-                ->where('category', 'manual_credit')
-                ->sum('amount'),
-        ];
+        // Get recent approved/paid timesheets
+        $recentTimesheets = Timesheet::where('worker_id', $user->id)
+            ->whereIn('status', [Timesheet::STATUS_APPROVED, Timesheet::STATUS_PAID, Timesheet::STATUS_SUBMITTED])
+            ->with(['shift.careHome'])
+            ->latest('approved_at')
+            ->limit(10)
+            ->get();
 
         return Inertia::render('Worker/finances/index', [
-            'wallet' => $wallet,
-            'transactions' => $transactions,
             'stats' => $stats,
-            'earningsBreakdown' => $earningsBreakdown,
+            'timesheetStats' => $timesheetStats,
+            'recentTimesheets' => $recentTimesheets,
+            'stripeConnected' => (bool) $user->stripe_account_id,
+            'stripeOnboardingComplete' => (bool) $user->stripe_onboarding_complete,
+            'stripeStatus' => $stripeStatus,
+            'stripeBalance' => $stripeBalance,
         ]);
     }
 
