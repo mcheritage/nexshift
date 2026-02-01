@@ -22,6 +22,8 @@ interface Shift {
     end_time: string;
     ends_next_day: boolean;
     hourly_rate: string;
+    break_duration: number;
+    break_paid: boolean;
     location: string;
     required_skills: string[];
     preferred_skills: string[];
@@ -98,6 +100,8 @@ export default function EditShift({ shift }: EditShiftProps) {
         end_minute: endMinute || '00',
         ends_next_day: shift.ends_next_day || false,
         hourly_rate: shift.hourly_rate || '',
+        break_duration: shift.break_duration || 0,
+        break_paid: shift.break_paid !== undefined ? shift.break_paid : true,
         location: shift.location || '',
         required_skills: shift.required_skills || [] as string[],
         preferred_skills: shift.preferred_skills || [] as string[],
@@ -234,7 +238,17 @@ export default function EditShift({ shift }: EditShiftProps) {
             }
             
             const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-            return hours > 0 ? `${hours.toFixed(1)} hours` : '';
+            const breakMinutes = data.break_duration || 0;
+            const breakHours = breakMinutes / 60;
+            const workHours = data.break_paid ? hours : Math.max(0, hours - breakHours);
+            
+            if (hours > 0) {
+                const hoursDisplay = `${hours.toFixed(1)} hours`;
+                if (breakMinutes > 0) {
+                    return `${hoursDisplay} (${breakMinutes}min ${data.break_paid ? 'paid' : 'unpaid'} break)`;
+                }
+                return hoursDisplay;
+            }
         }
         return '';
     };
@@ -253,7 +267,11 @@ export default function EditShift({ shift }: EditShiftProps) {
             }
             const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
             const rate = parseFloat(data.hourly_rate);
-            return hours > 0 && rate > 0 ? `£${(hours * rate).toFixed(2)}` : '';
+            const breakMinutes = data.break_duration || 0;
+            const breakHours = breakMinutes / 60;
+            const billableHours = data.break_paid ? hours : Math.max(0, hours - breakHours);
+            
+            return hours > 0 && rate > 0 ? `£${(billableHours * rate).toFixed(2)}` : '';
         }
         return '';
     };
@@ -478,36 +496,67 @@ export default function EditShift({ shift }: EditShiftProps) {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <Label htmlFor="hourly_rate">Hourly Rate (£) *</Label>
-                                    <div className="relative">
-                                        <Coins className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                            <div className="space-y-4">
+                                {/* Row 1: Hourly Rate and Break */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <Label htmlFor="hourly_rate">Hourly Rate (£) *</Label>
+                                        <div className="relative">
+                                            <Coins className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                            <Input
+                                                id="hourly_rate"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={data.hourly_rate}
+                                                onChange={(e) => setData('hourly_rate', e.target.value)}
+                                                placeholder="15.00"
+                                                className="pl-9"
+                                            />
+                                        </div>
+                                        {errors.hourly_rate && <p className="text-sm text-red-600 mt-1">{errors.hourly_rate}</p>}
+                                    </div>
+
+                                    <div>
+                                        <Label htmlFor="break_duration">Break (minutes)</Label>
                                         <Input
-                                            id="hourly_rate"
+                                            id="break_duration"
                                             type="number"
-                                            step="0.01"
+                                            step="1"
                                             min="0"
-                                            value={data.hourly_rate}
-                                            onChange={(e) => setData('hourly_rate', e.target.value)}
-                                            placeholder="15.00"
-                                            className="pl-9"
+                                            max="720"
+                                            value={data.break_duration}
+                                            onChange={(e) => setData('break_duration', parseInt(e.target.value) || 0)}
+                                            placeholder="0"
                                         />
+                                        <div className="flex items-center space-x-2 mt-2">
+                                            <Checkbox
+                                                id="break_paid"
+                                                checked={data.break_paid}
+                                                onCheckedChange={(checked) => setData('break_paid', !!checked)}
+                                            />
+                                            <Label htmlFor="break_paid" className="text-xs cursor-pointer">
+                                                Paid break
+                                            </Label>
+                                        </div>
+                                        {errors.break_duration && <p className="text-sm text-red-600 mt-1">{errors.break_duration}</p>}
                                     </div>
-                                    {errors.hourly_rate && <p className="text-sm text-red-600 mt-1">{errors.hourly_rate}</p>}
                                 </div>
 
-                                <div>
-                                    <Label className="text-sm text-gray-600">Duration</Label>
-                                    <div className="p-3 bg-gray-50 rounded-md text-sm font-medium text-green-700">
-                                        {calculateShiftDuration() || 'Set start and end times'}
+                                {/* Row 2: Duration and Estimated Pay */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <Label className="text-sm text-gray-600">Duration</Label>
+                                        <div className="p-3 bg-gray-50 rounded-md text-sm font-medium text-green-700">
+                                            {calculateShiftDuration() || 'Set start and end times'}
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div>
-                                    <Label className="text-sm text-gray-600">Estimated Pay</Label>
-                                    <div className="p-3 bg-green-50 rounded-md text-sm font-medium text-green-700">
-                                        {calculateEstimatedPay() || 'Set rate and duration'}
+                                    <div>
+                                        <Label className="text-sm text-gray-600">Estimated Pay</Label>
+                                        <div className="p-3 bg-green-50 rounded-md text-sm font-medium text-green-700">
+                                            {calculateEstimatedPay() || 'Set rate and duration'}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
