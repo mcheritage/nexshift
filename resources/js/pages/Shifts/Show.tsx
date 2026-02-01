@@ -157,16 +157,15 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
                 {/* Header */}
                 <div className="space-y-4">
-                    {/* Back Button */}
-                    <div className="flex justify-between items-center">
-                        <Link href="/shifts">
-                            <Button variant="outline" size="sm">
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Back to Shifts
-                            </Button>
-                        </Link>
+                    {/* Title and Actions */}
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                                {ROLE_LABELS[shift.role] || shift.role}
+                            </h1>
+                        </div>
                         
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-start">
                             {canEdit && (
                                 <Link href={`/shifts/${shift.id}/edit`}>
                                     <Button variant="outline">
@@ -197,10 +196,17 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
                                     Cancel
                                 </Button>
                             )}
+                            
+                            <Link href="/shifts">
+                                <Button variant="outline" size="sm">
+                                    <ArrowLeft className="h-4 w-4 mr-2" />
+                                    Back to Shifts
+                                </Button>
+                            </Link>
                         </div>
                     </div>
                     
-                    {/* Title Section */}
+                    {/* Subtitle */}
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                             {ROLE_LABELS[shift.role] || shift.role}
