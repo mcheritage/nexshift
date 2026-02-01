@@ -29,6 +29,8 @@ class RegisterCareHomeRequest extends FormRequest
     {
         return [
             'name' => 'required|string|unique:'.CareHome::class,
+            'phone_number' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:500',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ];
@@ -43,6 +45,8 @@ class RegisterCareHomeRequest extends FormRequest
             name: $payload['name'],
             email: $payload['email'],
             password: $payload['password'],
+            phone_number: $payload['phone_number'] ?? null,
+            address: $payload['address'] ?? null,
         );
     }
 }

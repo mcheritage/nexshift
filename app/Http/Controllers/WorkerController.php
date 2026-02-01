@@ -247,9 +247,19 @@ class WorkerController extends Controller
         $user = Auth::user();
 
         $applications = Application::where('worker_id', $user->id)
-            ->with(['shift.careHome'])
+            ->with(['shift' => function ($query) {
+                $query->with('careHome');
+            }])
             ->orderBy('applied_at', 'desc')
             ->paginate(15);
+
+        // Ensure shift accessor attributes are loaded
+        $applications->getCollection()->transform(function ($application) {
+            if ($application->shift) {
+                $application->shift->append(['shift_date', 'start_time', 'end_time']);
+            }
+            return $application;
+        });
 
         // Count by status from all applications, not just paginated ones
         $stats = [

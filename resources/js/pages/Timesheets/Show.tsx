@@ -197,27 +197,27 @@ export default function TimesheetShow({ timesheet, statusOptions }: TimesheetSho
             
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-6">
                 {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                        <Link href="/timesheets">
-                            <Button variant="outline" size="sm">
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Back to Timesheets
-                            </Button>
-                        </Link>
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight">
-                                Timesheet Details
-                            </h1>
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">
+                            Timesheet Details
+                        </h1>
+                        <div className="flex items-center gap-3 mt-2">
                             <p className="text-muted-foreground">
                                 #{timesheet.id.substring(0, 8)}
                             </p>
+                            <Badge className={statusColors[timesheet.status as keyof typeof statusColors]}>
+                                {statusOptions[timesheet.status]}
+                            </Badge>
                         </div>
                     </div>
                     
-                    <Badge className={statusColors[timesheet.status as keyof typeof statusColors]}>
-                        {statusOptions[timesheet.status]}
-                    </Badge>
+                    <Link href="/timesheets">
+                        <Button variant="outline" size="sm">
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Back to Timesheets
+                        </Button>
+                    </Link>
                 </div>
 
                 {/* Worker Information */}
