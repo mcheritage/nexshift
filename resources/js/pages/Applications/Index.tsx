@@ -172,7 +172,7 @@ export default function ApplicationsIndex({ shift, applications }: ApplicationsI
         <AppLayout>
             <Head title={`Applications - ${shift.title}`} />
             
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-6">
                 {/* Header */}
                 <div className="space-y-4">
                     <Link href={`/shifts/${shift.id}`}>
