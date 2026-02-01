@@ -30,8 +30,12 @@ interface Shift {
     shift_date: string;
     start_time: string;
     end_time: string;
+    start_datetime: string;
+    end_datetime: string;
     location: string;
     hourly_rate: number;
+    break_duration: number;
+    break_paid: boolean;
     applications_count: number;
     user_application_status: string | null;
     user_has_applied: boolean;
@@ -73,6 +77,18 @@ export default function WorkerShifts({ shifts, filters, roleOptions }: WorkerShi
 
     const formatTime = (timeString: string) => {
         return timeString.substring(0, 5);
+    };
+
+    const calculateTotalPay = (shift: Shift) => {
+        const start = new Date(shift.start_datetime);
+        const end = new Date(shift.end_datetime);
+        const durationMs = end.getTime() - start.getTime();
+        const durationHours = durationMs / (1000 * 60 * 60);
+        
+        const breakHours = shift.break_duration / 60;
+        const billableHours = shift.break_paid ? durationHours : (durationHours - breakHours);
+        
+        return (billableHours * shift.hourly_rate).toFixed(2);
     };
 
     const handleFilterChange = (field: string, value: string) => {
@@ -254,6 +270,18 @@ export default function WorkerShifts({ shifts, filters, roleOptions }: WorkerShi
                                             <div className="flex items-center">
                                                 <Coins className="h-4 w-4 mr-1" />
                                                 £{shift.hourly_rate}/hour
+                                            </div>
+                                            {shift.break_duration > 0 && (
+                                                <div className="flex items-center">
+                                                    <Timer className="h-4 w-4 mr-1" />
+                                                    {shift.break_duration}min break ({shift.break_paid ? 'Paid' : 'Unpaid'})
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Total Pay:</span>
+                                                <span className="text-lg font-bold text-green-600">£{calculateTotalPay(shift)}</span>
                                             </div>
                                         </div>
                                         <div className="mt-3 flex items-center space-x-4">
