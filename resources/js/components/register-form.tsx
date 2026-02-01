@@ -53,6 +53,28 @@ export function RegisterForm({
                   <InputError message={formErrors.name} />
                 </div>
                 <div className="grid gap-3">
+                  <Label htmlFor="phone_number">Phone Number</Label>
+                  <Input
+                    id="phone_number"
+                    type="tel"
+                    name="phone_number"
+                    placeholder="+44 20 1234 5678"
+                    autoComplete="tel"
+                  />
+                  <InputError message={formErrors.phone_number} />
+                </div>
+                <div className="grid gap-3">
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    type="text"
+                    name="address"
+                    placeholder="123 Care Street, London, UK"
+                    autoComplete="street-address"
+                  />
+                  <InputError message={formErrors.address} />
+                </div>
+                <div className="grid gap-3">
                   <Label htmlFor="email">Admin. Email</Label>
                   <Input
                     id="email"

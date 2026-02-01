@@ -17,6 +17,8 @@ class CareHome extends Model
 
     protected $fillable = [
         'name',
+        'phone_number',
+        'address',
         'status',
         'approved_by',
         'approved_at',
