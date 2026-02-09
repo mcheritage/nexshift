@@ -122,6 +122,43 @@ class StripeConnectService
     }
 
     /**
+     * Create a Stripe Connect account session for embedded onboarding
+     *
+     * @param User $user
+     * @return array
+     * @throws ApiErrorException
+     */
+    public function createAccountSession(User $user): array
+    {
+        if (!$user->stripe_account_id) {
+            $this->createConnectAccount($user);
+        }
+
+        try {
+            $session = $this->stripe->accountSessions->create([
+                'account' => $user->stripe_account_id,
+                'components' => [
+                    'account_onboarding' => [
+                        'enabled' => true,
+                    ],
+                ],
+            ]);
+
+            return [
+                'client_secret' => $session->client_secret,
+            ];
+        } catch (ApiErrorException $e) {
+            Log::error('Failed to create Stripe account session', [
+                'user_id' => $user->id,
+                'stripe_account_id' => $user->stripe_account_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
      * Retrieve and update account status
      *
      * @param User $user
