@@ -69,13 +69,14 @@ FROM php:8.4-fpm AS runtime
 # (You can switch to 8.4 when it’s stable for you)
 WORKDIR /var/www/html
 
-# System deps
+# System deps (libpq-dev for PostgreSQL, default-libmysqlclient-dev for MySQL)
 RUN apt-get update && apt-get install -y \
     git curl zip unzip libpng-dev libonig-dev libxml2-dev libpq-dev gnupg ca-certificates \
+    default-libmysqlclient-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# PHP extensions
-RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd
+# PHP extensions (pdo_mysql for MySQL, pdo_pgsql for PostgreSQL)
+RUN docker-php-ext-install pdo pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd
 
 # Optional: PECL, Redis, etc.
 # RUN pecl install redis && docker-php-ext-enable redis
