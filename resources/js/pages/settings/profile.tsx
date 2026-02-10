@@ -8,6 +8,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 
@@ -18,7 +19,14 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: boolean; status?: string }) {
+interface CareHome {
+    id: string;
+    name: string;
+    phone_number?: string;
+    address?: string;
+}
+
+export default function Profile({ mustVerifyEmail, status, careHome }: { mustVerifyEmail: boolean; status?: string; careHome?: CareHome | null }) {
     const { auth } = usePage<SharedData>().props;
 
     return (
@@ -111,6 +119,74 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                         )}
                     </Form>
                 </div>
+
+                {careHome && (
+                    <div className="space-y-6">
+                        <HeadingSmall title="Care Home Contact Information" description="Update your care home's contact details" />
+
+                        <Form
+                            method="patch"
+                            action={route('profile.update')}
+                            options={{
+                                preserveScroll: true,
+                            }}
+                            className="space-y-6"
+                        >
+                            {({ processing, recentlySuccessful, errors }) => (
+                                <>
+                                    {/* Hidden fields for required name and email */}
+                                    <input type="hidden" name="name" value={auth.user.name || ''} />
+                                    <input type="hidden" name="email" value={auth.user.email} />
+                                    
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="care_home_phone">Phone Number</Label>
+
+                                        <Input
+                                            id="care_home_phone"
+                                            type="tel"
+                                            className="mt-1 block w-full"
+                                            defaultValue={careHome.phone_number || ''}
+                                            name="care_home_phone"
+                                            placeholder="+44 20 1234 5678"
+                                            autoComplete="tel"
+                                        />
+
+                                        <InputError className="mt-2" message={errors.care_home_phone} />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="care_home_address">Address</Label>
+
+                                        <Textarea
+                                            id="care_home_address"
+                                            className="mt-1 block w-full"
+                                            defaultValue={careHome.address || ''}
+                                            name="care_home_address"
+                                            placeholder="123 Care Street, London, UK"
+                                            rows={3}
+                                        />
+
+                                        <InputError className="mt-2" message={errors.care_home_address} />
+                                    </div>
+
+                                    <div className="flex items-center gap-4">
+                                        <Button type="submit" disabled={processing}>Save Contact Details</Button>
+
+                                        <Transition
+                                            show={recentlySuccessful}
+                                            enter="transition ease-in-out"
+                                            enterFrom="opacity-0"
+                                            leave="transition ease-in-out"
+                                            leaveTo="opacity-0"
+                                        >
+                                            <p className="text-sm text-neutral-600">Saved</p>
+                                        </Transition>
+                                    </div>
+                                </>
+                            )}
+                        </Form>
+                    </div>
+                )}
 
                 <DeleteUser />
             </SettingsLayout>

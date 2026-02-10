@@ -14,7 +14,8 @@ import {
     CheckCircle,
     XCircle,
     Ban,
-    Shield
+    Shield,
+    CreditCard
 } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -61,11 +62,22 @@ interface HealthCareWorker {
     } | null;
 }
 
-interface Props {
-    healthCareWorker: HealthCareWorker;
+interface StripeStatus {
+    connected: boolean;
+    account_id: string;
+    onboarding_complete: boolean;
+    charges_enabled: boolean;
+    payouts_enabled: boolean;
+    connected_at: string;
+    account_type: string;
 }
 
-export default function HealthCareWorkerShow({ healthCareWorker }: Props) {
+interface Props {
+    healthCareWorker: HealthCareWorker;
+    stripeStatus?: StripeStatus | null;
+}
+
+export default function HealthCareWorkerShow({ healthCareWorker, stripeStatus }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${healthCareWorker.first_name} ${healthCareWorker.last_name}`} />
@@ -163,6 +175,102 @@ export default function HealthCareWorkerShow({ healthCareWorker }: Props) {
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Stripe Connect Status */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <CreditCard className="h-5 w-5" />
+                            Payment Account Status
+                        </CardTitle>
+                        <CardDescription>Stripe Connect account information for receiving payments</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {stripeStatus ? (
+                            <div className="space-y-4">
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1">
+                                            <p className="text-sm text-muted-foreground">Connection Status</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <Badge variant={stripeStatus.onboarding_complete ? "default" : "secondary"}>
+                                                    {stripeStatus.onboarding_complete ? "Connected" : "Pending Setup"}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1">
+                                            <p className="text-sm text-muted-foreground">Account Type</p>
+                                            <p className="font-medium capitalize mt-1">{stripeStatus.account_type || 'Express'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1">
+                                            <p className="text-sm text-muted-foreground">Charges Enabled</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                {stripeStatus.charges_enabled ? (
+                                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                                ) : (
+                                                    <XCircle className="h-4 w-4 text-red-600" />
+                                                )}
+                                                <span className="text-sm font-medium">
+                                                    {stripeStatus.charges_enabled ? 'Yes' : 'No'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1">
+                                            <p className="text-sm text-muted-foreground">Payouts Enabled</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                {stripeStatus.payouts_enabled ? (
+                                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                                ) : (
+                                                    <XCircle className="h-4 w-4 text-red-600" />
+                                                )}
+                                                <span className="text-sm font-medium">
+                                                    {stripeStatus.payouts_enabled ? 'Yes' : 'No'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1">
+                                            <p className="text-sm text-muted-foreground">Connected Date</p>
+                                            <p className="font-medium mt-1">
+                                                {new Date(stripeStatus.connected_at).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1">
+                                            <p className="text-sm text-muted-foreground">Account ID</p>
+                                            <p className="font-mono text-xs mt-1 text-muted-foreground">
+                                                {stripeStatus.account_id}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {!stripeStatus.onboarding_complete && (
+                                    <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                                        <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                            This worker has started the Stripe onboarding process but hasn't completed it yet.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8">
+                                <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                                <p className="text-muted-foreground mb-2">No payment account connected</p>
+                                <p className="text-sm text-muted-foreground">
+                                    This worker hasn't set up their Stripe Connect account yet.
+                                </p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
                 {/* Quick Actions */}
                 <Card>

@@ -1,58 +1,101 @@
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Wallet, TrendingUp, Activity, DollarSign, Eye } from 'lucide-react';
+import { TrendingUp, Activity, DollarSign, Clock, CreditCard, AlertCircle, CheckCircle, ExternalLink, FileText } from 'lucide-react';
 import { format } from 'date-fns';
-
-interface WalletData {
-    id: number;
-    balance: number;
-    total_credited: number;
-}
-
-interface Transaction {
-    id: string;
-    transaction_id: string;
-    type: 'credit' | 'debit';
-    category: string;
-    description: string;
-    amount: number;
-    balance_after: number;
-    created_at: string;
-}
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface Stats {
     total_earned: number;
     monthly_earnings: number;
-    transaction_count: number;
+    last_month_earnings: number;
+    pending_approval_earnings: number;
+    pending_payment_earnings: number;
+    total_approved_timesheets: number;
 }
 
-interface EarningsBreakdown {
-    timesheet_payments: number;
-    manual_credits: number;
-    refunds: number;
+interface TimesheetStats {
+    total_hours_worked: number;
+    hours_this_month: number;
+    hours_last_month: number;
+    pending_approval_hours: number;
+    pending_payment_hours: number;
+}
+
+interface StripeBalance {
+    available: Array<{ amount: number; currency: string }>;
+    pending: Array<{ amount: number; currency: string }>;
+}
+
+interface Timesheet {
+    id: string;
+    status: string;
+    total_hours: number;
+    total_pay: number;
+    approved_at: string | null;
+    created_at: string;
+    shift: {
+        id: string;
+        title: string;
+        shift_date: string;
+        care_home: {
+            name: string;
+        };
+    };
 }
 
 interface Props {
-    wallet: WalletData;
-    transactions: {
-        data: Transaction[];
-        links: any;
-        meta: any;
-    };
     stats: Stats;
-    earningsBreakdown: EarningsBreakdown;
+    timesheetStats: TimesheetStats;
+    recentTimesheets: Timesheet[];
+    stripeConnected: boolean;
+    stripeOnboardingComplete: boolean;
+    stripeStatus: {
+        connected: boolean;
+        onboarding_complete: boolean;
+        charges_enabled: boolean;
+        payouts_enabled: boolean;
+    } | null;
+    stripeBalance: StripeBalance | null;
 }
 
-export default function WorkerFinances({ wallet, transactions, stats, earningsBreakdown }: Props) {
-    const formatCurrency = (amount: number) => {
+export default function WorkerFinances({ 
+    stats, 
+    timesheetStats, 
+    recentTimesheets,
+    stripeConnected,
+    stripeOnboardingComplete,
+    stripeStatus,
+    stripeBalance
+}: Props) {
+    const formatCurrency = (amount: number | undefined) => {
+        if (amount === undefined || amount === null || isNaN(amount)) {
+            return '£0.00';
+        }
         return new Intl.NumberFormat('en-GB', {
             style: 'currency',
             currency: 'GBP'
         }).format(amount);
+    };
+
+    const handleAccessStripeDashboard = () => {
+        // Open Stripe dashboard in new tab - backend will redirect
+        window.open(route('worker.stripe.dashboard'), '_blank');
+    };
+
+    // Get Stripe balance in GBP
+    const getStripeAvailableBalance = () => {
+        if (!stripeBalance || !stripeBalance.available) return 0;
+        const gbpBalance = stripeBalance.available.find(b => b.currency === 'gbp');
+        return gbpBalance ? gbpBalance.amount / 100 : 0; // Stripe amounts are in pence
+    };
+
+    const getStripePendingBalance = () => {
+        if (!stripeBalance || !stripeBalance.pending) return 0;
+        const gbpBalance = stripeBalance.pending.find(b => b.currency === 'gbp');
+        return gbpBalance ? gbpBalance.amount / 100 : 0;
     };
 
     const getCategoryDisplayName = (category: string) => {
@@ -89,43 +132,74 @@ export default function WorkerFinances({ wallet, transactions, stats, earningsBr
                     <div className="mb-6">
                         <h1 className="text-3xl font-bold text-gray-900">My Finances</h1>
                         <p className="mt-1 text-sm text-gray-600">
-                            Track your earnings, wallet balance, and transaction history
+                            Track your earnings, hours worked, and payment history
                         </p>
                     </div>
 
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                        {/* Wallet Balance */}
-                        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                    {/* Stripe Connection Alert */}
+                    {!stripeConnected && (
+                        <Alert className="mb-6 border-blue-200 bg-blue-50">
+                            <CreditCard className="h-4 w-4 text-blue-600" />
+                            <AlertTitle className="text-blue-900">Set up payments</AlertTitle>
+                            <AlertDescription className="text-blue-800">
+                                Connect your Stripe account to receive payments directly to your bank account.
+                                <Link href={route('worker.stripe')}>
+                                    <Button variant="link" className="p-0 h-auto ml-2 text-blue-600">
+                                        Set up now →
+                                    </Button>
+                                </Link>
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
+                    {stripeConnected && !stripeOnboardingComplete && (
+                        <Alert className="mb-6 border-yellow-200 bg-yellow-50">
+                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                            <AlertTitle className="text-yellow-900">Complete payment setup</AlertTitle>
+                            <AlertDescription className="text-yellow-800">
+                                Your Stripe account setup is incomplete. Complete it to start receiving payments.
+                                <Link href={route('worker.stripe')}>
+                                    <Button variant="link" className="p-0 h-auto ml-2 text-yellow-600">
+                                        Complete setup →
+                                    </Button>
+                                </Link>
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
+                    {/* Main Stats Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
+                        {/* Total Hours Worked */}
+                        <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium text-green-900">
-                                    Wallet Balance
+                                <CardTitle className="text-sm font-medium">
+                                    Total Hours Worked
                                 </CardTitle>
-                                <Wallet className="h-5 w-5 text-green-600" />
+                                <Clock className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-bold text-green-700">
-                                    {formatCurrency(wallet.balance)}
+                                <div className="text-2xl font-bold text-gray-900">
+                                    {timesheetStats.total_hours_worked.toFixed(1)}
                                 </div>
-                                <p className="text-xs text-green-700 mt-2">
-                                    Available for withdrawal
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {timesheetStats.hours_this_month.toFixed(1)} hrs this month
                                 </p>
                             </CardContent>
                         </Card>
 
                         {/* Total Earned */}
-                        <Card>
+                        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
+                                <CardTitle className="text-sm font-medium text-green-900">
                                     Total Earned
                                 </CardTitle>
-                                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                <DollarSign className="h-5 w-5 text-green-600" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-gray-900">
+                                <div className="text-3xl font-bold text-green-700">
                                     {formatCurrency(stats.total_earned)}
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-1">
+                                <p className="text-xs text-green-700 mt-2">
                                     All-time earnings
                                 </p>
                             </CardContent>
@@ -144,191 +218,238 @@ export default function WorkerFinances({ wallet, transactions, stats, earningsBr
                                     {formatCurrency(stats.monthly_earnings)}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Monthly earnings
+                                    vs {formatCurrency(stats.last_month_earnings)} last month
                                 </p>
                             </CardContent>
                         </Card>
 
-                        {/* Total Transactions */}
+                        {/* Pending Approval */}
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">
-                                    Transactions
+                                    Pending Approval
                                 </CardTitle>
                                 <Activity className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-gray-900">
-                                    {stats.transaction_count}
+                                <div className="text-2xl font-bold text-yellow-600">
+                                    {formatCurrency(stats.pending_approval_earnings)}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Total transactions
+                                    {timesheetStats.pending_approval_hours.toFixed(1)} hrs awaiting approval
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        {/* Pending Payment */}
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">
+                                    Pending Payment
+                                </CardTitle>
+                                <Activity className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-orange-600">
+                                    {formatCurrency(stats.pending_payment_earnings)}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {timesheetStats.pending_payment_hours.toFixed(1)} hrs approved, not paid
                                 </p>
                             </CardContent>
                         </Card>
                     </div>
 
-                    {/* Earnings Breakdown */}
-                    <Card className="mb-6">
-                        <CardHeader>
-                            <CardTitle>Earnings Breakdown</CardTitle>
-                            <CardDescription>
-                                Your earnings by category
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {/* Timesheet Payments */}
-                                <div className="space-y-2">
+                    {/* Stripe Balance & Payment Info */}
+                    <div className="mb-6">
+                        {stripeConnected && stripeOnboardingComplete && (
+                            <Card>
+                                <CardHeader>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-gray-700">
-                                            Timesheet Payments
-                                        </span>
+                                        <div>
+                                            <CardTitle className="flex items-center gap-2">
+                                                <CreditCard className="h-5 w-5" />
+                                                Stripe Payment Account
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Your earnings are paid directly to your Stripe account
+                                            </CardDescription>
+                                        </div>
                                         <Badge className="bg-green-100 text-green-800">
-                                            Primary
+                                            <CheckCircle className="h-3 w-3 mr-1" />
+                                            Active
                                         </Badge>
                                     </div>
-                                    <div className="text-2xl font-bold text-green-600">
-                                        {formatCurrency(earningsBreakdown.timesheet_payments)}
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {stripeBalance ? (
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="p-4 bg-green-50 rounded-lg">
+                                                <p className="text-sm text-gray-600 mb-1">Available Balance</p>
+                                                <p className="text-3xl font-bold text-green-600">
+                                                    {formatCurrency(getStripeAvailableBalance())}
+                                                </p>
+                                                <p className="text-xs text-gray-500 mt-1">Ready for payout</p>
+                                            </div>
+                                            <div className="p-4 bg-orange-50 rounded-lg">
+                                                <p className="text-sm text-gray-600 mb-1">Pending</p>
+                                                <p className="text-3xl font-bold text-orange-600">
+                                                    {formatCurrency(getStripePendingBalance())}
+                                                </p>
+                                                <p className="text-xs text-gray-500 mt-1">Processing</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
+                                            <p className="mb-2">Your Stripe account is connected.</p>
+                                            <p className="text-xs text-gray-500">Balance will appear once payments are processed.</p>
+                                        </div>
+                                    )}
+                                    <div className="flex gap-2 pt-2">
+                                        <Button 
+                                            onClick={handleAccessStripeDashboard}
+                                            className="flex-1"
+                                        >
+                                            <ExternalLink className="h-4 w-4 mr-2" />
+                                            View Stripe Dashboard
+                                        </Button>
+                                        <Link href={route('worker.stripe')}>
+                                            <Button variant="outline">
+                                                Settings
+                                            </Button>
+                                        </Link>
                                     </div>
-                                    <p className="text-xs text-gray-500">
-                                        From approved timesheets
-                                    </p>
-                                </div>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
 
-                                {/* Manual Credits */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-gray-700">
-                                            Manual Credits
-                                        </span>
-                                        <Badge className="bg-blue-100 text-blue-800">
-                                            Admin
-                                        </Badge>
+                    {/* Earnings Summary & Recent Work */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        {/* Earnings Summary */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Earnings Summary</CardTitle>
+                                <CardDescription>
+                                    Your payment breakdown
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    {/* This Month */}
+                                    <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-700">
+                                                This Month
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {timesheetStats.hours_this_month.toFixed(1)} hours worked
+                                            </p>
+                                        </div>
+                                        <div className="text-xl font-bold text-blue-600">
+                                            {formatCurrency(stats.monthly_earnings)}
+                                        </div>
                                     </div>
-                                    <div className="text-2xl font-bold text-blue-600">
-                                        {formatCurrency(earningsBreakdown.manual_credits)}
-                                    </div>
-                                    <p className="text-xs text-gray-500">
-                                        Bonuses and adjustments
-                                    </p>
-                                </div>
 
-                                {/* Refunds */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-gray-700">
-                                            Refunds
-                                        </span>
-                                        <Badge className="bg-purple-100 text-purple-800">
-                                            Other
-                                        </Badge>
+                                    {/* Last Month */}
+                                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-700">
+                                                Last Month
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {timesheetStats.hours_last_month.toFixed(1)} hours worked
+                                            </p>
+                                        </div>
+                                        <div className="text-xl font-bold text-gray-600">
+                                            {formatCurrency(stats.last_month_earnings)}
+                                        </div>
                                     </div>
-                                    <div className="text-2xl font-bold text-purple-600">
-                                        {formatCurrency(earningsBreakdown.refunds)}
-                                    </div>
-                                    <p className="text-xs text-gray-500">
-                                        Refunded amounts
-                                    </p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
 
-                    {/* Transaction History */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Transaction History</CardTitle>
-                            <CardDescription>
-                                All your financial transactions
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {transactions.data.length === 0 ? (
-                                <div className="text-center py-12">
-                                    <Activity className="mx-auto h-12 w-12 text-gray-400" />
-                                    <p className="mt-2 text-sm text-gray-600">No transactions yet</p>
-                                    <p className="text-xs text-gray-500">
-                                        Your earnings will appear here once timesheets are approved
-                                    </p>
+                                    {/* Total Lifetime */}
+                                    <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-900">
+                                                Total Lifetime Earnings
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {stats.total_approved_timesheets} completed shifts
+                                            </p>
+                                        </div>
+                                        <div className="text-2xl font-bold text-green-600">
+                                            {formatCurrency(stats.total_earned)}
+                                        </div>
+                                    </div>
                                 </div>
-                            ) : (
-                                <>
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Date</TableHead>
-                                                <TableHead>Type</TableHead>
-                                                <TableHead>Category</TableHead>
-                                                <TableHead>Description</TableHead>
-                                                <TableHead className="text-right">Amount</TableHead>
-                                                <TableHead className="text-right">Balance After</TableHead>
-                                                <TableHead className="text-right">Action</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {transactions.data.map((transaction) => (
-                                                <TableRow key={transaction.id}>
-                                                    <TableCell className="text-sm">
-                                                        {format(new Date(transaction.created_at), 'MMM dd, yyyy')}
-                                                        <div className="text-xs text-gray-500">
-                                                            {format(new Date(transaction.created_at), 'HH:mm')}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge
-                                                            className={
-                                                                transaction.type === 'credit'
-                                                                    ? 'bg-green-100 text-green-800'
-                                                                    : 'bg-red-100 text-red-800'
-                                                            }
-                                                        >
-                                                            {transaction.type}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge
-                                                            variant="outline"
-                                                            className={getCategoryColor(transaction.category)}
-                                                        >
-                                                            {getCategoryDisplayName(transaction.category)}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="max-w-xs truncate text-sm" title={transaction.description}>
-                                                            {transaction.description}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell
-                                                        className={`text-right font-medium ${
-                                                            transaction.type === 'credit' ? 'text-green-600' : 'text-red-600'
-                                                        }`}
+                            </CardContent>
+                        </Card>
+
+                        {/* Recent Work */}
+                        <Card>
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <CardTitle>Recent Work</CardTitle>
+                                        <CardDescription>
+                                            Your latest timesheets
+                                        </CardDescription>
+                                    </div>
+                                    <Link href={route('worker.timesheets')}>
+                                        <Button variant="ghost" size="sm">
+                                            View All
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                {recentTimesheets.length === 0 ? (
+                                    <div className="text-center py-8">
+                                        <FileText className="mx-auto h-12 w-12 text-gray-400" />
+                                        <p className="mt-2 text-sm text-gray-600">No timesheets yet</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {recentTimesheets.slice(0, 5).map((timesheet) => (
+                                            <div 
+                                                key={timesheet.id}
+                                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                                            >
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                                        {timesheet.shift.title}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {timesheet.shift.care_home.name}
+                                                    </p>
+                                                    <p className="text-xs text-gray-400">
+                                                        {format(new Date(timesheet.shift.shift_date), 'MMM dd, yyyy')}
+                                                    </p>
+                                                </div>
+                                                <div className="text-right ml-4">
+                                                    <div className="text-sm font-semibold text-gray-900">
+                                                        {formatCurrency(timesheet.total_pay)}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {timesheet.total_hours}h
+                                                    </div>
+                                                    <Badge 
+                                                        variant="outline"
+                                                        className={
+                                                            timesheet.status === 'approved'
+                                                                ? 'bg-green-100 text-green-800 border-green-200'
+                                                                : 'bg-blue-100 text-blue-800 border-blue-200'
+                                                        }
                                                     >
-                                                        {transaction.type === 'credit' ? '+' : '-'}
-                                                        {formatCurrency(transaction.amount)}
-                                                    </TableCell>
-                                                    <TableCell className="text-right font-medium">
-                                                        {formatCurrency(transaction.balance_after)}
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Link
-                                                            href={route('worker.finances.transactions.show', transaction.id)}
-                                                        >
-                                                            <Button variant="ghost" size="sm">
-                                                                <Eye className="h-4 w-4" />
-                                                            </Button>
-                                                        </Link>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-
-                                    {/* Pagination would go here if needed */}
-                                </>
-                            )}
-                        </CardContent>
-                    </Card>
+                                                        {timesheet.status}
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
             </div>
         </AppLayout>

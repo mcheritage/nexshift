@@ -12,8 +12,12 @@ interface Shift {
     shift_date: string;
     start_time: string;
     end_time: string;
+    start_datetime: string;
+    end_datetime: string;
     location: string;
     hourly_rate: number;
+    break_duration: number;
+    break_paid: boolean;
     applications_count: number;
     user_application_status: string | null;
     user_has_applied: boolean;
@@ -55,6 +59,18 @@ export default function WorkerShiftsMinimal({ shifts, filters, roleOptions, isAp
             }
         });
         router.get('/worker/shifts', newFilters, { preserveState: true });
+    };
+
+    const calculateTotalPay = (shift: Shift) => {
+        const start = new Date(shift.start_datetime);
+        const end = new Date(shift.end_datetime);
+        const durationMs = end.getTime() - start.getTime();
+        const durationHours = durationMs / (1000 * 60 * 60);
+        
+        const breakHours = shift.break_duration / 60;
+        const billableHours = shift.break_paid ? durationHours : (durationHours - breakHours);
+        
+        return (billableHours * shift.hourly_rate).toFixed(2);
     };
 
     const handleApply = async (shiftId: string) => {
@@ -211,9 +227,10 @@ export default function WorkerShiftsMinimal({ shifts, filters, roleOptions, isAp
                                         </p>
                                         <div className="mt-2 text-sm text-gray-500">
                                             <p>📅 {shift.shift_date}</p>
-                                            <p>🕒 {shift.start_time} - {shift.end_time}</p>
+                                            <p>🕒 {shift.start_time} - {shift.end_time}{shift.break_duration > 0 && ` • ${shift.break_duration}min break (${shift.break_paid ? 'Paid' : 'Unpaid'})`}</p>
                                             <p>💰 £{shift.hourly_rate}/hour</p>
                                             <p>📍 {shift.location}</p>
+                                            <p className="font-semibold text-green-600 dark:text-green-400 mt-1">Total Pay: £{calculateTotalPay(shift)}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
@@ -231,13 +248,18 @@ export default function WorkerShiftsMinimal({ shifts, filters, roleOptions, isAp
                                         <p className="text-xs text-gray-500 mb-2">
                                             {shift.applications_count} applicant(s)
                                         </p>
-                                        {!shift.user_has_applied && (
+                                        {!shift.user_has_applied && isApproved && (
                                             <Button
                                                 onClick={() => setSelectedShift(shift.id)}
                                                 size="sm"
                                             >
                                                 Apply Now
                                             </Button>
+                                        )}
+                                        {!shift.user_has_applied && !isApproved && (
+                                            <p className="text-xs text-gray-500 italic">
+                                                Approval required
+                                            </p>
                                         )}
                                     </div>
                                 </div>

@@ -34,6 +34,8 @@ class AuthService
             /** @var CareHome $care_home */
             $care_home = CareHome::create([
                 'name' => $payload->name,
+                'phone_number' => $payload->phone_number,
+                'address' => $payload->address,
                 'status' => 'pending',
             ]);
 

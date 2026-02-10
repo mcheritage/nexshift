@@ -129,6 +129,8 @@ class ShiftController extends Controller
             'start_time' => 'required|string',
             'end_time' => 'required|string',
             'ends_next_day' => 'boolean',
+            'break_duration' => 'nullable|integer|min:0|max:720',
+            'break_paid' => 'boolean',
             'hourly_rate' => 'required|numeric|min:10|max:100',
             'location' => 'required|string|max:255',
             'required_skills' => 'nullable|array',
@@ -137,6 +139,7 @@ class ShiftController extends Controller
             'notes' => 'nullable|string|max:1000',
             'is_urgent' => 'boolean',
             'status' => ['required', Rule::in([Shift::STATUS_DRAFT, Shift::STATUS_PUBLISHED])],
+            'quantity' => 'nullable|integer|min:1|max:50',
         ]);
 
         // Create datetime objects from separate date and time fields
@@ -151,7 +154,14 @@ class ShiftController extends Controller
         }
         
         $durationHours = $endDateTime->diffInHours($startDateTime, true);
-        $totalPay = $durationHours * $validated['hourly_rate'];
+        $breakDuration = $validated['break_duration'] ?? 0;
+        $breakPaid = $validated['break_paid'] ?? true;
+        
+        // Calculate billable hours (subtract unpaid break time)
+        // Convert break minutes to hours
+        $breakHours = $breakDuration / 60;
+        $billableHours = $breakPaid ? $durationHours : ($durationHours - $breakHours);
+        $totalPay = $billableHours * $validated['hourly_rate'];
 
         // Prepare data for database insertion
         $shiftData = [
@@ -163,6 +173,8 @@ class ShiftController extends Controller
             'start_datetime' => $startDateTime,
             'end_datetime' => $endDateTime,
             'duration_hours' => $durationHours,
+            'break_duration' => $breakDuration,
+            'break_paid' => $breakPaid,
             'hourly_rate' => $validated['hourly_rate'],
             'total_pay' => $totalPay,
             'required_skills' => $validated['required_skills'] ?? [],
@@ -171,15 +183,28 @@ class ShiftController extends Controller
             'status' => $validated['status'],
             'is_urgent' => $validated['is_urgent'] ?? false,
             'published_at' => $validated['status'] === Shift::STATUS_PUBLISHED ? now() : null,
+            'max_applicants' => 1, // Each shift can only have 1 worker
         ];
 
-        $shift = Shift::create($shiftData);
+        // Get quantity (default to 1 if not provided)
+        $quantity = $validated['quantity'] ?? 1;
 
-        // Log activity
-        ActivityLogService::logShiftCreated($shift, $user->care_home_id);
+        // Create multiple shifts if quantity > 1
+        $createdShifts = [];
+        for ($i = 0; $i < $quantity; $i++) {
+            $shift = Shift::create($shiftData);
+            $createdShifts[] = $shift;
+            
+            // Log activity for each shift
+            ActivityLogService::logShiftCreated($shift, $user->care_home_id);
+        }
+
+        $message = $quantity > 1 
+            ? "$quantity identical shifts created successfully."
+            : 'Shift created successfully.';
 
         return redirect()->route('shifts.index')
-            ->with('success', 'Shift created successfully.');
+            ->with('success', $message);
     }
 
     /**
@@ -212,8 +237,21 @@ class ShiftController extends Controller
             abort(403, 'Access denied');
         }
 
-        return Inertia::render('shifts/edit', [
-            'shift' => $shift,
+        // Format shift data for the form
+        // Ensure datetime fields are Carbon instances
+        $startDateTime = \Carbon\Carbon::parse($shift->start_datetime);
+        $endDateTime = \Carbon\Carbon::parse($shift->end_datetime);
+        
+        $shiftData = $shift->toArray();
+        $shiftData['shift_date'] = $startDateTime->format('Y-m-d');
+        $shiftData['start_time'] = $startDateTime->format('H:i');
+        $shiftData['end_time'] = $endDateTime->format('H:i');
+        $shiftData['ends_next_day'] = $endDateTime->format('Y-m-d') !== $startDateTime->format('Y-m-d');
+        $shiftData['additional_requirements'] = $shift->special_requirements;
+        $shiftData['notes'] = $shift->description;
+
+        return Inertia::render('Shifts/Edit', [
+            'shift' => $shiftData,
             'roles' => Shift::getRoles(),
             'statuses' => Shift::getStatuses(),
         ]);
@@ -239,16 +277,17 @@ class ShiftController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'role' => ['required', Rule::in(array_keys(Shift::getRoles()))],
+            'location' => 'required|string|max:255',
             'shift_date' => 'required|date|after_or_equal:today',
-            'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i',
+            'start_time' => 'required|string',
+            'end_time' => 'required|string',
+            'ends_next_day' => 'boolean',
             'hourly_rate' => 'required|numeric|min:10|max:100',
             'required_skills' => 'nullable|array',
-            'required_qualifications' => 'nullable|array',
-            'special_requirements' => 'nullable|string|max:500',
-            'max_applicants' => 'required|integer|min:1|max:10',
+            'preferred_skills' => 'nullable|array',
+            'additional_requirements' => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:1000',
             'is_urgent' => 'boolean',
-            'application_deadline' => 'nullable|date|after:now',
             'status' => ['required', Rule::in(array_keys(Shift::getStatuses()))],
         ]);
 
@@ -264,24 +303,37 @@ class ShiftController extends Controller
         $totalPay = $durationHours * $validated['hourly_rate'];
 
         // Create datetime objects from separate date and time fields
+        // Ensure time is in H:i format before adding seconds
+        $startTimeStr = strlen($validated['start_time']) === 5 ? $validated['start_time'] : sprintf('%02d:%02d', ...explode(':', $validated['start_time']));
+        $endTimeStr = strlen($validated['end_time']) === 5 ? $validated['end_time'] : sprintf('%02d:%02d', ...explode(':', $validated['end_time']));
+        
         $startDateTime = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', 
-            $validated['shift_date'] . ' ' . $validated['start_time'] . ':00');
+            $validated['shift_date'] . ' ' . $startTimeStr . ':00');
         $endDateTime = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', 
-            $validated['shift_date'] . ' ' . $validated['end_time'] . ':00');
+            $validated['shift_date'] . ' ' . $endTimeStr . ':00');
         
         // Handle shifts that end the next day
-        if ($endTime->lessThan($startTime)) {
+        if ($validated['ends_next_day'] ?? false) {
             $endDateTime->addDay();
         }
 
-        // Remove old column names from validated data and add new datetime columns
-        $updateData = $validated;
-        unset($updateData['start_time'], $updateData['end_time']);
-        $updateData['start_datetime'] = $startDateTime;
-        $updateData['end_datetime'] = $endDateTime;
-        $updateData['duration_hours'] = $durationHours;
-        $updateData['total_pay'] = $totalPay;
-        $updateData['published_at'] = $validated['status'] === Shift::STATUS_PUBLISHED && !$shift->published_at ? now() : $shift->published_at;
+        // Prepare update data
+        $updateData = [
+            'title' => $validated['title'],
+            'role' => $validated['role'],
+            'location' => $validated['location'],
+            'start_datetime' => $startDateTime,
+            'end_datetime' => $endDateTime,
+            'duration_hours' => $durationHours,
+            'hourly_rate' => $validated['hourly_rate'],
+            'total_pay' => $totalPay,
+            'required_skills' => $validated['required_skills'] ?? [],
+            'special_requirements' => $validated['additional_requirements'],
+            'description' => $validated['notes'],
+            'status' => $validated['status'],
+            'is_urgent' => $validated['is_urgent'] ?? false,
+            'published_at' => $validated['status'] === Shift::STATUS_PUBLISHED && !$shift->published_at ? now() : $shift->published_at,
+        ];
 
         $shift->update($updateData);
 

@@ -106,14 +106,7 @@ export default function ShowInvoice({ invoice, wallet }: Props) {
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                     {/* Header */}
                     <div className="mb-6">
-                        <Link href={route('finances.index')}>
-                            <Button variant="ghost" size="sm" className="mb-4">
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Back to Finances
-                            </Button>
-                        </Link>
-
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-start justify-between">
                             <div>
                                 <h1 className="text-3xl font-bold text-gray-900">
                                     Invoice {invoice.invoice_number}
@@ -122,10 +115,17 @@ export default function ShowInvoice({ invoice, wallet }: Props) {
                                     Period: {format(new Date(invoice.period_start), 'MMM dd, yyyy')} -{' '}
                                     {format(new Date(invoice.period_end), 'MMM dd, yyyy')}
                                 </p>
+                                <Badge className={getStatusColor(invoice.status) + " mt-2"}>
+                                    {invoice.status}
+                                </Badge>
                             </div>
-                            <Badge className={getStatusColor(invoice.status)}>
-                                {invoice.status}
-                            </Badge>
+                            
+                            <Link href={route('finances.index')}>
+                                <Button variant="ghost" size="sm">
+                                    <ArrowLeft className="h-4 w-4 mr-2" />
+                                    Back to Finances
+                                </Button>
+                            </Link>
                         </div>
                     </div>
 

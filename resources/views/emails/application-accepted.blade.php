@@ -152,8 +152,14 @@
             </div>
             @if($careHome->phone_number)
             <div class="detail-row">
-                <span class="detail-label">Contact:</span>
+                <span class="detail-label">Phone Number:</span>
                 <span class="detail-value">{{ $careHome->phone_number }}</span>
+            </div>
+            @endif
+            @if($careHome->address)
+            <div class="detail-row">
+                <span class="detail-label">Address:</span>
+                <span class="detail-value">{{ $careHome->address }}</span>
             </div>
             @endif
         </div>

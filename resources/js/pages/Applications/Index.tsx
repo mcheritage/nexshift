@@ -172,22 +172,22 @@ export default function ApplicationsIndex({ shift, applications }: ApplicationsI
         <AppLayout>
             <Head title={`Applications - ${shift.title}`} />
             
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-6">
                 {/* Header */}
-                <div className="space-y-4">
-                    <Link href={`/shifts/${shift.id}`}>
-                        <Button variant="outline" size="sm">
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            Back to Shift
-                        </Button>
-                    </Link>
-                    
+                <div className="flex items-start justify-between">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Applications</h1>
                         <p className="text-gray-600 dark:text-gray-400 mt-1">
                             Review applications for "{shift.title}"
                         </p>
                     </div>
+                    
+                    <Link href={`/shifts/${shift.id}`}>
+                        <Button variant="outline" size="sm">
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Back to Shift
+                        </Button>
+                    </Link>
                 </div>
 
                 {/* Shift Status Banner */}

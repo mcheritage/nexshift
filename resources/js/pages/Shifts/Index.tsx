@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { SharedData } from '@/types';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
@@ -137,16 +137,18 @@ export default function ShiftsIndex({ shifts, stats, filters }: ShiftsPageProps)
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Applications</CardTitle>
-                            <Users className="h-4 w-4 text-purple-600" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-purple-600">{stats.applications_count}</div>
-                            <p className="text-xs text-muted-foreground">Pending review</p>
-                        </CardContent>
-                    </Card>
+                    <Link href="/applications/pending" className="block hover:shadow-lg hover:scale-[1.02] transition-all">
+                        <Card className="cursor-pointer">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Applications</CardTitle>
+                                <Users className="h-4 w-4 text-purple-600" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-purple-600">{stats.applications_count}</div>
+                                <p className="text-xs text-muted-foreground">Pending review</p>
+                            </CardContent>
+                        </Card>
+                    </Link>
                 </div>
 
                 {/* Filters */}

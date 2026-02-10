@@ -40,6 +40,8 @@ class WorkerController extends Controller
             ->whereDoesntHave('applications', function ($query) use ($user) {
                 $query->where('worker_id', $user->id);
             })
+            // Exclude shifts that have already been filled
+            ->whereNull('selected_worker_id')
             ->orderBy('start_datetime')
             ->limit(10)
             ->get() : collect();
@@ -56,7 +58,9 @@ class WorkerController extends Controller
             'available_shifts' => $isApproved ? Shift::where('status', Shift::STATUS_PUBLISHED)
                 ->whereHas('careHome', function($q) {
                     $q->where('status', 'approved');
-                })->count() : 0,
+                })
+                ->whereNull('selected_worker_id')
+                ->count() : 0,
             'my_applications' => Application::where('worker_id', $user->id)->count(),
             'accepted_applications' => Application::where('worker_id', $user->id)
                 ->where('status', Application::STATUS_ACCEPTED)->count(),
@@ -70,6 +74,7 @@ class WorkerController extends Controller
             'stats' => $stats,
             'isApproved' => $isApproved,
             'approvalStatus' => $user->status,
+            'stripeConnected' => !empty($user->stripe_account_id),
         ]);
     }
 
@@ -90,7 +95,9 @@ class WorkerController extends Controller
                     $q->where('status', 'approved');
                 })
                 ->with(['careHome'])
-                ->withCount('applications');
+                ->withCount('applications')
+                // Exclude shifts that have already been filled
+                ->whereNull('selected_worker_id');
 
             // Apply filters
             if ($request->filled('role')) {
@@ -240,21 +247,31 @@ class WorkerController extends Controller
         $user = Auth::user();
 
         $applications = Application::where('worker_id', $user->id)
-            ->with(['shift.careHome'])
+            ->with(['shift' => function ($query) {
+                $query->with('careHome');
+            }])
             ->orderBy('applied_at', 'desc')
             ->paginate(15);
 
-        // Group by status
-        $applicationsByStatus = [
-            'pending' => $applications->where('status', Application::STATUS_PENDING),
-            'accepted' => $applications->where('status', Application::STATUS_ACCEPTED),
-            'rejected' => $applications->where('status', Application::STATUS_REJECTED),
-            'withdrawn' => $applications->where('status', Application::STATUS_WITHDRAWN),
+        // Ensure shift accessor attributes are loaded
+        $applications->getCollection()->transform(function ($application) {
+            if ($application->shift) {
+                $application->shift->append(['shift_date', 'start_time', 'end_time']);
+            }
+            return $application;
+        });
+
+        // Count by status from all applications, not just paginated ones
+        $stats = [
+            'pending' => Application::where('worker_id', $user->id)->where('status', Application::STATUS_PENDING)->count(),
+            'accepted' => Application::where('worker_id', $user->id)->where('status', Application::STATUS_ACCEPTED)->count(),
+            'rejected' => Application::where('worker_id', $user->id)->where('status', Application::STATUS_REJECTED)->count(),
+            'withdrawn' => Application::where('worker_id', $user->id)->where('status', Application::STATUS_WITHDRAWN)->count(),
         ];
 
         return Inertia::render('Worker/Applications', [
             'applications' => $applications,
-            'applicationsByStatus' => $applicationsByStatus,
+            'stats' => $stats,
         ]);
     }
 
@@ -439,7 +456,7 @@ class WorkerController extends Controller
             $clockOutDateTime->addDay();
         }
 
-        Timesheet::create([
+        $timesheet = Timesheet::create([
             'shift_id' => $shift->id,
             'worker_id' => $user->id,
             'care_home_id' => $shift->care_home_id,
@@ -457,6 +474,9 @@ class WorkerController extends Controller
             'submitted_at' => $submittedAt,
         ]);
 
+        // Log initial status to history
+        $timesheet->logStatusChange($status, $user->id);
+
         return redirect()->route('worker.timesheets')->with('success', 'Timesheet created successfully');
     }
 
@@ -471,12 +491,21 @@ class WorkerController extends Controller
             abort(403, 'You are not authorized to edit this timesheet');
         }
 
-        if (!in_array($timesheet->status, ['draft', 'queried'])) {
+        if (!in_array($timesheet->status, ['draft', 'queried', 'rejected'])) {
             abort(403, 'This timesheet cannot be edited');
         }
 
+        $timesheet->load('shift.careHome');
+        
+        // Format times for HTML time input (HH:mm format)
+        $timesheetData = $timesheet->toArray();
+        $timesheetData['clock_in_time'] = $timesheet->clock_in_time ? 
+            Carbon::parse($timesheet->clock_in_time)->format('H:i') : '';
+        $timesheetData['clock_out_time'] = $timesheet->clock_out_time ? 
+            Carbon::parse($timesheet->clock_out_time)->format('H:i') : '';
+
         return Inertia::render('Worker/EditTimesheet', [
-            'timesheet' => $timesheet->load('shift.careHome'),
+            'timesheet' => $timesheetData,
         ]);
     }
 
@@ -491,7 +520,7 @@ class WorkerController extends Controller
             abort(403, 'You are not authorized to edit this timesheet');
         }
 
-        if (!in_array($timesheet->status, ['draft', 'queried'])) {
+        if (!in_array($timesheet->status, ['draft', 'queried', 'rejected'])) {
             abort(403, 'This timesheet cannot be edited');
         }
 
@@ -551,11 +580,20 @@ class WorkerController extends Controller
 
         // If submitting for approval, update status and submission time
         if ($request->boolean('submit_for_approval')) {
+            $previousStatus = $timesheet->status;
             $updateData['status'] = 'submitted';
             $updateData['submitted_at'] = Carbon::now();
+            
+            // Update the timesheet first
+            $timesheet->update($updateData);
+            
+            // Log status change
+            $timesheet->logStatusChange('submitted', $user->id, 
+                $previousStatus === 'queried' ? 'Resubmitted after query' : null
+            );
+        } else {
+            $timesheet->update($updateData);
         }
-
-        $timesheet->update($updateData);
 
         return redirect()->route('worker.timesheets')->with('success', 'Timesheet updated successfully');
     }
@@ -571,14 +609,25 @@ class WorkerController extends Controller
             abort(403, 'You are not authorized to submit this timesheet');
         }
 
-        if (!in_array($timesheet->status, ['draft', 'queried'])) {
+        if (!in_array($timesheet->status, ['draft', 'queried', 'rejected'])) {
             abort(403, 'This timesheet cannot be submitted');
         }
 
+        $previousStatus = $timesheet->status;
+        
         $timesheet->update([
             'status' => 'submitted',
             'submitted_at' => Carbon::now(),
         ]);
+
+        // Log status change
+        $noteText = null;
+        if ($previousStatus === 'queried') {
+            $noteText = 'Resubmitted after query';
+        } elseif ($previousStatus === 'rejected') {
+            $noteText = 'Resubmitted after rejection';
+        }
+        $timesheet->logStatusChange('submitted', $user->id, $noteText);
 
         // Load the shift with care home
         $timesheet->load('shift.careHome.users');
@@ -617,5 +666,142 @@ class WorkerController extends Controller
         }
 
         return redirect()->route('worker.timesheets')->with('success', 'Timesheet submitted for approval');
+    }
+
+    /**
+     * Show Stripe connection page - checks if account is fully onboarded
+     */
+    public function stripe(): Response
+    {
+        $user = Auth::user();
+        
+        $stripeConnected = false;
+        
+        if ($user->stripe_account_id) {
+            try {
+                \Stripe\Stripe::setApiKey(config('stripe.secret_key'));
+                $account = \Stripe\Account::retrieve($user->stripe_account_id);
+                
+                // Check if account is fully onboarded
+                $stripeConnected = $account->charges_enabled && $account->payouts_enabled;
+            } catch (\Exception $e) {
+                \Log::error('Failed to retrieve Stripe account', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+        
+        return Inertia::render('Worker/Stripe', [
+            'stripeConnected' => $stripeConnected,
+            'stripeAccountId' => $user->stripe_account_id,
+        ]);
+    }
+
+    /**
+     * Initiate Stripe Connect onboarding
+     */
+    public function stripeConnect()
+    {
+        $user = Auth::user();
+
+        try {
+            \Stripe\Stripe::setApiKey(config('stripe.secret_key'));
+
+            // Create Stripe Connect account if doesn't exist
+            if (!$user->stripe_account_id) {
+                $account = \Stripe\Account::create([
+                    'type' => 'express',
+                    'country' => 'GB',
+                    'email' => $user->email,
+                    'capabilities' => [
+                        'card_payments' => ['requested' => true],
+                        'transfers' => ['requested' => true],
+                    ],
+                    'business_type' => 'individual',
+                    'individual' => [
+                        'first_name' => $user->first_name,
+                        'last_name' => $user->last_name,
+                        'email' => $user->email,
+                    ],
+                ]);
+
+                $user->update(['stripe_account_id' => $account->id]);
+            }
+
+            // Create account link for onboarding
+            $accountLink = \Stripe\AccountLink::create([
+                'account' => $user->stripe_account_id,
+                'refresh_url' => route('worker.stripe'),
+                'return_url' => route('worker.stripe.callback'),
+                'type' => 'account_onboarding',
+            ]);
+
+            return redirect($accountLink->url);
+
+        } catch (\Exception $e) {
+            \Log::error('Stripe Connect creation failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Failed to connect to Stripe: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Handle Stripe Connect callback
+     */
+    public function stripeCallback(Request $request)
+    {
+        $user = Auth::user();
+
+        try {
+            \Stripe\Stripe::setApiKey(config('stripe.secret_key'));
+            $account = \Stripe\Account::retrieve($user->stripe_account_id);
+
+            if ($account->charges_enabled && $account->payouts_enabled) {
+                return redirect()->route('worker.stripe')
+                    ->with('success', 'Stripe account connected successfully!');
+            }
+
+            return redirect()->route('worker.stripe')
+                ->with('error', 'Stripe account setup incomplete. Please try again.');
+
+        } catch (\Exception $e) {
+            \Log::error('Stripe Connect callback failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return redirect()->route('worker.stripe')
+                ->with('error', 'Failed to verify Stripe connection.');
+        }
+    }
+
+    /**
+     * Create Stripe dashboard login link
+     */
+    public function stripeDashboard()
+    {
+        $user = Auth::user();
+
+        if (!$user->stripe_account_id) {
+            return redirect()->back()->with('error', 'No Stripe account connected');
+        }
+
+        try {
+            \Stripe\Stripe::setApiKey(config('stripe.secret_key'));
+            
+            $loginLink = \Stripe\Account::createLoginLink($user->stripe_account_id);
+
+            // Redirect to the Stripe dashboard URL
+            return redirect()->away($loginLink->url);
+
+        } catch (\Exception $e) {
+            \Log::error('Stripe dashboard link creation failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return redirect()->back()->with('error', 'Failed to access Stripe dashboard: ' . $e->getMessage());
+        }
     }
 }

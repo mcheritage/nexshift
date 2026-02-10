@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\HealthWorkerDocumentsController;
 use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\MediaUploadController;
 use App\Http\Controllers\Api\RegisterUserController;
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\WorkExperienceController;
 use App\Http\Controllers\Api\SkillController;
@@ -14,9 +15,12 @@ use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\TimesheetController as ApiTimesheetController;
 use App\Http\Controllers\Api\EarningsController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\StripeController;
 
 Route::post('/auth/register', [RegisterUserController::class, 'store']);
 Route::post('/auth/login', [LoginController::class, 'login']);
+Route::post('/auth/forgot-password', [PasswordResetController::class, 'sendResetLink']);
+Route::post('/auth/reset-password', [PasswordResetController::class, 'resetPassword']);
 
 Route::middleware(['auth:sanctum', 'health_care_worker'])->group(function () {
 
@@ -47,6 +51,9 @@ Route::middleware(['auth:sanctum', 'health_care_worker'])->group(function () {
     Route::post('/profile/bank-details', [BankDetailsController::class, 'store']);
     Route::put('/profile/bank-details/{id}', [BankDetailsController::class, 'update']);
     Route::delete('/profile/bank-details/{id}', [BankDetailsController::class, 'destroy']);
+
+    // Stripe Connect routes
+    Route::post('/stripe/connect', [StripeController::class, 'connect']);
 
     // Shifts routes
     Route::get('/shifts/roles', [ShiftController::class, 'roles']);

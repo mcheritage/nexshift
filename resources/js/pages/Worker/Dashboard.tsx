@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { SharedData } from '@/types';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,12 @@ import {
     Plus,
     CheckCircle,
     XCircle,
-    Timer
+    Timer,
+    CreditCard,
+    Send
 } from 'lucide-react';
 import { ROLE_LABELS } from '@/constants/roles';
+import { useState } from 'react';
 
 interface Application {
     id: string;
@@ -59,6 +62,7 @@ interface WorkerDashboardProps extends SharedData {
     };
     isApproved?: boolean;
     approvalStatus?: string;
+    stripeConnected?: boolean;
 }
 
 const statusColors = {
@@ -68,7 +72,11 @@ const statusColors = {
     'withdrawn': 'bg-gray-100 text-gray-800',
 };
 
-export default function WorkerDashboard({ availableShifts, myApplications, stats, isApproved, approvalStatus }: WorkerDashboardProps) {
+export default function WorkerDashboard({ availableShifts, myApplications, stats, isApproved, approvalStatus, stripeConnected }: WorkerDashboardProps) {
+    const [selectedShift, setSelectedShift] = useState<string | null>(null);
+    const [applicationMessage, setApplicationMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-GB', { 
@@ -94,6 +102,33 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                         Find and apply for healthcare shifts
                     </p>
                 </div>
+
+                {/* Stripe Connection Warning */}
+                {isApproved && !stripeConnected && (
+                    <Card className="border-orange-200 bg-orange-50 dark:bg-orange-900/10 dark:border-orange-800">
+                        <CardContent className="p-6">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-start">
+                                    <CreditCard className="h-6 w-6 text-orange-600 dark:text-orange-500 mt-0.5 mr-3 flex-shrink-0" />
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-400 mb-2">
+                                            Payment Setup Required
+                                        </h3>
+                                        <p className="text-orange-800 dark:text-orange-300 mb-3">
+                                            You haven't connected your Stripe account yet. You won't be able to receive payments for completed shifts until you set up your payment method.
+                                        </p>
+                                        <Link href="/worker/stripe">
+                                            <Button className="bg-orange-600 hover:bg-orange-700">
+                                                <CreditCard className="h-4 w-4 mr-2" />
+                                                Connect Stripe Now
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Approval Status Warning */}
                 {!isApproved && approvalStatus === 'pending' && (
@@ -183,17 +218,17 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                 </div>
 
                 {/* Quick Actions */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Browse Shifts */}
-                    <Card>
+                    <Card className="flex flex-col">
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <Calendar className="h-5 w-5 mr-2" />
                                 Browse Available Shifts
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <p className="text-gray-600 dark:text-gray-300 mb-4">
+                        <CardContent className="flex flex-col flex-1">
+                            <p className="text-gray-600 dark:text-gray-300 mb-4 flex-1">
                                 Find healthcare shifts that match your skills and availability.
                             </p>
                             <Link href="/worker/shifts">
@@ -205,15 +240,15 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                     </Card>
 
                     {/* My Applications */}
-                    <Card>
+                    <Card className="flex flex-col">
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <Eye className="h-5 w-5 mr-2" />
                                 My Applications
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <p className="text-gray-600 dark:text-gray-300 mb-4">
+                        <CardContent className="flex flex-col flex-1">
+                            <p className="text-gray-600 dark:text-gray-300 mb-4 flex-1">
                                 Track the status of your shift applications and responses.
                             </p>
                             <Link href="/worker/applications">
@@ -221,6 +256,49 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                                     View Applications
                                 </Button>
                             </Link>
+                        </CardContent>
+                    </Card>
+
+                    {/* Stripe Connect */}
+                    <Card className="flex flex-col">
+                        <CardHeader>
+                            <CardTitle className="flex items-center">
+                                <CreditCard className="h-5 w-5 mr-2" />
+                                Payment Setup
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex flex-col flex-1">
+                            {stripeConnected ? (
+                                <>
+                                    <div className="flex-1">
+                                        <div className="flex items-center mb-2">
+                                            <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                                            <p className="text-green-600 font-medium">
+                                                Payment method connected
+                                            </p>
+                                        </div>
+                                        <p className="text-gray-600 dark:text-gray-300 mb-4 text-sm">
+                                            Your Stripe account is set up. You can receive payments for completed shifts.
+                                        </p>
+                                    </div>
+                                    <Link href="/worker/stripe">
+                                        <Button variant="outline" className="w-full">
+                                            Manage Payments
+                                        </Button>
+                                    </Link>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-gray-600 dark:text-gray-300 mb-4 flex-1">
+                                        Connect your Stripe account to receive payments for shifts.
+                                    </p>
+                                    <Link href="/worker/stripe">
+                                        <Button className="w-full">
+                                            Setup Payments
+                                        </Button>
+                                    </Link>
+                                </>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
@@ -262,10 +340,20 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="ml-4">
+                                        <div className="ml-4 flex flex-col items-end gap-2">
                                             <Badge variant="secondary">
                                                 {ROLE_LABELS[shift.role as keyof typeof ROLE_LABELS] || shift.role}
                                             </Badge>
+                                            {isApproved && (
+                                                <Button
+                                                    onClick={() => setSelectedShift(shift.id)}
+                                                    size="sm"
+                                                    className="bg-blue-600 hover:bg-blue-700"
+                                                >
+                                                    <Send className="h-4 w-4 mr-2" />
+                                                    Apply Now
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -354,6 +442,59 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                             </Link>
                         </CardContent>
                     </Card>
+                )}
+
+                {/* Application Modal */}
+                {selectedShift && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+                            <h3 className="text-lg font-semibold mb-4">Apply for Shift</h3>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Cover Message (Optional)
+                                </label>
+                                <textarea
+                                    value={applicationMessage}
+                                    onChange={(e) => setApplicationMessage(e.target.value)}
+                                    placeholder="Tell the care home why you're a good fit for this shift..."
+                                    rows={4}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                />
+                            </div>
+                            <div className="flex justify-end space-x-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setSelectedShift(null);
+                                        setApplicationMessage('');
+                                    }}
+                                    disabled={isSubmitting}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={async () => {
+                                        if (isSubmitting) return;
+                                        setIsSubmitting(true);
+                                        router.post(`/worker/shifts/${selectedShift}/apply`, {
+                                            message: applicationMessage
+                                        }, {
+                                            onSuccess: () => {
+                                                setSelectedShift(null);
+                                                setApplicationMessage('');
+                                            },
+                                            onFinish: () => {
+                                                setIsSubmitting(false);
+                                            }
+                                        });
+                                    }}
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? 'Applying...' : 'Submit Application'}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </AppLayout>

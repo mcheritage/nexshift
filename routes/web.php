@@ -60,6 +60,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Application management routes for care homes
     Route::prefix('applications')->name('applications.')->group(function () {
+        Route::get('/pending', [App\Http\Controllers\ApplicationController::class, 'pendingApplications'])->name('pending');
         Route::get('/shift/{shift}', [App\Http\Controllers\ApplicationController::class, 'index'])->name('index');
         Route::patch('/{application}/accept', [App\Http\Controllers\ApplicationController::class, 'accept'])->name('accept');
         Route::patch('/{application}/reject', [App\Http\Controllers\ApplicationController::class, 'reject'])->name('reject');
@@ -83,6 +84,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{invoice}', [App\Http\Controllers\InvoiceController::class, 'show'])->name('show');
         Route::patch('/{invoice}/mark-sent', [App\Http\Controllers\InvoiceController::class, 'markAsSent'])->name('mark-sent');
         Route::patch('/{invoice}/mark-paid', [App\Http\Controllers\InvoiceController::class, 'markAsPaid'])->name('mark-paid');
+        Route::post('/{invoice}/stripe-checkout', [App\Http\Controllers\InvoiceController::class, 'createStripeCheckout'])->name('stripe-checkout');
+        Route::get('/{invoice}/stripe-success', [App\Http\Controllers\InvoiceController::class, 'stripeSuccess'])->name('stripe-success');
     });
 
     // Finances routes for care homes
@@ -129,6 +132,12 @@ Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worke
         Route::get('/', [App\Http\Controllers\Worker\FinancesController::class, 'index'])->name('index');
         Route::get('/transactions/{transaction}', [App\Http\Controllers\Worker\FinancesController::class, 'showTransaction'])->name('transactions.show');
     });
+
+    // Stripe Connect routes for workers
+    Route::get('/stripe', [App\Http\Controllers\WorkerController::class, 'stripe'])->name('stripe');
+    Route::post('/stripe/connect', [App\Http\Controllers\WorkerController::class, 'stripeConnect'])->name('stripe.connect');
+    Route::get('/stripe/callback', [App\Http\Controllers\WorkerController::class, 'stripeCallback'])->name('stripe.callback');
+    Route::get('/stripe/dashboard', [App\Http\Controllers\WorkerController::class, 'stripeDashboard'])->name('stripe.dashboard');
 });
 
 Route::middleware(['auth'])->group(function () {

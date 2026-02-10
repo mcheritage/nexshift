@@ -26,37 +26,44 @@ class FinancesController extends Controller
             abort(403, 'No care home associated');
         }
 
-        // Get or create wallet
-        $wallet = Wallet::getOrCreateFor($careHome);
-
         // Get unpaid invoices
-        $unpaidInvoicesQuery = Invoice::where('care_home_id', $careHome->id)
+        $unpaidInvoices = Invoice::where('care_home_id', $careHome->id)
             ->whereIn('status', [Invoice::STATUS_SENT, Invoice::STATUS_OVERDUE])
             ->with('timesheets.worker')
-            ->latest();
-        
-        $unpaidInvoices = $unpaidInvoicesQuery->get();
-
-        // Get recent transactions
-        $transactions = $wallet->transactions()
-            ->with(['performedBy', 'invoice', 'timesheet'])
             ->latest()
-            ->paginate(15);
+            ->get();
+
+        // Get paid invoices for this month
+        $paidInvoicesThisMonth = Invoice::where('care_home_id', $careHome->id)
+            ->where('status', Invoice::STATUS_PAID)
+            ->whereMonth('paid_at', now()->month)
+            ->whereYear('paid_at', now()->year)
+            ->get();
+
+        // Get all paid invoices
+        $totalPaidInvoices = Invoice::where('care_home_id', $careHome->id)
+            ->where('status', Invoice::STATUS_PAID)
+            ->get();
+
+        // Get recent paid invoices
+        $recentInvoices = Invoice::where('care_home_id', $careHome->id)
+            ->where('status', Invoice::STATUS_PAID)
+            ->with('timesheets.worker')
+            ->latest('paid_at')
+            ->limit(10)
+            ->get();
 
         // Calculate stats
         $stats = [
             'pending_invoices_count' => $unpaidInvoices->count(),
-            'pending_invoices_total' => $unpaidInvoices->sum('total'),
-            'monthly_spent' => $wallet->transactions()
-                ->where('type', 'debit')
-                ->whereMonth('created_at', now()->month)
-                ->sum('amount'),
+            'pending_invoices_total' => (float) $unpaidInvoices->sum('total'),
+            'total_spent' => (float) $totalPaidInvoices->sum('total'),
+            'monthly_spent' => (float) $paidInvoicesThisMonth->sum('total'),
         ];
 
         return Inertia::render('carehome/finances/index', [
-            'wallet' => $wallet,
             'unpaidInvoices' => ['data' => $unpaidInvoices],
-            'transactions' => $transactions,
+            'recentInvoices' => ['data' => $recentInvoices],
             'stats' => $stats,
         ]);
     }
@@ -138,6 +145,22 @@ class FinancesController extends Controller
                             'care_home' => $careHome->name,
                         ]),
                     ]);
+                    
+                    // Send email to worker
+                    try {
+                        \Mail::to($worker->email)->send(
+                            new \App\Mail\PaymentReceived(
+                                $timesheet->total_pay,
+                                $invoice,
+                                $careHome->name
+                            )
+                        );
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to send payment received email to worker', [
+                            'worker_id' => $worker->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                 }
 
                 // Mark invoice as paid
@@ -154,6 +177,18 @@ class FinancesController extends Controller
                     'invoice_id' => $invoice->id,
                 ]);
             });
+
+            // Send email to care home confirming payment
+            try {
+                \Mail::to($careHome->email)->send(
+                    new \App\Mail\InvoicePaid($invoice)
+                );
+            } catch (\Exception $e) {
+                \Log::error('Failed to send invoice paid email to care home', [
+                    'care_home_id' => $careHome->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             return redirect()->back()->with('success', 'Invoice paid successfully using wallet balance.');
 

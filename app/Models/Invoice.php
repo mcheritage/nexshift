@@ -25,6 +25,9 @@ class Invoice extends Model
         'tax_amount',
         'total',
         'status',
+        'stripe_session_id',
+        'stripe_payment_intent_id',
+        'payment_metadata',
         'due_date',
         'paid_at',
         'notes',
@@ -44,6 +47,7 @@ class Invoice extends Model
 
     // Status constants
     public const STATUS_DRAFT = 'draft';
+    public const STATUS_PENDING = 'pending';
     public const STATUS_SENT = 'sent';
     public const STATUS_PAID = 'paid';
     public const STATUS_OVERDUE = 'overdue';

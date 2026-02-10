@@ -18,9 +18,15 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
+        $careHome = null;
+        if ($request->user()->care_home_id) {
+            $careHome = $request->user()->care_home;
+        }
+        
         return Inertia::render('settings/profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
+            'careHome' => $careHome,
         ]);
     }
 
@@ -36,6 +42,14 @@ class ProfileController extends Controller
         }
 
         $request->user()->save();
+        
+        // Update care home contact details if user is a care home admin
+        if ($request->user()->care_home_id && $request->user()->care_home) {
+            $careHome = $request->user()->care_home;
+            $careHome->phone_number = $request->input('care_home_phone');
+            $careHome->address = $request->input('care_home_address');
+            $careHome->save();
+        }
 
         return to_route('profile.edit');
     }

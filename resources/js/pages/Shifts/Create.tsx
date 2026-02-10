@@ -43,10 +43,10 @@ const generateHourOptions = () => {
     return options;
 };
 
-// Generate minute options (0-59) with 00 as default
+// Generate minute options (0-59)
 const generateMinuteOptions = () => {
-    const options = [{ value: '00', label: '00' }];
-    for (let minute = 5; minute < 60; minute += 5) {
+    const options = [];
+    for (let minute = 0; minute < 60; minute++) {
         const minuteString = minute.toString().padStart(2, '0');
         options.push({ 
             value: minuteString, 
@@ -74,13 +74,16 @@ export default function CreateShift({}: CreateShiftProps) {
         end_minute: '00',
         ends_next_day: false,
         hourly_rate: '',
+        break_duration: 0,
+        break_paid: true,
         location: '',
         required_skills: [] as string[],
         preferred_skills: [] as string[],
         additional_requirements: '',
         notes: '',
         is_urgent: false,
-        status: 'draft'
+        status: 'draft',
+        quantity: 1
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -210,7 +213,13 @@ export default function CreateShift({}: CreateShiftProps) {
             }
             
             const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-            return hours > 0 ? `${hours.toFixed(1)} hours` : '';
+            
+            // Subtract unpaid breaks
+            const breakMinutes = data.break_duration || 0;
+            const breakHours = breakMinutes / 60;
+            const billableHours = data.break_paid ? hours : (hours - breakHours);
+            
+            return billableHours > 0 ? `${billableHours.toFixed(1)} hours` : '';
         }
         return '';
     };
@@ -228,8 +237,14 @@ export default function CreateShift({}: CreateShiftProps) {
                 end.setDate(end.getDate() + 1);
             }
             const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            
+            // Subtract unpaid breaks
+            const breakMinutes = data.break_duration || 0;
+            const breakHours = breakMinutes / 60;
+            const billableHours = data.break_paid ? hours : (hours - breakHours);
+            
             const rate = parseFloat(data.hourly_rate);
-            return hours > 0 && rate > 0 ? `£${(hours * rate).toFixed(2)}` : '';
+            return billableHours > 0 && rate > 0 ? `£${(billableHours * rate).toFixed(2)}` : '';
         }
         return '';
     };
@@ -238,20 +253,20 @@ export default function CreateShift({}: CreateShiftProps) {
         <AppLayout>
             <Head title="Post New Shift" />
             
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-6">
                 {/* Header */}
-                <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Post New Shift</h1>
+                        <p className="text-gray-600 dark:text-gray-400 mt-1">Create a new shift posting to attract qualified healthcare workers</p>
+                    </div>
+                    
                     <Link href="/shifts">
                         <Button variant="outline" size="sm">
                             <ArrowLeft className="h-4 w-4 mr-2" />
                             Back to Shifts
                         </Button>
                     </Link>
-                    
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Post New Shift</h1>
-                        <p className="text-gray-600 dark:text-gray-400 mt-1">Create a new shift posting to attract qualified healthcare workers</p>
-                    </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -425,17 +440,19 @@ export default function CreateShift({}: CreateShiftProps) {
                 </div>
 
                                 <div className="space-y-3">
-                                    <div className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id="ends_next_day"
-                                            checked={data.ends_next_day}
-                                            onCheckedChange={(checked) => setData('ends_next_day', !!checked)}
-                                        />
-                                        <Label htmlFor="ends_next_day" className="flex items-center gap-2">
-                                            <Clock className="h-4 w-4 text-blue-500" />
-                                            Shift ends the next day (Night shift)
-                                        </Label>
-                                    </div>
+                                    {data.ends_next_day && (
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="ends_next_day"
+                                                checked={data.ends_next_day}
+                                                disabled
+                                            />
+                                            <Label htmlFor="ends_next_day" className="flex items-center gap-2 text-gray-600">
+                                                <Clock className="h-4 w-4 text-blue-500" />
+                                                Shift ends the next day (Night shift)
+                                            </Label>
+                                        </div>
+                                    )}
 
                                     {data.shift_date && getStartTime() && getEndTime() && (
                                         <div className="p-3 bg-blue-50 border border-blue-200 rounded-md text-sm">
@@ -454,37 +471,84 @@ export default function CreateShift({}: CreateShiftProps) {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <Label htmlFor="hourly_rate">Hourly Rate (£) *</Label>
-                                    <div className="relative">
-                                        <Coins className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                            <div className="space-y-4">
+                                {/* Row 1: Hourly Rate and Break */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <Label htmlFor="hourly_rate">Hourly Rate (£) *</Label>
+                                        <div className="relative">
+                                            <Coins className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                            <Input
+                                                id="hourly_rate"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={data.hourly_rate}
+                                                onChange={(e) => setData('hourly_rate', e.target.value)}
+                                                placeholder="15.00"
+                                                className="pl-9"
+                                            />
+                                        </div>
+                                        {errors.hourly_rate && <p className="text-sm text-red-600 mt-1">{errors.hourly_rate}</p>}
+                                    </div>
+
+                                    <div>
+                                        <Label htmlFor="break_duration">Break (minutes)</Label>
                                         <Input
-                                            id="hourly_rate"
+                                            id="break_duration"
                                             type="number"
-                                            step="0.01"
+                                            step="1"
                                             min="0"
-                                            value={data.hourly_rate}
-                                            onChange={(e) => setData('hourly_rate', e.target.value)}
-                                            placeholder="15.00"
-                                            className="pl-9"
+                                            max="720"
+                                            value={data.break_duration}
+                                            onChange={(e) => setData('break_duration', parseInt(e.target.value) || 0)}
+                                            placeholder="0"
                                         />
+                                        <div className="flex items-center space-x-2 mt-2">
+                                            <Checkbox
+                                                id="break_paid"
+                                                checked={data.break_paid}
+                                                onCheckedChange={(checked) => setData('break_paid', !!checked)}
+                                            />
+                                            <Label htmlFor="break_paid" className="text-xs cursor-pointer">
+                                                Paid break
+                                            </Label>
+                                        </div>
+                                        {errors.break_duration && <p className="text-sm text-red-600 mt-1">{errors.break_duration}</p>}
                                     </div>
-                                    {errors.hourly_rate && <p className="text-sm text-red-600 mt-1">{errors.hourly_rate}</p>}
                                 </div>
 
-                                <div>
-                                    <Label className="text-sm text-gray-600">Duration</Label>
-                                    <div className="p-3 bg-gray-50 rounded-md text-sm font-medium text-green-700">
-                                        {calculateShiftDuration() || 'Set start and end times'}
+                                {/* Row 2: Duration and Estimated Pay */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <Label className="text-sm text-gray-600">Duration</Label>
+                                        <div className="p-3 bg-gray-50 rounded-md text-sm font-medium text-green-700">
+                                            {calculateShiftDuration() || 'Set start and end times'}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <Label className="text-sm text-gray-600">Estimated Pay</Label>
+                                        <div className="p-3 bg-green-50 rounded-md text-sm font-medium text-green-700">
+                                            {calculateEstimatedPay() || 'Set rate and duration'}
+                                        </div>
                                     </div>
                                 </div>
 
+                                {/* Row 3: Number of Shifts */}
                                 <div>
-                                    <Label className="text-sm text-gray-600">Estimated Pay</Label>
-                                    <div className="p-3 bg-green-50 rounded-md text-sm font-medium text-green-700">
-                                        {calculateEstimatedPay() || 'Set rate and duration'}
-                                    </div>
+                                    <Label htmlFor="quantity" className="text-sm text-gray-600">Create multiple identical shifts at once</Label>
+                                    <Input
+                                        id="quantity"
+                                        type="number"
+                                        min="1"
+                                        max="50"
+                                        value={data.quantity}
+                                        onChange={(e) => setData('quantity', parseInt(e.target.value) || 1)}
+                                        placeholder="1"
+                                        className="mt-2"
+                                    />
+                                    {errors.quantity && <p className="text-sm text-red-600 mt-1">{errors.quantity}</p>}
                                 </div>
                             </div>
                         </CardContent>
