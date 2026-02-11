@@ -32,6 +32,14 @@ jobs:
 
             cd ${{ secrets.SERVER_PATH }}
 
+            # Require PHP 8.4+ (matches composer.json "php": "^8.4")
+            PHP_VERSION=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
+            if [ "$(printf '%s\n' "8.4" "$PHP_VERSION" | sort -V | head -n1)" != "8.4" ]; then
+              echo "❌ PHP 8.4+ required (composer.json). Current: $PHP_VERSION"
+              exit 1
+            fi
+            echo "✓ PHP $PHP_VERSION"
+
             echo "🔄 Pulling latest code..."
             git pull origin main
 
@@ -54,7 +62,7 @@ jobs:
             npm run build
 
             echo "♻️ Restarting PHP-FPM..."
-            sudo systemctl restart php8.2-fpm
+            sudo systemctl restart php8.4-fpm
 
             echo "🚀 Deployment complete!"
           EOF
