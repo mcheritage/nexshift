@@ -40,6 +40,8 @@ class UserResource extends JsonResource
             'created_at' => $this->created_at,
             'last_login_at' => $this->last_login_at,
             'updated_at' => $this->updated_at,
+            'stripe_account_id' => $this->stripe_account_id,
+            'stripe_connected_at' => $this->stripe_connected_at,
         ];
     }
 }
