@@ -12,7 +12,8 @@ class RegisterCareHomeDto
         public string $email,
         public string $password,
         public ?string $phone_number = null,
-        public ?string $address = null
+        public ?string $address = null,
+        public ?string $postcode = null
     ) {
         //
     }
