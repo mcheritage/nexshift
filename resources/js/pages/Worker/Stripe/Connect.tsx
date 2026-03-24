@@ -112,7 +112,8 @@ export default function Connect({ auth, stripeConnected, onboardingComplete, acc
             const response = await fetch('/worker/stripe/refresh', {
                 headers: {
                     'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',                    'X-CSRF-TOKEN': getCsrfToken(),                    'X-CSRF-TOKEN': getCsrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                 },
                 credentials: 'same-origin',
             });
@@ -130,16 +131,6 @@ export default function Connect({ auth, stripeConnected, onboardingComplete, acc
                 if (data.redirect) {
                     router.visit(data.redirect);
                 }
-            }, {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
             }
             
         } catch (error) {
