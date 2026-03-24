@@ -134,10 +134,15 @@ Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worke
     });
 
     // Stripe Connect routes for workers
-    Route::get('/stripe', [App\Http\Controllers\WorkerController::class, 'stripe'])->name('stripe');
-    Route::post('/stripe/connect', [App\Http\Controllers\WorkerController::class, 'stripeConnect'])->name('stripe.connect');
-    Route::get('/stripe/callback', [App\Http\Controllers\WorkerController::class, 'stripeCallback'])->name('stripe.callback');
-    Route::get('/stripe/dashboard', [App\Http\Controllers\WorkerController::class, 'stripeDashboard'])->name('stripe.dashboard');
+    Route::prefix('stripe')->name('stripe.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Worker\StripeController::class, 'index'])->name('index');
+        Route::get('/connect', [App\Http\Controllers\Worker\StripeController::class, 'connect'])->name('connect');
+        Route::get('/callback', [App\Http\Controllers\Worker\StripeController::class, 'callback'])->name('callback');
+        Route::get('/refresh', [App\Http\Controllers\Worker\StripeController::class, 'refresh'])->name('refresh');
+        Route::get('/dashboard', [App\Http\Controllers\Worker\StripeController::class, 'dashboard'])->name('dashboard');
+        Route::get('/status', [App\Http\Controllers\Worker\StripeController::class, 'status'])->name('status');
+        Route::post('/disconnect', [App\Http\Controllers\Worker\StripeController::class, 'disconnect'])->name('disconnect');
+    });
 });
 
 Route::middleware(['auth'])->group(function () {
