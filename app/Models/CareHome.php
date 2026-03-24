@@ -19,6 +19,7 @@ class CareHome extends Model
         'name',
         'phone_number',
         'address',
+        'postcode',
         'status',
         'approved_by',
         'approved_at',
