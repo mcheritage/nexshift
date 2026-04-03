@@ -35,6 +35,7 @@ interface Application {
 
 interface Shift {
     id: string;
+    title: string;
     role: string;
     shift_date: string;
     start_time: string;
@@ -445,7 +446,10 @@ export default function ShiftsTableIndex({ shifts, stats, filters }: ShiftsPageP
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="space-y-1">
-                                                        <div className="font-medium">
+                                                        <div className="font-medium capitalize">
+                                                            {shift.title}
+                                                        </div>
+                                                        <div className="text-sm text-muted-foreground">
                                                             {shift.role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                                                         </div>
                                                         <div className="text-sm text-muted-foreground flex items-center gap-1">

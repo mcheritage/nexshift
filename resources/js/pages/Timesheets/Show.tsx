@@ -14,10 +14,8 @@ import {
     Calendar,
     User,
     MessageSquare,
-    MapPin,
     Phone,
-    Mail,
-    Timer
+    Mail
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -244,7 +242,7 @@ export default function TimesheetShow({ timesheet, statusOptions }: TimesheetSho
                                 )}
                             </div>
                             <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white capitalize">
                                     {timesheet.worker.first_name} {timesheet.worker.last_name}
                                 </h3>
                                 <div className="space-y-2 mt-2">
@@ -278,25 +276,25 @@ export default function TimesheetShow({ timesheet, statusOptions }: TimesheetSho
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Shift Title
                                 </label>
-                                <p className="text-gray-900 dark:text-white">{timesheet.shift.title}</p>
+                                <p className="text-lg font-semibold text-blue-600">{timesheet.shift.title}</p>
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Role
                                 </label>
-                                <p className="text-gray-900 dark:text-white">{timesheet.shift.role}</p>
+                                <p className="text-lg font-semibold text-purple-600">{timesheet.shift.role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Date
                                 </label>
-                                <p className="text-gray-900 dark:text-white">{timesheet.shift.shift_date}</p>
+                                <p className="text-lg font-semibold text-green-600">{timesheet.shift.shift_date}</p>
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Scheduled Time
                                 </label>
-                                <p className="text-gray-900 dark:text-white">
+                                <p className="text-lg font-semibold text-orange-600">
                                     {formatTime(timesheet.shift.start_time)} - {formatTime(timesheet.shift.end_time)}
                                 </p>
                             </div>
@@ -305,17 +303,14 @@ export default function TimesheetShow({ timesheet, statusOptions }: TimesheetSho
                                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                         Location
                                     </label>
-                                    <div className="flex items-center">
-                                        <MapPin className="h-4 w-4 mr-1 text-gray-400" />
-                                        <p className="text-gray-900 dark:text-white">{timesheet.shift.location}</p>
-                                    </div>
+                                    <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">{timesheet.shift.location}</p>
                                 </div>
                             )}
                             <div>
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Care Home
                                 </label>
-                                <p className="text-gray-900 dark:text-white">{timesheet.care_home.name}</p>
+                                <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">{timesheet.care_home.name}</p>
                             </div>
                         </div>
                     </CardContent>
@@ -352,19 +347,6 @@ export default function TimesheetShow({ timesheet, statusOptions }: TimesheetSho
                                     </div>
                                 )}
                                 
-                                {timesheet.break_duration_minutes && (
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            Break Duration
-                                        </label>
-                                        <div className="flex items-center">
-                                            <Timer className="h-4 w-4 mr-1 text-gray-400" />
-                                            <p className="text-gray-900 dark:text-white">
-                                                {formatDuration(timesheet.break_duration_minutes)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                             
                             <div className="space-y-4">
@@ -374,6 +356,17 @@ export default function TimesheetShow({ timesheet, statusOptions }: TimesheetSho
                                     </label>
                                     <p className="text-2xl font-bold text-blue-600">
                                         {timesheet.total_hours}h
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        Break Duration
+                                    </label>
+                                    <p className="text-2xl font-bold text-gray-700 dark:text-gray-300">
+                                        {(timesheet.break_duration_minutes ?? 0) > 0
+                                            ? formatDuration(timesheet.break_duration_minutes)
+                                            : '0 mins'}
                                     </p>
                                 </div>
                                 

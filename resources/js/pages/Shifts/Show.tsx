@@ -159,12 +159,8 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
                 <div className="space-y-4">
                     {/* Title and Actions */}
                     <div className="flex justify-between items-start">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                                {ROLE_LABELS[shift.role] || shift.role}
-                            </h1>
-                        </div>
-                        
+                        <div />
+
                         <div className="flex gap-2 items-start">
                             {canEdit && (
                                 <Link href={`/shifts/${shift.id}/edit`}>
