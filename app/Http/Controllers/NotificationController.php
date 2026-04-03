@@ -16,12 +16,6 @@ class NotificationController extends Controller
     {
         $user = Auth::user();
         
-        \Log::info('NotificationController index called', [
-            'user_id' => $user->id,
-            'user_email' => $user->email,
-            'user_role' => $user->role,
-        ]);
-        
         $notifications = Notification::where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->limit(50)
@@ -30,11 +24,6 @@ class NotificationController extends Controller
         $unreadCount = Notification::where('user_id', $user->id)
             ->where('read', false)
             ->count();
-
-        \Log::info('Notifications fetched', [
-            'count' => $notifications->count(),
-            'unread_count' => $unreadCount,
-        ]);
 
         return response()->json([
             'notifications' => $notifications,
