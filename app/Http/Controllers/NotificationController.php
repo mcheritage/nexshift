@@ -6,16 +6,18 @@ use App\Models\Notification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class NotificationController extends Controller
 {
     /**
      * Get all notifications for authenticated user
      */
-    public function index(): JsonResponse
+    public function index(): Response|JsonResponse
     {
         $user = Auth::user();
-        
+
         $notifications = Notification::where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->limit(50)
@@ -25,7 +27,14 @@ class NotificationController extends Controller
             ->where('read', false)
             ->count();
 
-        return response()->json([
+        if (request()->wantsJson()) {
+            return response()->json([
+                'notifications' => $notifications,
+                'unread_count' => $unreadCount,
+            ]);
+        }
+
+        return Inertia::render('Notifications/Index', [
             'notifications' => $notifications,
             'unread_count' => $unreadCount,
         ]);
