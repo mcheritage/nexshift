@@ -23,6 +23,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string profile_photo
  * @property string phone_number
  * @property string bio
+ * @property string|null stripe_account_id
  * @property CareHome $care_home
  */
 class User extends Authenticatable implements MustVerifyEmail
