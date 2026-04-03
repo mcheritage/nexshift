@@ -62,8 +62,5 @@ jobs:
             echo "🏗 Building frontend..."
             npm run build
 
-            echo "♻️ Restarting PHP-FPM..."
-            systemctl restart php8.4-fpm
-
             echo "🚀 Deployment complete!"
           EOF
