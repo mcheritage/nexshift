@@ -417,11 +417,11 @@ export default function TimesheetsIndex({ timesheets, stats, filters, statusOpti
                                             </div>
                                             
                                             <div className="flex-1 min-w-0">
-                                                <h4 className="font-medium text-gray-900 dark:text-white">
+                                                <h4 className="font-medium text-gray-900 dark:text-white capitalize">
                                                     {timesheet.worker.first_name} {timesheet.worker.last_name}
                                                 </h4>
                                                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                                                    {timesheet.shift.title} • {timesheet.shift.role}
+                                                    {timesheet.shift.title} • {timesheet.shift.role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                                                 </p>
                                                 
                                                 <div className="flex items-center gap-6 mt-2 text-sm text-gray-500">

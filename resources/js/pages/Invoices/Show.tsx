@@ -192,7 +192,7 @@ export default function ShowInvoice({ invoice }: ShowInvoiceProps) {
                                             </td>
                                             <td className="p-3 text-gray-700">
                                                 {timesheet.shift.title}
-                                                <span className="text-gray-500 text-sm ml-1">({timesheet.shift.role})</span>
+                                                <span className="text-gray-500 text-sm ml-1">({timesheet.shift.role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())})</span>
                                             </td>
                                             <td className="p-3 text-right text-gray-700">
                                                 {timesheet.total_hours}

@@ -221,7 +221,7 @@ export default function CreateInvoice({ availableTimesheets }: CreateInvoiceProp
                                                             {timesheet.worker.first_name} {timesheet.worker.last_name}
                                                         </p>
                                                         <p className="text-sm text-gray-600">
-                                                            {timesheet.shift.title} • {timesheet.shift.role}
+                                                            {timesheet.shift.title} • {timesheet.shift.role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                                                         </p>
                                                     </div>
                                                     <div className="text-right">
