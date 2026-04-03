@@ -56,7 +56,7 @@ class StripeController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function connect(): \Illuminate\Http\JsonResponse
+    public function connect(Request $request): \Illuminate\Http\JsonResponse
     {
         $user = Auth::user();
 
@@ -141,7 +141,7 @@ class StripeController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function refresh(): \Illuminate\Http\JsonResponse
+    public function refresh(Request $request): \Illuminate\Http\JsonResponse
     {
         $user = Auth::user();
 

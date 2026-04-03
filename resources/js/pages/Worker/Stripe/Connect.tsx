@@ -17,6 +17,12 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+// Helper to get CSRF token from meta tag
+const getCsrfToken = () => {
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    return token || '';
+};
+
 interface AccountStatus {
     connected: boolean;
     onboarding_complete: boolean;
@@ -68,7 +74,19 @@ export default function Connect({ auth, stripeConnected, onboardingComplete, acc
         setIsConnecting(true);
         
         try {
-            const response = await fetch('/worker/stripe/connect');
+            const response = await fetch('/worker/stripe/connect', {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                },
+                credentials: 'same-origin',
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const data = await response.json();
             
             if (data.success && data.url) {
@@ -91,7 +109,19 @@ export default function Connect({ auth, stripeConnected, onboardingComplete, acc
         setIsConnecting(true);
         
         try {
-            const response = await fetch('/worker/stripe/refresh');
+            const response = await fetch('/worker/stripe/refresh', {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                },
+                credentials: 'same-origin',
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const data = await response.json();
             
             if (data.success && data.url) {
@@ -102,6 +132,7 @@ export default function Connect({ auth, stripeConnected, onboardingComplete, acc
                     router.visit(data.redirect);
                 }
             }
+            
         } catch (error) {
             setIsConnecting(false);
             console.error('Error refreshing Stripe connection:', error);

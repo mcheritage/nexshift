@@ -36,6 +36,7 @@ class AuthService
                 'name' => $payload->name,
                 'phone_number' => $payload->phone_number,
                 'address' => $payload->address,
+                'postcode' => $payload->postcode,
                 'status' => 'pending',
             ]);
 

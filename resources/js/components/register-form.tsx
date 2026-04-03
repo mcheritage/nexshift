@@ -75,6 +75,17 @@ export function RegisterForm({
                   <InputError message={formErrors.address} />
                 </div>
                 <div className="grid gap-3">
+                  <Label htmlFor="postcode">Postcode</Label>
+                  <Input
+                    id="postcode"
+                    type="text"
+                    name="postcode"
+                    placeholder="SW1A 1AA"
+                    autoComplete="postal-code"
+                  />
+                  <InputError message={formErrors.postcode} />
+                </div>
+                <div className="grid gap-3">
                   <Label htmlFor="email">Admin. Email</Label>
                   <Input
                     id="email"

@@ -29,10 +29,10 @@ return [
         'client_id' => env('STRIPE_CONNECT_CLIENT_ID'),
         
         // The URL to redirect users back to after onboarding
-        'return_url' => env('APP_URL') . '/worker/stripe/callback',
+        'return_url' => rtrim(env('APP_URL'), '/') . '/worker/stripe/callback',
         
         // The URL to redirect users to if they exit onboarding early
-        'refresh_url' => env('APP_URL') . '/worker/stripe/connect',
+        'refresh_url' => rtrim(env('APP_URL'), '/') . '/worker/stripe',
         
         // Account type for connected accounts (standard, express, or custom)
         'account_type' => env('STRIPE_CONNECT_ACCOUNT_TYPE', 'express'),

@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 
 class HealthWorkerDocumentsController extends Controller
 {
-    private const MAX_FILE_SIZE = 1024 * 3; // 3MB in KB
+    private const MAX_FILE_SIZE = 10240; // 10MB in KB
     private const ALLOWED_MIME_TYPES = [
         'application/pdf',
         'image/jpeg',
@@ -21,6 +21,7 @@ class HealthWorkerDocumentsController extends Controller
         'image/gif',
         'application/msword',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/octet-stream',
     ];
 
     public function getRequiredDocuments(Request $request): JsonResponse
@@ -62,7 +63,7 @@ class HealthWorkerDocumentsController extends Controller
         $request->validate([
             'document_type' => 'required|string',
             'label' => 'required|string|max:255',
-            'file' => 'required|file|max:' . self::MAX_FILE_SIZE . '|mimetypes:' . implode(',', self::ALLOWED_MIME_TYPES),
+            'file' => 'required|file|max:' . self::MAX_FILE_SIZE . '|mimes:pdf,jpg,jpeg,png,gif,doc,docx',
         ]);
 
         $user = $request->user();
