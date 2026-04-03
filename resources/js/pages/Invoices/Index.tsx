@@ -44,6 +44,8 @@ interface Stats {
     overdue: number;
     total_outstanding: number;
     total_paid: number;
+    uninvoiced_timesheets: number;
+    uninvoiced_total: number;
 }
 
 interface Filters {
@@ -117,6 +119,23 @@ export default function InvoicesIndex({ invoices, stats, filters, statusOptions 
                         </Button>
                     </Link>
                 </div>
+
+                {/* Uninvoiced Timesheets Notification */}
+                {stats.uninvoiced_timesheets > 0 && (
+                    <div className="flex items-center justify-between gap-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                        <div className="flex items-center gap-3">
+                            <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
+                            <p className="text-sm text-amber-800">
+                                You have <strong>{stats.uninvoiced_timesheets}</strong> approved timesheet{stats.uninvoiced_timesheets > 1 ? 's' : ''} ({formatCurrency(stats.uninvoiced_total)}) that {stats.uninvoiced_timesheets > 1 ? 'have' : 'has'} not been invoiced yet.
+                            </p>
+                        </div>
+                        <Link href={route('invoices.create')} className="shrink-0">
+                            <Button size="sm" variant="outline" className="border-amber-400 text-amber-800 hover:bg-amber-100">
+                                Create Invoice
+                            </Button>
+                        </Link>
+                    </div>
+                )}
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
