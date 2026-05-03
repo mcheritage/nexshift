@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Resources\WorkExperienceResource;
+use App\Models\HealthcareProfile;
 use App\Models\WorkExperience;
 use Illuminate\Http\Request;
 
@@ -38,7 +39,8 @@ class WorkExperienceController extends BaseApiController
         ]);
 
         $experience = $user->workExperiences()->create($request->all());
-        
+        HealthcareProfile::syncCompletion($user->id);
+
         return response()->json(WorkExperienceResource::make($experience), 201);
     }
 
@@ -61,7 +63,8 @@ class WorkExperienceController extends BaseApiController
         ]);
 
         $experience->update($request->all());
-        
+        HealthcareProfile::syncCompletion($user->id);
+
         return response()->json(WorkExperienceResource::make($experience));
     }
 
@@ -74,7 +77,8 @@ class WorkExperienceController extends BaseApiController
         
         $experience = $user->workExperiences()->findOrFail($id);
         $experience->delete();
-        
+        HealthcareProfile::syncCompletion($user->id);
+
         return response()->json(['message' => 'Work experience deleted successfully']);
     }
 }
