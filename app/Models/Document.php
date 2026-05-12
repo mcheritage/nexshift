@@ -17,6 +17,7 @@ class Document extends Model
         'user_id',
         'document_type',
         'label',
+        'text_value',
         'original_name',
         'file_path',
         'file_size',

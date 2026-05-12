@@ -29,6 +29,7 @@ Route::middleware(['auth:sanctum', 'health_care_worker'])->group(function () {
     Route::post('/media/upload', [MediaUploadController::class, 'uploadImage']);
     Route::get('/documents/list', [HealthWorkerDocumentsController::class, 'getRequiredDocuments']);
     Route::post('/documents/upload', [HealthWorkerDocumentsController::class, 'upload']);
+    Route::post('/documents/submit-text', [HealthWorkerDocumentsController::class, 'submitText']);
 
     // Profile routes
     Route::get('/profile/healthcare', [ProfileController::class, 'getHealthcareProfile']);
