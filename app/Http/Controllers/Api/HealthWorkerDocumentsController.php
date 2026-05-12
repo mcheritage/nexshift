@@ -66,6 +66,7 @@ class HealthWorkerDocumentsController extends Controller
             'document_type' => 'required|string',
             'label' => 'required|string|max:255',
             'text_value' => 'required|string|max:1000',
+            'expiry_date' => 'nullable|date',
         ]);
 
         $user = $request->user();
@@ -84,6 +85,7 @@ class HealthWorkerDocumentsController extends Controller
             'document_type' => $documentType->value,
             'label' => $request->string('label')->toString(),
             'text_value' => $request->string('text_value')->toString(),
+            'expiry_date' => $request->date('expiry_date'),
             'original_name' => 'text_input',
             'file_path' => '',
             'file_size' => '0',
@@ -105,6 +107,7 @@ class HealthWorkerDocumentsController extends Controller
             'document_type' => 'required|string',
             'label' => 'required|string|max:255',
             'file' => 'required|file|max:' . self::MAX_FILE_SIZE . '|mimes:pdf,jpg,jpeg,png,gif,doc,docx',
+            'expiry_date' => 'nullable|date',
         ]);
 
         $user = $request->user();
@@ -131,6 +134,7 @@ class HealthWorkerDocumentsController extends Controller
                 'user_id' => $user->id,
                 'document_type' => $documentType->value,
                 'label' => $request->string('label')->toString(),
+                'expiry_date' => $request->date('expiry_date'),
                 'original_name' => $file->getClientOriginalName(),
                 'file_path' => $path,
                 'file_size' => (string) $file->getSize(),

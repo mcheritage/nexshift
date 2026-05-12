@@ -18,6 +18,7 @@ class Document extends Model
         'document_type',
         'label',
         'text_value',
+        'expiry_date',
         'original_name',
         'file_path',
         'file_size',
@@ -33,6 +34,7 @@ class Document extends Model
     protected $casts = [
         'uploaded_at' => 'datetime',
         'reviewed_at' => 'datetime',
+        'expiry_date' => 'date',
         'status' => DocumentVerificationStatus::class,
     ];
 
