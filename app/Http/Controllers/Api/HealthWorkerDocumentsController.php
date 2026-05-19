@@ -47,6 +47,8 @@ class HealthWorkerDocumentsController extends Controller
                       'doc_type' => $doc->value,
                       'name' => $doc->getDisplayName(),
                       'description' => $doc->getDescription(),
+                      'input_type' => $doc->getInputType(),
+                      'input_label' => $doc->getInputLabel(),
                       'uploaded' => $latestUpload,
                       'uploads' => $documentUploads->values(),
                   ];
@@ -58,12 +60,54 @@ class HealthWorkerDocumentsController extends Controller
     }
 
 
+    public function submitText(Request $request): JsonResponse
+    {
+        $request->validate([
+            'document_type' => 'required|string',
+            'label' => 'required|string|max:255',
+            'text_value' => 'required|string|max:1000',
+            'expiry_date' => 'nullable|date',
+        ]);
+
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $documentType = DocumentType::tryFrom($request->document_type);
+        if (!$documentType) {
+            return response()->json(['message' => 'Invalid document type'], 400);
+        }
+
+        $document = Document::create([
+            'user_id' => $user->id,
+            'document_type' => $documentType->value,
+            'label' => $request->string('label')->toString(),
+            'text_value' => $request->string('text_value')->toString(),
+            'expiry_date' => $request->date('expiry_date'),
+            'original_name' => 'text_input',
+            'file_path' => '',
+            'file_size' => '0',
+            'mime_type' => 'text/plain',
+            'status' => DocumentVerificationStatus::PENDING,
+            'uploaded_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document submitted successfully',
+            'document' => $document,
+        ]);
+    }
+
     public function upload(Request $request): JsonResponse
     {
         $request->validate([
             'document_type' => 'required|string',
             'label' => 'required|string|max:255',
             'file' => 'required|file|max:' . self::MAX_FILE_SIZE . '|mimes:pdf,jpg,jpeg,png,gif,doc,docx',
+            'expiry_date' => 'nullable|date',
         ]);
 
         $user = $request->user();
@@ -90,6 +134,7 @@ class HealthWorkerDocumentsController extends Controller
                 'user_id' => $user->id,
                 'document_type' => $documentType->value,
                 'label' => $request->string('label')->toString(),
+                'expiry_date' => $request->date('expiry_date'),
                 'original_name' => $file->getClientOriginalName(),
                 'file_path' => $path,
                 'file_size' => (string) $file->getSize(),

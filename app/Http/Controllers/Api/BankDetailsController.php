@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Resources\BankDetailsResource;
 use App\Models\BankDetails;
+use App\Models\HealthcareProfile;
 use Illuminate\Http\Request;
 
 class BankDetailsController extends BaseApiController
@@ -45,7 +46,8 @@ class BankDetailsController extends BaseApiController
         ]);
 
         $bankDetails = $user->bankDetails()->create($request->all());
-        
+        HealthcareProfile::syncCompletion($user->id);
+
         return response()->json(BankDetailsResource::make($bankDetails), 201);
     }
 
@@ -66,7 +68,8 @@ class BankDetailsController extends BaseApiController
         ]);
 
         $bankDetails->update($request->all());
-        
+        HealthcareProfile::syncCompletion($user->id);
+
         return response()->json(BankDetailsResource::make($bankDetails));
     }
 
@@ -79,7 +82,8 @@ class BankDetailsController extends BaseApiController
         
         $bankDetails = $user->bankDetails()->findOrFail($id);
         $bankDetails->delete();
-        
+        HealthcareProfile::syncCompletion($user->id);
+
         return response()->json(['message' => 'Bank details deleted successfully']);
     }
 }

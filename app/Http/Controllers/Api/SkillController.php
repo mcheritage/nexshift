@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Resources\SkillResource;
+use App\Models\HealthcareProfile;
 use App\Models\Skill;
 use Illuminate\Http\Request;
 
@@ -36,7 +37,8 @@ class SkillController extends BaseApiController
         ]);
 
         $skill = $user->skills()->create($request->all());
-        
+        HealthcareProfile::syncCompletion($user->id);
+
         return response()->json(SkillResource::make($skill), 201);
     }
 
@@ -57,7 +59,8 @@ class SkillController extends BaseApiController
         ]);
 
         $skill->update($request->all());
-        
+        HealthcareProfile::syncCompletion($user->id);
+
         return response()->json(SkillResource::make($skill));
     }
 
@@ -70,7 +73,8 @@ class SkillController extends BaseApiController
         
         $skill = $user->skills()->findOrFail($id);
         $skill->delete();
-        
+        HealthcareProfile::syncCompletion($user->id);
+
         return response()->json(['message' => 'Skill deleted successfully']);
     }
 }

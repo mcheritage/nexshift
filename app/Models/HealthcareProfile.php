@@ -42,4 +42,20 @@ class HealthcareProfile extends Model
     {
         return $this->belongsTo(BankDetails::class, 'user_id', 'user_id');
     }
+
+    public static function syncCompletion(string $userId): void
+    {
+        $profile = static::firstOrCreate(
+            ['user_id' => $userId],
+            ['is_profile_complete' => false]
+        );
+
+        $hasWorkExperience = $profile->workExperiences()->exists();
+        $hasSkills = $profile->skills()->exists();
+        $hasBankDetails = $profile->bankDetails()->exists();
+
+        $profile->update([
+            'is_profile_complete' => $hasWorkExperience && $hasSkills && $hasBankDetails,
+        ]);
+    }
 }

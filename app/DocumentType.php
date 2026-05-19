@@ -259,6 +259,26 @@ enum DocumentType: string
         ];
     }
 
+    public function getInputType(): string
+    {
+        return match($this) {
+            self::NMC_PIN,
+            self::HCPC_REGISTRATION,
+            self::WORKER_NURSING_REGISTRATION => 'text',
+            default => 'file',
+        };
+    }
+
+    public function getInputLabel(): string
+    {
+        return match($this) {
+            self::NMC_PIN => 'Enter your NMC PIN number',
+            self::HCPC_REGISTRATION => 'Enter your HCPC registration number',
+            self::WORKER_NURSING_REGISTRATION => 'Enter your NMC registration number',
+            default => 'Title of document',
+        };
+    }
+
     public function isWorkerDocument(): bool
     {
         return str_starts_with($this->value, 'worker_');

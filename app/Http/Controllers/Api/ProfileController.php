@@ -89,14 +89,8 @@ class ProfileController extends BaseApiController
             $user->bankDetails()->create($request->bank_details);
         }
 
-        // Check if profile is complete
-        $hasWorkExperience = $user->workExperiences()->exists();
-        $hasSkills = $user->skills()->exists();
-        $hasBankDetails = $user->bankDetails()->exists();
-        
-        $profile->update([
-            'is_profile_complete' => $hasWorkExperience && $hasSkills && $hasBankDetails
-        ]);
+        HealthcareProfile::syncCompletion($user->id);
+        $profile->refresh();
 
         $profile->load(['workExperiences', 'skills', 'bankDetails']);
         

@@ -28,6 +28,7 @@ class RegisterUserController extends Controller
             'first_name' => 'required|string',
             'last_name' => 'required|string',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'phone_number' => 'required|string|max:32',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -35,6 +36,7 @@ class RegisterUserController extends Controller
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
             'email' => $request->email,
+            'phone_number' => $request->phone_number,
             'password' => Hash::make($request->password),
             'last_login_at' => now(),
             'role' => UserRoles::HEALTH_WORKER,
