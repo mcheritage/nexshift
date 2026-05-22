@@ -28,7 +28,7 @@ export default function Register({ status }: RegisterProps) {
                     />
                   </div>
                     
-                    <Tabs defaultValue="carehome" className="">
+                    <Tabs defaultValue="healthworker" className="">
                         <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="carehome">Care Home</TabsTrigger>
                             <TabsTrigger value="healthworker">Health Worker</TabsTrigger>

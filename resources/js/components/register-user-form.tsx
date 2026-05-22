@@ -93,6 +93,17 @@ export function RegisterUserForm({
                   <InputError message={formErrors.gender} />
                 </div>
                 <div className="grid gap-3">
+                  <Label htmlFor="phone_number">Phone Number</Label>
+                  <Input
+                    id="phone_number"
+                    type="tel"
+                    name="phone_number"
+                    placeholder="+44 7700 900000"
+                    autoComplete="tel"
+                  />
+                  <InputError message={formErrors.phone_number} />
+                </div>
+                <div className="grid gap-3">
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
