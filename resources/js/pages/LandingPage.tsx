@@ -333,9 +333,15 @@ export default function LandingPage() {
                                     NexShift
                                 </span>
                             </div>
-                            <p className="text-gray-600 dark:text-gray-400">
-                                © {new Date().getFullYear()} NexShift. All rights reserved.
-                            </p>
+                            <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
+                                <Link href={route('privacy-policy')} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                    Privacy Policy
+                                </Link>
+                                <Link href={route('terms')} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                    Terms of Service
+                                </Link>
+                                <span>© {new Date().getFullYear()} NexShift. All rights reserved.</span>
+                            </div>
                         </div>
                     </div>
                 </footer>
