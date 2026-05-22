@@ -19,6 +19,10 @@ Route::get('/account-deletion', function () {
     return Inertia::render('AccountDeletion');
 })->name('account-deletion');
 
+Route::get('/terms', function () {
+    return Inertia::render('TermsOfService');
+})->name('terms');
+
 
 
 // Auto-login route for testing (remove in production)

@@ -12,7 +12,8 @@ class RegisterUserDto
                                 public string | null $other_names,
                                 public string | null $gender,
                                 public string $email,
-                                public string $password)
+                                public string $password,
+                                public string | null $phone_number = null)
     {
         //
     }

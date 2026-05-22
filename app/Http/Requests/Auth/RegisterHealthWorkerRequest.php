@@ -29,6 +29,7 @@ class RegisterHealthWorkerRequest extends FormRequest
             'last_name' => 'required|string|max:255',
             'other_names' => 'nullable|string|max:255',
             'gender' => 'required|in:male,female,other',
+            'phone_number' => 'nullable|string|max:20',
             'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ];
@@ -45,6 +46,7 @@ class RegisterHealthWorkerRequest extends FormRequest
             gender: $payload['gender'],
             email: $payload['email'],
             password: $payload['password'],
+            phone_number: $payload['phone_number'] ?? null,
         );
     }
 }

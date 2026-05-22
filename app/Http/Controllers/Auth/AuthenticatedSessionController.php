@@ -35,6 +35,10 @@ class AuthenticatedSessionController extends Controller
 
         // Redirect based on user role/type
         $user = $request->user();
+
+        if (! $user->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice');
+        }
         
         if ($user->isAdmin()) {
             // Admin should always go to admin dashboard

@@ -86,7 +86,7 @@ export function RegisterForm({
                   <InputError message={formErrors.postcode} />
                 </div>
                 <div className="grid gap-3">
-                  <Label htmlFor="email">Admin. Email</Label>
+                  <Label htmlFor="email">Admin Email</Label>
                   <Input
                     id="email"
                     type="email"
