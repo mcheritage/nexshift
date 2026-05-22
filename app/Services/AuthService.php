@@ -69,6 +69,7 @@ class AuthService
             'last_name' => $payload->last_name,
             'other_names' => $payload->other_names,
             'gender' => $payload->gender,
+            'phone_number' => $payload->phone_number,
             'email' => $payload->email,
             'password' => Hash::make($payload->password),
             'role' => $role,
