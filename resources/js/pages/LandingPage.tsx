@@ -1,9 +1,21 @@
 import { type SharedData } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/react';
-import { Calendar, Clock, Users, Shield, TrendingUp, CheckCircle } from 'lucide-react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Calendar, Clock, Users, Shield, TrendingUp, CheckCircle, Mail, Phone, X, Send } from 'lucide-react';
+import { useState } from 'react';
 
 export default function LandingPage() {
     const { auth } = usePage<SharedData>().props;
+    const [showContact, setShowContact] = useState(false);
+    const { data, setData, post, processing, errors, wasSuccessful, reset } = useForm({
+        name: '', email: '', message: '',
+    });
+
+    function handleContactSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        post(route('contact.store'), {
+            onSuccess: () => reset(),
+        });
+    }
 
     const features = [
         {
@@ -56,6 +68,12 @@ export default function LandingPage() {
                                 </span>
                             </div>
                             <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => setShowContact(true)}
+                                    className="px-6 py-2 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
+                                >
+                                    Contact Us
+                                </button>
                                 {auth.user ? (
                                     <Link
                                         href={route('dashboard')}
@@ -305,6 +323,52 @@ export default function LandingPage() {
                     </div>
                 </section>
 
+                {/* Contact Section */}
+                <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+                    <div className="text-center mb-12">
+                        <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                            Contact <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Us</span>
+                        </h2>
+                        <p className="text-xl text-gray-600 dark:text-gray-300">
+                            We'd love to hear from you. Reach out anytime.
+                        </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-6 justify-center max-w-2xl mx-auto mb-8">
+                        <a
+                            href="mailto:support@nexshiftcare.co.uk"
+                            className="flex items-center gap-4 p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-900 flex-1"
+                        >
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-xl flex items-center justify-center shrink-0">
+                                <Mail className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Email</p>
+                                <p className="text-gray-900 dark:text-white font-semibold">support@nexshiftcare.co.uk</p>
+                            </div>
+                        </a>
+                        <a
+                            href="tel:+447876519260"
+                            className="flex items-center gap-4 p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-900 flex-1"
+                        >
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-xl flex items-center justify-center shrink-0">
+                                <Phone className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Phone</p>
+                                <p className="text-gray-900 dark:text-white font-semibold">+44 7876 519260</p>
+                            </div>
+                        </a>
+                    </div>
+                    <div className="text-center mt-8">
+                        <button
+                            onClick={() => setShowContact(true)}
+                            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-200 transform hover:scale-105 inline-flex items-center gap-2"
+                        >
+                            <Send className="w-4 h-4" /> Send Us a Message
+                        </button>
+                    </div>
+                </section>
+
                 <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
                     <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-12 lg:p-20 text-center shadow-2xl">
                         <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
@@ -324,7 +388,90 @@ export default function LandingPage() {
                     </div>
                 </section>
 
-                <footer className="border-t border-gray-200 dark:border-gray-800 mt-20">
+                {/* Contact Modal */}
+                {showContact && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowContact(false)}>
+                        <div
+                            className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-lg p-8 relative"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <button
+                                onClick={() => { setShowContact(false); reset(); }}
+                                className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+
+                            {wasSuccessful ? (
+                                <div className="text-center py-8">
+                                    <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Send className="w-8 h-8 text-white" />
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Message Sent!</h3>
+                                    <p className="text-gray-600 dark:text-gray-400">Thanks for reaching out. We'll get back to you soon.</p>
+                                    <button
+                                        onClick={() => { setShowContact(false); reset(); }}
+                                        className="mt-6 px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg transition-all duration-200"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Get in Touch</h3>
+                                    <p className="text-gray-600 dark:text-gray-400 mb-6">Fill in the form and we'll get back to you shortly.</p>
+                                    <form onSubmit={handleContactSubmit} className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+                                            <input
+                                                type="text"
+                                                required
+                                                value={data.name}
+                                                onChange={e => setData('name', e.target.value)}
+                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Your name"
+                                            />
+                                            {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                                            <input
+                                                type="email"
+                                                required
+                                                value={data.email}
+                                                onChange={e => setData('email', e.target.value)}
+                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="your@email.com"
+                                            />
+                                            {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Message</label>
+                                            <textarea
+                                                required
+                                                rows={4}
+                                                value={data.message}
+                                                onChange={e => setData('message', e.target.value)}
+                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                placeholder="How can we help?"
+                                            />
+                                            {errors.message && <p className="mt-1 text-sm text-red-500">{errors.message}</p>}
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            disabled={processing}
+                                            className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                                        >
+                                            <Send className="w-4 h-4" /> {processing ? 'Sending…' : 'Send Message'}
+                                        </button>
+                                    </form>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                <footer className="border-t border-gray-200 dark:border-gray-800">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="flex items-center space-x-3">
@@ -333,7 +480,13 @@ export default function LandingPage() {
                                     NexShift
                                 </span>
                             </div>
-                            <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
+                            <div className="flex flex-wrap items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
+                                <a href="mailto:support@nexshiftcare.co.uk" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1">
+                                    <Mail className="w-3.5 h-3.5" /> support@nexshiftcare.co.uk
+                                </a>
+                                <a href="tel:+447876519260" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1">
+                                    <Phone className="w-3.5 h-3.5" /> +44 7876 519260
+                                </a>
                                 <Link href={route('privacy-policy')} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                                     Privacy Policy
                                 </Link>
