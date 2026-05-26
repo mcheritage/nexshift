@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +23,8 @@ Route::get('/account-deletion', function () {
 Route::get('/terms', function () {
     return Inertia::render('TermsOfService');
 })->name('terms');
+
+Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
 
 
 
