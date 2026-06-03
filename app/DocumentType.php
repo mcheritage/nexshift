@@ -191,6 +191,9 @@ enum DocumentType: string
             ],
             'Training Certifications' => [
                 self::TRAINING_CERTIFICATIONS,
+            ],
+            'General Documents' => [
+                self::WORKER_CV_RESUME,
             ]
         ];
     }
