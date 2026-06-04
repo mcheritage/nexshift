@@ -24,6 +24,10 @@ Route::get('/terms', function () {
     return Inertia::render('TermsOfService');
 })->name('terms');
 
+Route::get('/faq', function () {
+    return Inertia::render('FAQ');
+})->name('faq');
+
 Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
 
 
