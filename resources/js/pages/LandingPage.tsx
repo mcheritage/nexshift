@@ -1,11 +1,18 @@
 import { type SharedData } from '@/types';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { Calendar, Clock, Users, Shield, TrendingUp, CheckCircle, Mail, Phone, X, Send } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function LandingPage() {
     const { auth } = usePage<SharedData>().props;
     const [showContact, setShowContact] = useState(false);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('popup') === 'contactform') {
+            setShowContact(true);
+        }
+    }, []);
     const { data, setData, post, processing, errors, wasSuccessful, reset } = useForm({
         name: '', email: '', message: '',
     });
@@ -487,6 +494,9 @@ export default function LandingPage() {
                                 <a href="tel:+447876519260" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1">
                                     <Phone className="w-3.5 h-3.5" /> +44 7876 519260
                                 </a>
+                                <Link href={route('faq')} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                    FAQ
+                                </Link>
                                 <Link href={route('privacy-policy')} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                                     Privacy Policy
                                 </Link>
