@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\UserStatusChanged;
+use App\Mail\WelcomeEmail;
 use App\Models\CareHome;
 use App\Models\StatusChange;
 use App\Models\User;
@@ -78,6 +79,9 @@ class CareHomeManagementController extends Controller
         $careHome = CareHome::create([
             'name' => $request->name,
             'phone_number' => $request->phone_number,
+            'status' => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
         ]);
 
         $admin = User::create([
@@ -88,13 +92,17 @@ class CareHomeManagementController extends Controller
             'password' => Hash::make($request->admin_password),
             'role' => 'care_home_admin',
             'care_home_id' => $careHome->id,
-            'email_verified_at' => now(),
+            'status' => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
         ]);
 
         ActivityLogService::logCareHomeCreated($careHome);
         ActivityLogService::logUserCreated($admin, $careHome->id);
 
-        return redirect()->back()->with('success', 'Care home created successfully.');
+        Mail::to($admin->email)->send(new WelcomeEmail($admin));
+
+        return redirect()->back()->with('success', 'Care home created successfully. A verification email has been sent to the administrator.');
     }
 
     /**

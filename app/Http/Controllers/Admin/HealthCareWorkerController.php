@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\UserStatusChanged;
+use App\Mail\WelcomeEmail;
 use App\Models\CareHome;
 use App\Models\StatusChange;
 use App\Models\User;
@@ -98,12 +99,16 @@ class HealthCareWorkerController extends Controller
             'role' => 'health_worker',
             'care_home_id' => $request->care_home_id,
             'gender' => $request->gender,
-            'email_verified_at' => now(),
+            'status' => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
         ]);
 
         ActivityLogService::logUserCreated($healthCareWorker, $request->care_home_id);
 
-        return redirect()->back()->with('success', 'Health care worker created successfully.');
+        Mail::to($healthCareWorker->email)->send(new WelcomeEmail($healthCareWorker));
+
+        return redirect()->back()->with('success', 'Health care worker created successfully. A verification email has been sent.');
     }
 
     /**
