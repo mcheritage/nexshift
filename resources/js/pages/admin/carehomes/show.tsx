@@ -90,6 +90,7 @@ export default function CareHomeShow({ careHome, documentStats, totalRequired }:
         ? Math.round((documentStats.approved / totalRequired) * 100) 
         : 0;
 
+    const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
     const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
     const [isSuspendDialogOpen, setIsSuspendDialogOpen] = useState(false);
     const [isUnsuspendDialogOpen, setIsUnsuspendDialogOpen] = useState(false);
@@ -109,6 +110,7 @@ export default function CareHomeShow({ careHome, documentStats, totalRequired }:
     const handleApprove = () => {
         router.patch(`/admin/carehomes/${careHome.id}/approve`, {}, {
             onSuccess: () => {
+                setIsApproveDialogOpen(false);
                 router.reload();
             }
         });
@@ -390,10 +392,30 @@ export default function CareHomeShow({ careHome, documentStats, totalRequired }:
 
                             {/* Status Management Buttons */}
                             {(careHome.status === 'pending' || careHome.status === 'rejected') && (
-                                <Button onClick={handleApprove} variant="default">
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Approve Care Home
-                                </Button>
+                                <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button variant="default">
+                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                            Approve Care Home
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Approve Care Home</DialogTitle>
+                                            <DialogDescription>
+                                                Are you sure you want to approve <strong>{careHome.name}</strong>? They will be notified and gain full access to the platform.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <DialogFooter>
+                                            <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)}>
+                                                Cancel
+                                            </Button>
+                                            <Button variant="default" onClick={handleApprove}>
+                                                Confirm Approval
+                                            </Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
                             )}
 
                             {careHome.status === 'pending' && (
