@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\DocumentType;
+use App\DocumentVerificationStatus;
 use App\Http\Controllers\Controller;
 use App\Mail\UserStatusChanged;
 use App\Mail\WelcomeEmail;
@@ -42,10 +44,10 @@ class CareHomeManagementController extends Controller
      */
     public function show(CareHome $careHome): Response
     {
-        $careHome->load(['users', 'documents', 'statusChanges.changedBy']);
-        
+        $careHome->load(['users', 'documents.reviewer', 'statusChanges.changedBy']);
+
         $totalRequired = 18; // Based on DocumentType::getAllRequired()
-        
+
         $documentStats = [
             'total' => $careHome->documents()->count(),
             'approved' => $careHome->documents()->where('status', 'approved')->count(),
@@ -54,10 +56,52 @@ class CareHomeManagementController extends Controller
             'requires_attention' => $careHome->documents()->where('status', 'requires_attention')->count(),
         ];
 
+        $requiredDocuments = collect(DocumentType::getAllRequired())->map(function ($docType) use ($careHome) {
+            $documents = $careHome->documents->where('document_type', $docType->value)->map(function ($document) {
+                return [
+                    'id' => $document->id,
+                    'original_name' => $document->original_name,
+                    'file_size' => $document->file_size,
+                    'mime_type' => $document->mime_type,
+                    'status' => $document->status->value,
+                    'status_display' => $document->getStatusDisplayName(),
+                    'status_color' => $document->getStatusColor(),
+                    'status_icon' => $document->getStatusIcon(),
+                    'rejection_reason' => $document->rejection_reason,
+                    'action_required' => $document->action_required,
+                    'reviewed_by' => $document->reviewed_by,
+                    'reviewed_at' => $document->reviewed_at,
+                    'uploaded_at' => $document->uploaded_at,
+                    'reviewer' => $document->reviewer,
+                ];
+            })->values();
+
+            return [
+                'type' => [
+                    'value' => $docType->value,
+                    'displayName' => $docType->getDisplayName(),
+                    'description' => $docType->getDescription(),
+                ],
+                'documents' => $documents,
+            ];
+        });
+
+        $verificationStatuses = collect(DocumentVerificationStatus::cases())->map(function ($status) {
+            return [
+                'value' => $status->value,
+                'displayName' => $status->getDisplayName(),
+                'description' => $status->getDescription(),
+                'color' => $status->getColor(),
+                'icon' => $status->getIcon(),
+            ];
+        });
+
         return Inertia::render('admin/carehomes/show', [
             'careHome' => $careHome,
             'documentStats' => $documentStats,
             'totalRequired' => $totalRequired,
+            'requiredDocuments' => $requiredDocuments,
+            'verificationStatuses' => $verificationStatuses,
         ]);
     }
 

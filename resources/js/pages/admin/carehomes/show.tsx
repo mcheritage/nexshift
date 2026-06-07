@@ -3,14 +3,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { 
-    Building2, 
-    Mail, 
+import {
+    Building2,
+    Mail,
     Calendar,
     ArrowLeft,
     FileText,
@@ -21,7 +22,10 @@ import {
     XCircle,
     AlertTriangle,
     Shield,
-    Ban
+    Ban,
+    Download,
+    Eye,
+    Save,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -79,13 +83,59 @@ interface DocumentStats {
     requires_attention: number;
 }
 
+interface Document {
+    id: number;
+    original_name: string;
+    file_size: number;
+    mime_type: string;
+    status: 'pending' | 'approved' | 'rejected' | 'requires_attention';
+    status_display: string;
+    status_color: string;
+    status_icon: string;
+    rejection_reason?: string;
+    action_required?: string;
+    reviewed_by?: number;
+    reviewed_at?: string;
+    uploaded_at: string;
+    reviewer?: { id: number; name: string; email: string };
+}
+
+interface RequiredDocument {
+    type: { value: string; displayName: string; description: string };
+    documents: Document[];
+}
+
+interface VerificationStatus {
+    value: string;
+    displayName: string;
+    description: string;
+    color: string;
+    icon: string;
+}
+
 interface Props {
     careHome: CareHome;
     documentStats: DocumentStats;
     totalRequired: number;
+    requiredDocuments: RequiredDocument[];
+    verificationStatuses: VerificationStatus[];
 }
 
-export default function CareHomeShow({ careHome, documentStats, totalRequired }: Props) {
+const docStatusColors = {
+    pending: 'bg-yellow-100 text-yellow-800',
+    approved: 'bg-green-100 text-green-800',
+    rejected: 'bg-red-100 text-red-800',
+    requires_attention: 'bg-orange-100 text-orange-800',
+};
+
+const docStatusIcons = {
+    pending: Clock,
+    approved: CheckCircle,
+    rejected: XCircle,
+    requires_attention: AlertTriangle,
+};
+
+export default function CareHomeShow({ careHome, documentStats, totalRequired, requiredDocuments, verificationStatuses }: Props) {
     const completionPercentage = totalRequired > 0 
         ? Math.round((documentStats.approved / totalRequired) * 100) 
         : 0;
@@ -106,6 +156,66 @@ export default function CareHomeShow({ careHome, documentStats, totalRequired }:
     const unsuspendForm = useForm({
         reason: '',
     });
+
+    const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+    const [newDocStatus, setNewDocStatus] = useState('');
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [actionRequired, setActionRequired] = useState('');
+    const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+    const [viewDocument, setViewDocument] = useState<Document | null>(null);
+    const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+    const [documentUrl, setDocumentUrl] = useState('');
+    const [isLoadingDocument, setIsLoadingDocument] = useState(false);
+
+    const openStatusDialog = (doc: Document) => {
+        setSelectedDocument(doc);
+        setNewDocStatus(doc.status);
+        setRejectionReason(doc.rejection_reason || '');
+        setActionRequired(doc.action_required || '');
+        setIsStatusDialogOpen(true);
+    };
+
+    const handleStatusUpdate = () => {
+        if (!selectedDocument) return;
+        router.post(`/admin/documents/${selectedDocument.id}/update-status`, {
+            status: newDocStatus,
+            rejection_reason: rejectionReason || null,
+            action_required: actionRequired || null,
+        }, {
+            onSuccess: () => {
+                setIsStatusDialogOpen(false);
+                setSelectedDocument(null);
+                router.reload();
+            },
+        });
+    };
+
+    const openViewDialog = async (doc: Document) => {
+        setViewDocument(doc);
+        setIsViewDialogOpen(true);
+        setIsLoadingDocument(true);
+        try {
+            const response = await fetch(`/admin/documents/${doc.id}/view`, {
+                credentials: 'include',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (response.ok) {
+                const blob = await response.blob();
+                setDocumentUrl(URL.createObjectURL(blob));
+            }
+        } catch {
+            // error handled in UI
+        } finally {
+            setIsLoadingDocument(false);
+        }
+    };
+
+    const closeViewDialog = () => {
+        setIsViewDialogOpen(false);
+        if (documentUrl) URL.revokeObjectURL(documentUrl);
+        setDocumentUrl('');
+        setViewDocument(null);
+    };
 
     const handleApprove = () => {
         router.patch(`/admin/carehomes/${careHome.id}/approve`, {}, {
@@ -612,6 +722,185 @@ export default function CareHomeShow({ careHome, documentStats, totalRequired }:
                         </CardContent>
                     </Card>
                 )}
+
+                {/* Documents */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <FileText className="h-5 w-5" />
+                            Required Documents
+                        </CardTitle>
+                        <CardDescription>
+                            All required documents for this care home — {documentStats.approved} of {totalRequired} approved
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-4">
+                            {requiredDocuments.map((requiredDoc) => (
+                                <div key={requiredDoc.type.value} className="border rounded-lg p-4">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <h3 className="font-medium">{requiredDoc.type.displayName}</h3>
+                                        {requiredDoc.documents.length > 0 && (
+                                            <Badge variant="secondary">{requiredDoc.documents.length} file(s)</Badge>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mb-3">{requiredDoc.type.description}</p>
+
+                                    {requiredDoc.documents.length > 0 ? (
+                                        <div className="space-y-3">
+                                            {requiredDoc.documents.map((doc) => {
+                                                const StatusIcon = docStatusIcons[doc.status] ?? FileText;
+                                                return (
+                                                    <div key={doc.id} className="flex items-start justify-between gap-4 p-3 rounded-md bg-muted/50">
+                                                        <div className="min-w-0 flex-1 space-y-1">
+                                                            <p className="text-sm font-medium truncate">{doc.original_name}</p>
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <Badge className={`${docStatusColors[doc.status]} flex items-center gap-1 text-xs`}>
+                                                                    <StatusIcon className="h-3 w-3" />
+                                                                    {doc.status_display}
+                                                                </Badge>
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    {(doc.file_size / 1024).toFixed(1)} KB · {new Date(doc.uploaded_at).toLocaleDateString()}
+                                                                </span>
+                                                                {doc.reviewer && (
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        Reviewed by {doc.reviewer.name}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {doc.rejection_reason && (
+                                                                <p className="text-xs text-red-600 mt-1"><span className="font-medium">Rejection: </span>{doc.rejection_reason}</p>
+                                                            )}
+                                                            {doc.action_required && (
+                                                                <p className="text-xs text-orange-600 mt-1"><span className="font-medium">Action required: </span>{doc.action_required}</p>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex gap-1.5 shrink-0">
+                                                            <Button variant="outline" size="sm" onClick={() => openViewDialog(doc)}>
+                                                                <Eye className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button asChild variant="outline" size="sm">
+                                                                <a href={`/admin/documents/${doc.id}/download`}>
+                                                                    <Download className="h-3.5 w-3.5" />
+                                                                </a>
+                                                            </Button>
+                                                            <Button variant="outline" size="sm" onClick={() => openStatusDialog(doc)}>
+                                                                <Save className="h-3.5 w-3.5 mr-1" />
+                                                                Status
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground italic">No document uploaded yet</p>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Document Status Update Dialog */}
+                <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Update Document Status</DialogTitle>
+                            <DialogDescription>
+                                Update the verification status for <strong>{selectedDocument?.original_name}</strong>
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label>Status</Label>
+                                <Select value={newDocStatus} onValueChange={setNewDocStatus}>
+                                    <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+                                    <SelectContent>
+                                        {verificationStatuses.map((s) => (
+                                            <SelectItem key={s.value} value={s.value}>{s.displayName}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {(newDocStatus === 'rejected' || newDocStatus === 'requires_attention') && (
+                                <>
+                                    <div className="grid gap-2">
+                                        <Label>Reason for Rejection</Label>
+                                        <Textarea
+                                            placeholder="Explain why the document was rejected..."
+                                            value={rejectionReason}
+                                            onChange={(e) => setRejectionReason(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label>Action Required</Label>
+                                        <Textarea
+                                            placeholder="What action does the care home need to take?"
+                                            value={actionRequired}
+                                            onChange={(e) => setActionRequired(e.target.value)}
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)}>Cancel</Button>
+                            <Button onClick={handleStatusUpdate}>Update Status</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Document Viewer Dialog */}
+                <Dialog open={isViewDialogOpen} onOpenChange={(open) => !open && closeViewDialog()}>
+                    <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
+                        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+                            <DialogTitle>Document Preview</DialogTitle>
+                            <DialogDescription>{viewDocument?.original_name}</DialogDescription>
+                        </DialogHeader>
+                        <div className="flex-1 overflow-auto p-4">
+                            {isLoadingDocument ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <div className="text-center">
+                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                                        <p className="text-muted-foreground">Loading document...</p>
+                                    </div>
+                                </div>
+                            ) : viewDocument && documentUrl ? (
+                                <div className="w-full h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                                    {viewDocument.mime_type === 'application/pdf' ? (
+                                        <iframe src={documentUrl} className="w-full h-full border-0 rounded-md" title={viewDocument.original_name} />
+                                    ) : viewDocument.mime_type.startsWith('image/') ? (
+                                        <img src={documentUrl} alt={viewDocument.original_name} className="max-w-full max-h-full object-contain rounded-md" />
+                                    ) : (
+                                        <div className="text-center p-8">
+                                            <p className="text-muted-foreground mb-4">Preview not available for this file type.</p>
+                                            <Button asChild>
+                                                <a href={`/admin/documents/${viewDocument.id}/download`}>
+                                                    <Download className="h-4 w-4 mr-2" />
+                                                    Download to View
+                                                </a>
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-center h-full">
+                                    <p className="text-muted-foreground">Failed to load document</p>
+                                </div>
+                            )}
+                        </div>
+                        <DialogFooter className="px-6 py-4 border-t">
+                            <Button asChild variant="outline">
+                                <a href={`/admin/documents/${viewDocument?.id}/download`}>
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Download
+                                </a>
+                            </Button>
+                            <Button onClick={closeViewDialog}>Close</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </AppLayout>
     );
