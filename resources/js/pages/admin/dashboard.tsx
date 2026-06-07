@@ -10,6 +10,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
 import {
     Building2,
+    CheckCircle,
     Clock,
     AlertTriangle,
     UserCheck,
@@ -36,6 +37,7 @@ interface Stats {
 
 interface RecentDocument {
     id: number;
+    document_type: string;
     original_name: string;
     status: string;
     care_home?: { id: string; name: string } | null;
@@ -46,13 +48,14 @@ interface RecentCareHome {
     id: string;
     name: string;
     status: string;
-    users: Array<{ id: string; name: string }>;
+    users: Array<{ id: string; name: string; email: string }>;
 }
 
 interface RecentUser {
     id: string;
     first_name: string;
     last_name: string;
+    email: string;
     role: string;
     status: string;
     care_home?: { id: string; name: string };
@@ -64,6 +67,9 @@ interface Props {
     recentCareHomes: RecentCareHome[];
     recentUsers: RecentUser[];
 }
+
+const formatDocumentType = (type: string) =>
+    type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 const documentStatusColors: Record<string, string> = {
     pending: 'bg-yellow-100 text-yellow-800',
@@ -140,6 +146,8 @@ function StatCard({ title, description, value, href, icon, valueColor = 'text-gr
 export default function AdminDashboard({ stats, recentDocuments, recentCareHomes, recentUsers }: Props) {
     const [careHomeDialogOpen, setCareHomeDialogOpen] = useState(false);
     const [workerDialogOpen, setWorkerDialogOpen] = useState(false);
+    const [careHomeSuccess, setCareHomeSuccess] = useState(false);
+    const [workerSuccess, setWorkerSuccess] = useState(false);
 
     const careHomeForm = useForm({ name: '', phone_number: '', admin_first_name: '', admin_last_name: '', admin_email: '', admin_phone_number: '', admin_password: '', admin_password_confirmation: '' });
     const workerForm = useForm({ first_name: '', last_name: '', email: '', phone_number: '', password: '', password_confirmation: '', gender: '' });
@@ -147,8 +155,12 @@ export default function AdminDashboard({ stats, recentDocuments, recentCareHomes
     const handleCreateCareHome = () => {
         careHomeForm.post('/admin/carehomes', {
             onSuccess: () => {
-                setCareHomeDialogOpen(false);
                 careHomeForm.reset();
+                setCareHomeSuccess(true);
+                setTimeout(() => {
+                    setCareHomeDialogOpen(false);
+                    setCareHomeSuccess(false);
+                }, 2000);
             },
         });
     };
@@ -156,8 +168,12 @@ export default function AdminDashboard({ stats, recentDocuments, recentCareHomes
     const handleCreateWorker = () => {
         workerForm.post('/admin/healthcare-workers', {
             onSuccess: () => {
-                setWorkerDialogOpen(false);
                 workerForm.reset();
+                setWorkerSuccess(true);
+                setTimeout(() => {
+                    setWorkerDialogOpen(false);
+                    setWorkerSuccess(false);
+                }, 2000);
             },
         });
     };
@@ -265,8 +281,8 @@ export default function AdminDashboard({ stats, recentDocuments, recentCareHomes
                                     {recentDocuments.slice(0, 5).map((doc) => (
                                         <Link key={doc.id} href="/admin/documents" className="flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 -mx-2 px-2 py-1 rounded transition-colors">
                                             <div className="space-y-0.5 min-w-0 flex-1 mr-2">
-                                                <p className="text-sm font-medium truncate">{doc.original_name}</p>
-                                                <p className="text-xs text-muted-foreground truncate">
+                                                <p className="text-sm font-medium truncate">{formatDocumentType(doc.document_type)}</p>
+                                                <p className="text-xs text-muted-foreground truncate capitalize">
                                                     {doc.care_home?.name || (doc.user ? `${doc.user.first_name} ${doc.user.last_name}` : 'Unknown')}
                                                 </p>
                                             </div>
@@ -299,7 +315,7 @@ export default function AdminDashboard({ stats, recentDocuments, recentCareHomes
                                             <div className="space-y-0.5 min-w-0 flex-1 mr-2">
                                                 <p className="text-sm font-medium truncate">{careHome.name}</p>
                                                 <p className="text-xs text-muted-foreground truncate">
-                                                    {careHome.users?.length > 0 ? careHome.users.map(u => u.name).join(', ') : 'No admins'}
+                                                    {careHome.users?.[0]?.email ?? 'No admin'}
                                                 </p>
                                             </div>
                                             <Badge className={`shrink-0 text-xs ${entityStatusColors[careHome.status] ?? 'bg-gray-100 text-gray-800'}`}>
@@ -329,9 +345,9 @@ export default function AdminDashboard({ stats, recentDocuments, recentCareHomes
                                     {recentUsers.slice(0, 5).map((user) => (
                                         <Link key={user.id} href={`/admin/healthcare-workers/${user.id}`} className="flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 -mx-2 px-2 py-1 rounded transition-colors">
                                             <div className="space-y-0.5 min-w-0 flex-1 mr-2">
-                                                <p className="text-sm font-medium truncate">{user.first_name} {user.last_name}</p>
+                                                <p className="text-sm font-medium capitalize truncate">{user.first_name} {user.last_name}</p>
                                                 <p className="text-xs text-muted-foreground truncate">
-                                                    {user.care_home?.name ?? 'No care home'}
+                                                    {user.email}
                                                 </p>
                                             </div>
                                             <Badge className={`shrink-0 text-xs ${entityStatusColors[user.status] ?? 'bg-gray-100 text-gray-800'}`}>
@@ -356,55 +372,65 @@ export default function AdminDashboard({ stats, recentDocuments, recentCareHomes
                         <DialogTitle>Create New Care Home</DialogTitle>
                         <DialogDescription>Create a new care home and its administrator account.</DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="ch-name">Care Home Name</Label>
-                            <Input id="ch-name" value={careHomeForm.data.name} onChange={(e) => careHomeForm.setData('name', e.target.value)} placeholder="Enter care home name" />
-                            {careHomeForm.errors.name && <p className="text-xs text-red-500">{careHomeForm.errors.name}</p>}
+                    {careHomeSuccess ? (
+                        <div className="flex flex-col items-center gap-3 py-8 text-center">
+                            <CheckCircle className="h-12 w-12 text-green-500" />
+                            <p className="text-base font-medium text-green-700">Care home created successfully!</p>
+                            <p className="text-sm text-muted-foreground">A verification email has been sent to the administrator.</p>
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="ch-phone">Care Home Phone Number</Label>
-                            <Input id="ch-phone" type="tel" value={careHomeForm.data.phone_number} onChange={(e) => careHomeForm.setData('phone_number', e.target.value)} placeholder="Enter phone number" />
-                            {careHomeForm.errors.phone_number && <p className="text-xs text-red-500">{careHomeForm.errors.phone_number}</p>}
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="grid gap-2">
-                                <Label htmlFor="ch-admin-first">Admin First Name</Label>
-                                <Input id="ch-admin-first" value={careHomeForm.data.admin_first_name} onChange={(e) => careHomeForm.setData('admin_first_name', e.target.value)} placeholder="First name" />
-                                {careHomeForm.errors.admin_first_name && <p className="text-xs text-red-500">{careHomeForm.errors.admin_first_name}</p>}
+                    ) : (
+                        <>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="ch-name">Care Home Name</Label>
+                                    <Input id="ch-name" value={careHomeForm.data.name} onChange={(e) => careHomeForm.setData('name', e.target.value)} placeholder="Enter care home name" />
+                                    {careHomeForm.errors.name && <p className="text-xs text-red-500">{careHomeForm.errors.name}</p>}
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="ch-phone">Care Home Phone Number</Label>
+                                    <Input id="ch-phone" type="tel" value={careHomeForm.data.phone_number} onChange={(e) => careHomeForm.setData('phone_number', e.target.value)} placeholder="Enter phone number" />
+                                    {careHomeForm.errors.phone_number && <p className="text-xs text-red-500">{careHomeForm.errors.phone_number}</p>}
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="ch-admin-first">Admin First Name</Label>
+                                        <Input id="ch-admin-first" value={careHomeForm.data.admin_first_name} onChange={(e) => careHomeForm.setData('admin_first_name', e.target.value)} placeholder="First name" />
+                                        {careHomeForm.errors.admin_first_name && <p className="text-xs text-red-500">{careHomeForm.errors.admin_first_name}</p>}
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="ch-admin-last">Admin Last Name</Label>
+                                        <Input id="ch-admin-last" value={careHomeForm.data.admin_last_name} onChange={(e) => careHomeForm.setData('admin_last_name', e.target.value)} placeholder="Last name" />
+                                        {careHomeForm.errors.admin_last_name && <p className="text-xs text-red-500">{careHomeForm.errors.admin_last_name}</p>}
+                                    </div>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="ch-admin-email">Admin Email</Label>
+                                    <Input id="ch-admin-email" type="email" value={careHomeForm.data.admin_email} onChange={(e) => careHomeForm.setData('admin_email', e.target.value)} placeholder="Enter email address" />
+                                    {careHomeForm.errors.admin_email && <p className="text-xs text-red-500">{careHomeForm.errors.admin_email}</p>}
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="ch-admin-phone">Admin Phone Number</Label>
+                                    <Input id="ch-admin-phone" type="tel" value={careHomeForm.data.admin_phone_number} onChange={(e) => careHomeForm.setData('admin_phone_number', e.target.value)} placeholder="Enter phone number" />
+                                    {careHomeForm.errors.admin_phone_number && <p className="text-xs text-red-500">{careHomeForm.errors.admin_phone_number}</p>}
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="ch-admin-password">Admin Password</Label>
+                                    <Input id="ch-admin-password" type="password" value={careHomeForm.data.admin_password} onChange={(e) => careHomeForm.setData('admin_password', e.target.value)} placeholder="Enter password" />
+                                    {careHomeForm.errors.admin_password && <p className="text-xs text-red-500">{careHomeForm.errors.admin_password}</p>}
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="ch-admin-password-confirm">Confirm Password</Label>
+                                    <Input id="ch-admin-password-confirm" type="password" value={careHomeForm.data.admin_password_confirmation} onChange={(e) => careHomeForm.setData('admin_password_confirmation', e.target.value)} placeholder="Confirm password" />
+                                </div>
                             </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="ch-admin-last">Admin Last Name</Label>
-                                <Input id="ch-admin-last" value={careHomeForm.data.admin_last_name} onChange={(e) => careHomeForm.setData('admin_last_name', e.target.value)} placeholder="Last name" />
-                                {careHomeForm.errors.admin_last_name && <p className="text-xs text-red-500">{careHomeForm.errors.admin_last_name}</p>}
-                            </div>
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="ch-admin-email">Admin Email</Label>
-                            <Input id="ch-admin-email" type="email" value={careHomeForm.data.admin_email} onChange={(e) => careHomeForm.setData('admin_email', e.target.value)} placeholder="Enter email address" />
-                            {careHomeForm.errors.admin_email && <p className="text-xs text-red-500">{careHomeForm.errors.admin_email}</p>}
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="ch-admin-phone">Admin Phone Number</Label>
-                            <Input id="ch-admin-phone" type="tel" value={careHomeForm.data.admin_phone_number} onChange={(e) => careHomeForm.setData('admin_phone_number', e.target.value)} placeholder="Enter phone number" />
-                            {careHomeForm.errors.admin_phone_number && <p className="text-xs text-red-500">{careHomeForm.errors.admin_phone_number}</p>}
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="ch-admin-password">Admin Password</Label>
-                            <Input id="ch-admin-password" type="password" value={careHomeForm.data.admin_password} onChange={(e) => careHomeForm.setData('admin_password', e.target.value)} placeholder="Enter password" />
-                            {careHomeForm.errors.admin_password && <p className="text-xs text-red-500">{careHomeForm.errors.admin_password}</p>}
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="ch-admin-password-confirm">Confirm Password</Label>
-                            <Input id="ch-admin-password-confirm" type="password" value={careHomeForm.data.admin_password_confirmation} onChange={(e) => careHomeForm.setData('admin_password_confirmation', e.target.value)} placeholder="Confirm password" />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setCareHomeDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleCreateCareHome} disabled={careHomeForm.processing}>
-                            {careHomeForm.processing ? 'Creating...' : 'Create Care Home'}
-                        </Button>
-                    </DialogFooter>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setCareHomeDialogOpen(false)}>Cancel</Button>
+                                <Button onClick={handleCreateCareHome} disabled={careHomeForm.processing}>
+                                    {careHomeForm.processing ? 'Creating...' : 'Create Care Home'}
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    )}
                 </DialogContent>
             </Dialog>
 
@@ -415,57 +441,67 @@ export default function AdminDashboard({ stats, recentDocuments, recentCareHomes
                         <DialogTitle>Create New Health Care Worker</DialogTitle>
                         <DialogDescription>Create a new health care worker account.</DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="grid gap-2">
-                                <Label htmlFor="w-first">First Name</Label>
-                                <Input id="w-first" value={workerForm.data.first_name} onChange={(e) => workerForm.setData('first_name', e.target.value)} placeholder="First name" />
-                                {workerForm.errors.first_name && <p className="text-xs text-red-500">{workerForm.errors.first_name}</p>}
+                    {workerSuccess ? (
+                        <div className="flex flex-col items-center gap-3 py-8 text-center">
+                            <CheckCircle className="h-12 w-12 text-green-500" />
+                            <p className="text-base font-medium text-green-700">Worker created successfully!</p>
+                            <p className="text-sm text-muted-foreground">A verification email has been sent to the worker.</p>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="w-first">First Name</Label>
+                                        <Input id="w-first" value={workerForm.data.first_name} onChange={(e) => workerForm.setData('first_name', e.target.value)} placeholder="First name" />
+                                        {workerForm.errors.first_name && <p className="text-xs text-red-500">{workerForm.errors.first_name}</p>}
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="w-last">Last Name</Label>
+                                        <Input id="w-last" value={workerForm.data.last_name} onChange={(e) => workerForm.setData('last_name', e.target.value)} placeholder="Last name" />
+                                        {workerForm.errors.last_name && <p className="text-xs text-red-500">{workerForm.errors.last_name}</p>}
+                                    </div>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="w-email">Email</Label>
+                                    <Input id="w-email" type="email" value={workerForm.data.email} onChange={(e) => workerForm.setData('email', e.target.value)} placeholder="Enter email address" />
+                                    {workerForm.errors.email && <p className="text-xs text-red-500">{workerForm.errors.email}</p>}
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="w-phone">Phone Number</Label>
+                                    <Input id="w-phone" type="tel" value={workerForm.data.phone_number} onChange={(e) => workerForm.setData('phone_number', e.target.value)} placeholder="Enter phone number" />
+                                    {workerForm.errors.phone_number && <p className="text-xs text-red-500">{workerForm.errors.phone_number}</p>}
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="w-gender">Gender</Label>
+                                    <Select value={workerForm.data.gender} onValueChange={(v) => workerForm.setData('gender', v)}>
+                                        <SelectTrigger id="w-gender"><SelectValue placeholder="Select gender" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="male">Male</SelectItem>
+                                            <SelectItem value="female">Female</SelectItem>
+                                            <SelectItem value="other">Other</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    {workerForm.errors.gender && <p className="text-xs text-red-500">{workerForm.errors.gender}</p>}
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="w-password">Password</Label>
+                                    <Input id="w-password" type="password" value={workerForm.data.password} onChange={(e) => workerForm.setData('password', e.target.value)} placeholder="Enter password" />
+                                    {workerForm.errors.password && <p className="text-xs text-red-500">{workerForm.errors.password}</p>}
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="w-password-confirm">Confirm Password</Label>
+                                    <Input id="w-password-confirm" type="password" value={workerForm.data.password_confirmation} onChange={(e) => workerForm.setData('password_confirmation', e.target.value)} placeholder="Confirm password" />
+                                </div>
                             </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="w-last">Last Name</Label>
-                                <Input id="w-last" value={workerForm.data.last_name} onChange={(e) => workerForm.setData('last_name', e.target.value)} placeholder="Last name" />
-                                {workerForm.errors.last_name && <p className="text-xs text-red-500">{workerForm.errors.last_name}</p>}
-                            </div>
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="w-email">Email</Label>
-                            <Input id="w-email" type="email" value={workerForm.data.email} onChange={(e) => workerForm.setData('email', e.target.value)} placeholder="Enter email address" />
-                            {workerForm.errors.email && <p className="text-xs text-red-500">{workerForm.errors.email}</p>}
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="w-phone">Phone Number</Label>
-                            <Input id="w-phone" type="tel" value={workerForm.data.phone_number} onChange={(e) => workerForm.setData('phone_number', e.target.value)} placeholder="Enter phone number" />
-                            {workerForm.errors.phone_number && <p className="text-xs text-red-500">{workerForm.errors.phone_number}</p>}
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="w-gender">Gender</Label>
-                            <Select value={workerForm.data.gender} onValueChange={(v) => workerForm.setData('gender', v)}>
-                                <SelectTrigger id="w-gender"><SelectValue placeholder="Select gender" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="male">Male</SelectItem>
-                                    <SelectItem value="female">Female</SelectItem>
-                                    <SelectItem value="other">Other</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            {workerForm.errors.gender && <p className="text-xs text-red-500">{workerForm.errors.gender}</p>}
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="w-password">Password</Label>
-                            <Input id="w-password" type="password" value={workerForm.data.password} onChange={(e) => workerForm.setData('password', e.target.value)} placeholder="Enter password" />
-                            {workerForm.errors.password && <p className="text-xs text-red-500">{workerForm.errors.password}</p>}
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="w-password-confirm">Confirm Password</Label>
-                            <Input id="w-password-confirm" type="password" value={workerForm.data.password_confirmation} onChange={(e) => workerForm.setData('password_confirmation', e.target.value)} placeholder="Confirm password" />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setWorkerDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleCreateWorker} disabled={workerForm.processing}>
-                            {workerForm.processing ? 'Creating...' : 'Create Worker'}
-                        </Button>
-                    </DialogFooter>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setWorkerDialogOpen(false)}>Cancel</Button>
+                                <Button onClick={handleCreateWorker} disabled={workerForm.processing}>
+                                    {workerForm.processing ? 'Creating...' : 'Create Worker'}
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    )}
                 </DialogContent>
             </Dialog>
         </AppLayout>

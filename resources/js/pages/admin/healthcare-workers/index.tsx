@@ -74,6 +74,7 @@ const genderOptions = [
 
 export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }: Props) {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [createSuccess, setCreateSuccess] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortColumn, setSortColumn] = useState<string>('');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -163,8 +164,9 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
     const handleCreate = () => {
         form.post('/admin/healthcare-workers', {
             onSuccess: () => {
-                setIsCreateDialogOpen(false);
                 form.reset();
+                setCreateSuccess(true);
+                setTimeout(() => { setIsCreateDialogOpen(false); setCreateSuccess(false); }, 2000);
             },
         });
     };
@@ -259,7 +261,7 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                             <Download className="h-4 w-4 mr-2" />
                             Export
                         </Button>
-                        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                        <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) { form.clearErrors(); setCreateSuccess(false); } }}>
                             <DialogTrigger asChild>
                                 <Button>
                                     <Plus className="h-4 w-4 mr-2" />
@@ -273,77 +275,87 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                         Create a new health care worker account.
                                     </DialogDescription>
                                 </DialogHeader>
-                                <div className="grid gap-4 py-4">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="first_name">First Name</Label>
-                                        <Input id="first_name" value={form.data.first_name} onChange={(e) => form.setData('first_name', e.target.value)} placeholder="Enter first name" />
-                                        {form.errors.first_name && <p className="text-xs text-red-500">{form.errors.first_name}</p>}
+                                {createSuccess ? (
+                                    <div className="flex flex-col items-center gap-3 py-8 text-center">
+                                        <CheckCircle className="h-12 w-12 text-green-500" />
+                                        <p className="text-base font-medium text-green-700">Worker created successfully!</p>
+                                        <p className="text-sm text-muted-foreground">A verification email has been sent to the worker.</p>
                                     </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="last_name">Last Name</Label>
-                                        <Input id="last_name" value={form.data.last_name} onChange={(e) => form.setData('last_name', e.target.value)} placeholder="Enter last name" />
-                                        {form.errors.last_name && <p className="text-xs text-red-500">{form.errors.last_name}</p>}
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="email">Email</Label>
-                                        <Input id="email" type="email" value={form.data.email} onChange={(e) => form.setData('email', e.target.value)} placeholder="Enter email address" />
-                                        {form.errors.email && <p className="text-xs text-red-500">{form.errors.email}</p>}
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="phone_number">Phone Number</Label>
-                                        <Input id="phone_number" type="tel" value={form.data.phone_number} onChange={(e) => form.setData('phone_number', e.target.value)} placeholder="Enter phone number" />
-                                        {form.errors.phone_number && <p className="text-xs text-red-500">{form.errors.phone_number}</p>}
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="gender">Gender</Label>
-                                        <Select value={form.data.gender} onValueChange={(value) => form.setData('gender', value)}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select gender" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {genderOptions.map((option) => (
-                                                    <SelectItem key={option.value} value={option.value}>
-                                                        {option.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        {form.errors.gender && <p className="text-xs text-red-500">{form.errors.gender}</p>}
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="care_home_id">Care Home</Label>
-                                        <Select value={form.data.care_home_id} onValueChange={(value) => form.setData('care_home_id', value)}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select care home" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {careHomes.map((ch) => (
-                                                    <SelectItem key={ch.id} value={ch.id}>
-                                                        {ch.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        {form.errors.care_home_id && <p className="text-xs text-red-500">{form.errors.care_home_id}</p>}
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="password">Password</Label>
-                                        <Input id="password" type="password" value={form.data.password} onChange={(e) => form.setData('password', e.target.value)} placeholder="Enter password" />
-                                        {form.errors.password && <p className="text-xs text-red-500">{form.errors.password}</p>}
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="password_confirmation">Confirm Password</Label>
-                                        <Input id="password_confirmation" type="password" value={form.data.password_confirmation} onChange={(e) => form.setData('password_confirmation', e.target.value)} placeholder="Confirm password" />
-                                    </div>
-                                </div>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => { setIsCreateDialogOpen(false); form.clearErrors(); }}>
-                                        Cancel
-                                    </Button>
-                                    <Button onClick={handleCreate} disabled={form.processing}>
-                                        {form.processing ? 'Creating...' : 'Create Worker'}
-                                    </Button>
-                                </DialogFooter>
+                                ) : (
+                                    <>
+                                        <div className="grid gap-4 py-4">
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="first_name">First Name</Label>
+                                                <Input id="first_name" value={form.data.first_name} onChange={(e) => form.setData('first_name', e.target.value)} placeholder="Enter first name" />
+                                                {form.errors.first_name && <p className="text-xs text-red-500">{form.errors.first_name}</p>}
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="last_name">Last Name</Label>
+                                                <Input id="last_name" value={form.data.last_name} onChange={(e) => form.setData('last_name', e.target.value)} placeholder="Enter last name" />
+                                                {form.errors.last_name && <p className="text-xs text-red-500">{form.errors.last_name}</p>}
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="email">Email</Label>
+                                                <Input id="email" type="email" value={form.data.email} onChange={(e) => form.setData('email', e.target.value)} placeholder="Enter email address" />
+                                                {form.errors.email && <p className="text-xs text-red-500">{form.errors.email}</p>}
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="phone_number">Phone Number</Label>
+                                                <Input id="phone_number" type="tel" value={form.data.phone_number} onChange={(e) => form.setData('phone_number', e.target.value)} placeholder="Enter phone number" />
+                                                {form.errors.phone_number && <p className="text-xs text-red-500">{form.errors.phone_number}</p>}
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="gender">Gender</Label>
+                                                <Select value={form.data.gender} onValueChange={(value) => form.setData('gender', value)}>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select gender" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {genderOptions.map((option) => (
+                                                            <SelectItem key={option.value} value={option.value}>
+                                                                {option.label}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                {form.errors.gender && <p className="text-xs text-red-500">{form.errors.gender}</p>}
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="care_home_id">Care Home</Label>
+                                                <Select value={form.data.care_home_id} onValueChange={(value) => form.setData('care_home_id', value)}>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select care home" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {careHomes.map((ch) => (
+                                                            <SelectItem key={ch.id} value={ch.id}>
+                                                                {ch.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                {form.errors.care_home_id && <p className="text-xs text-red-500">{form.errors.care_home_id}</p>}
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="password">Password</Label>
+                                                <Input id="password" type="password" value={form.data.password} onChange={(e) => form.setData('password', e.target.value)} placeholder="Enter password" />
+                                                {form.errors.password && <p className="text-xs text-red-500">{form.errors.password}</p>}
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="password_confirmation">Confirm Password</Label>
+                                                <Input id="password_confirmation" type="password" value={form.data.password_confirmation} onChange={(e) => form.setData('password_confirmation', e.target.value)} placeholder="Confirm password" />
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
+                                            <Button variant="outline" onClick={() => { setIsCreateDialogOpen(false); form.clearErrors(); }}>
+                                                Cancel
+                                            </Button>
+                                            <Button onClick={handleCreate} disabled={form.processing}>
+                                                {form.processing ? 'Creating...' : 'Create Worker'}
+                                            </Button>
+                                        </DialogFooter>
+                                    </>
+                                )}
                             </DialogContent>
                         </Dialog>
                     </div>
