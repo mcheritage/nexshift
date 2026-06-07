@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { 
     UserCheck, 
     Plus,
@@ -79,14 +79,7 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
-    const [formData, setFormData] = useState({
-        first_name: '',
-        last_name: '',
-        email: '',
-        password: '',
-        care_home_id: '',
-        gender: '',
-    });
+    const form = useForm({ first_name: '', last_name: '', email: '', phone_number: '', password: '', password_confirmation: '', care_home_id: '', gender: '' });
 
     const handleSort = (column: string) => {
         if (sortColumn === column) {
@@ -168,17 +161,10 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
     const totalPages = Math.ceil(sortedWorkers.length / itemsPerPage);
 
     const handleCreate = () => {
-        router.post('/admin/healthcare-workers', formData, {
+        form.post('/admin/healthcare-workers', {
             onSuccess: () => {
                 setIsCreateDialogOpen(false);
-                setFormData({
-                    first_name: '',
-                    last_name: '',
-                    email: '',
-                    password: '',
-                    care_home_id: '',
-                    gender: '',
-                });
+                form.reset();
             },
         });
     };
@@ -290,45 +276,27 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                 <div className="grid gap-4 py-4">
                                     <div className="grid gap-2">
                                         <Label htmlFor="first_name">First Name</Label>
-                                        <Input
-                                            id="first_name"
-                                            value={formData.first_name}
-                                            onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                                            placeholder="Enter first name"
-                                        />
+                                        <Input id="first_name" value={form.data.first_name} onChange={(e) => form.setData('first_name', e.target.value)} placeholder="Enter first name" />
+                                        {form.errors.first_name && <p className="text-xs text-red-500">{form.errors.first_name}</p>}
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="last_name">Last Name</Label>
-                                        <Input
-                                            id="last_name"
-                                            value={formData.last_name}
-                                            onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                                            placeholder="Enter last name"
-                                        />
+                                        <Input id="last_name" value={form.data.last_name} onChange={(e) => form.setData('last_name', e.target.value)} placeholder="Enter last name" />
+                                        {form.errors.last_name && <p className="text-xs text-red-500">{form.errors.last_name}</p>}
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="email">Email</Label>
-                                        <Input
-                                            id="email"
-                                            type="email"
-                                            value={formData.email}
-                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                            placeholder="Enter email address"
-                                        />
+                                        <Input id="email" type="email" value={form.data.email} onChange={(e) => form.setData('email', e.target.value)} placeholder="Enter email address" />
+                                        {form.errors.email && <p className="text-xs text-red-500">{form.errors.email}</p>}
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="password">Password</Label>
-                                        <Input
-                                            id="password"
-                                            type="password"
-                                            value={formData.password}
-                                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                            placeholder="Enter password"
-                                        />
+                                        <Label htmlFor="phone_number">Phone Number</Label>
+                                        <Input id="phone_number" type="tel" value={form.data.phone_number} onChange={(e) => form.setData('phone_number', e.target.value)} placeholder="Enter phone number" />
+                                        {form.errors.phone_number && <p className="text-xs text-red-500">{form.errors.phone_number}</p>}
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="gender">Gender</Label>
-                                        <Select value={formData.gender} onValueChange={(value) => setFormData({ ...formData, gender: value })}>
+                                        <Select value={form.data.gender} onValueChange={(value) => form.setData('gender', value)}>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select gender" />
                                             </SelectTrigger>
@@ -340,14 +308,40 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                                 ))}
                                             </SelectContent>
                                         </Select>
+                                        {form.errors.gender && <p className="text-xs text-red-500">{form.errors.gender}</p>}
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="care_home_id">Care Home</Label>
+                                        <Select value={form.data.care_home_id} onValueChange={(value) => form.setData('care_home_id', value)}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select care home" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {careHomes.map((ch) => (
+                                                    <SelectItem key={ch.id} value={ch.id}>
+                                                        {ch.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {form.errors.care_home_id && <p className="text-xs text-red-500">{form.errors.care_home_id}</p>}
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="password">Password</Label>
+                                        <Input id="password" type="password" value={form.data.password} onChange={(e) => form.setData('password', e.target.value)} placeholder="Enter password" />
+                                        {form.errors.password && <p className="text-xs text-red-500">{form.errors.password}</p>}
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="password_confirmation">Confirm Password</Label>
+                                        <Input id="password_confirmation" type="password" value={form.data.password_confirmation} onChange={(e) => form.setData('password_confirmation', e.target.value)} placeholder="Confirm password" />
                                     </div>
                                 </div>
                                 <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                                    <Button variant="outline" onClick={() => { setIsCreateDialogOpen(false); form.clearErrors(); }}>
                                         Cancel
                                     </Button>
-                                    <Button onClick={handleCreate}>
-                                        Create Worker
+                                    <Button onClick={handleCreate} disabled={form.processing}>
+                                        {form.processing ? 'Creating...' : 'Create Worker'}
                                     </Button>
                                 </DialogFooter>
                             </DialogContent>

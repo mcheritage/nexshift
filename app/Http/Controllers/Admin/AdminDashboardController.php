@@ -43,14 +43,11 @@ class AdminDashboardController extends Controller
             ->limit(5)
             ->get();
 
-        $careHomes = CareHome::select('id', 'name')->orderBy('name')->get();
-
         return Inertia::render('admin/dashboard', [
             'stats' => $stats,
             'recentDocuments' => $recentDocuments,
             'recentCareHomes' => $recentCareHomes,
             'recentUsers' => $recentUsers,
-            'careHomes' => $careHomes,
         ]);
     }
 }

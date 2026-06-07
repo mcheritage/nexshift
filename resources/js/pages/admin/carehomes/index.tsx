@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { 
     Building2, 
     Plus, 
@@ -54,13 +54,7 @@ interface Props {
 export default function CareHomesIndex({ careHomes }: Props) {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [formData, setFormData] = useState({
-        name: '',
-        admin_first_name: '',
-        admin_last_name: '',
-        admin_email: '',
-        admin_password: '',
-    });
+    const form = useForm({ name: '', phone_number: '', admin_first_name: '', admin_last_name: '', admin_email: '', admin_phone_number: '', admin_password: '', admin_password_confirmation: '' });
 
     const filteredCareHomes = useMemo(() => {
         return careHomes.filter(careHome => {
@@ -76,16 +70,10 @@ export default function CareHomesIndex({ careHomes }: Props) {
     }, [careHomes, searchTerm]);
 
     const handleCreate = () => {
-        router.post('/admin/carehomes', formData, {
+        form.post('/admin/carehomes', {
             onSuccess: () => {
                 setIsCreateDialogOpen(false);
-                setFormData({
-                    name: '',
-                    admin_first_name: '',
-                    admin_last_name: '',
-                    admin_email: '',
-                    admin_password: '',
-                });
+                form.reset();
             },
         });
     };
@@ -185,58 +173,52 @@ export default function CareHomesIndex({ careHomes }: Props) {
                             <div className="grid gap-4 py-4">
                                 <div className="grid gap-2">
                                     <Label htmlFor="name">Care Home Name</Label>
-                                    <Input
-                                        id="name"
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        placeholder="Enter care home name"
-                                    />
+                                    <Input id="name" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="Enter care home name" />
+                                    {form.errors.name && <p className="text-xs text-red-500">{form.errors.name}</p>}
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="admin_first_name">Administrator First Name</Label>
-                                    <Input
-                                        id="admin_first_name"
-                                        value={formData.admin_first_name}
-                                        onChange={(e) => setFormData({ ...formData, admin_first_name: e.target.value })}
-                                        placeholder="Enter first name"
-                                    />
+                                    <Label htmlFor="phone_number">Care Home Phone Number</Label>
+                                    <Input id="phone_number" type="tel" value={form.data.phone_number} onChange={(e) => form.setData('phone_number', e.target.value)} placeholder="Enter phone number" />
+                                    {form.errors.phone_number && <p className="text-xs text-red-500">{form.errors.phone_number}</p>}
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="admin_first_name">Admin First Name</Label>
+                                        <Input id="admin_first_name" value={form.data.admin_first_name} onChange={(e) => form.setData('admin_first_name', e.target.value)} placeholder="First name" />
+                                        {form.errors.admin_first_name && <p className="text-xs text-red-500">{form.errors.admin_first_name}</p>}
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="admin_last_name">Admin Last Name</Label>
+                                        <Input id="admin_last_name" value={form.data.admin_last_name} onChange={(e) => form.setData('admin_last_name', e.target.value)} placeholder="Last name" />
+                                        {form.errors.admin_last_name && <p className="text-xs text-red-500">{form.errors.admin_last_name}</p>}
+                                    </div>
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="admin_last_name">Administrator Last Name</Label>
-                                    <Input
-                                        id="admin_last_name"
-                                        value={formData.admin_last_name}
-                                        onChange={(e) => setFormData({ ...formData, admin_last_name: e.target.value })}
-                                        placeholder="Enter last name"
-                                    />
+                                    <Label htmlFor="admin_email">Admin Email</Label>
+                                    <Input id="admin_email" type="email" value={form.data.admin_email} onChange={(e) => form.setData('admin_email', e.target.value)} placeholder="Enter email address" />
+                                    {form.errors.admin_email && <p className="text-xs text-red-500">{form.errors.admin_email}</p>}
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="admin_email">Administrator Email</Label>
-                                    <Input
-                                        id="admin_email"
-                                        type="email"
-                                        value={formData.admin_email}
-                                        onChange={(e) => setFormData({ ...formData, admin_email: e.target.value })}
-                                        placeholder="Enter email address"
-                                    />
+                                    <Label htmlFor="admin_phone_number">Admin Phone Number</Label>
+                                    <Input id="admin_phone_number" type="tel" value={form.data.admin_phone_number} onChange={(e) => form.setData('admin_phone_number', e.target.value)} placeholder="Enter phone number" />
+                                    {form.errors.admin_phone_number && <p className="text-xs text-red-500">{form.errors.admin_phone_number}</p>}
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="admin_password">Administrator Password</Label>
-                                    <Input
-                                        id="admin_password"
-                                        type="password"
-                                        value={formData.admin_password}
-                                        onChange={(e) => setFormData({ ...formData, admin_password: e.target.value })}
-                                        placeholder="Enter password"
-                                    />
+                                    <Label htmlFor="admin_password">Admin Password</Label>
+                                    <Input id="admin_password" type="password" value={form.data.admin_password} onChange={(e) => form.setData('admin_password', e.target.value)} placeholder="Enter password" />
+                                    {form.errors.admin_password && <p className="text-xs text-red-500">{form.errors.admin_password}</p>}
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="admin_password_confirmation">Confirm Password</Label>
+                                    <Input id="admin_password_confirmation" type="password" value={form.data.admin_password_confirmation} onChange={(e) => form.setData('admin_password_confirmation', e.target.value)} placeholder="Confirm password" />
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                                <Button variant="outline" onClick={() => { setIsCreateDialogOpen(false); form.clearErrors(); }}>
                                     Cancel
                                 </Button>
-                                <Button onClick={handleCreate}>
-                                    Create Care Home
+                                <Button onClick={handleCreate} disabled={form.processing}>
+                                    {form.processing ? 'Creating...' : 'Create Care Home'}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>

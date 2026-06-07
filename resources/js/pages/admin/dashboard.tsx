@@ -58,17 +58,11 @@ interface RecentUser {
     care_home?: { id: string; name: string };
 }
 
-interface CareHomeOption {
-    id: string;
-    name: string;
-}
-
 interface Props {
     stats: Stats;
     recentDocuments: RecentDocument[];
     recentCareHomes: RecentCareHome[];
     recentUsers: RecentUser[];
-    careHomes: CareHomeOption[];
 }
 
 const documentStatusColors: Record<string, string> = {
@@ -143,12 +137,12 @@ function StatCard({ title, description, value, href, icon, valueColor = 'text-gr
     );
 }
 
-export default function AdminDashboard({ stats, recentDocuments, recentCareHomes, recentUsers, careHomes }: Props) {
+export default function AdminDashboard({ stats, recentDocuments, recentCareHomes, recentUsers }: Props) {
     const [careHomeDialogOpen, setCareHomeDialogOpen] = useState(false);
     const [workerDialogOpen, setWorkerDialogOpen] = useState(false);
 
-    const careHomeForm = useForm({ name: '', admin_first_name: '', admin_last_name: '', admin_email: '', admin_password: '' });
-    const workerForm = useForm({ first_name: '', last_name: '', email: '', password: '', gender: '', care_home_id: '' });
+    const careHomeForm = useForm({ name: '', phone_number: '', admin_first_name: '', admin_last_name: '', admin_email: '', admin_phone_number: '', admin_password: '', admin_password_confirmation: '' });
+    const workerForm = useForm({ first_name: '', last_name: '', email: '', phone_number: '', password: '', password_confirmation: '', gender: '' });
 
     const handleCreateCareHome = () => {
         careHomeForm.post('/admin/carehomes', {
@@ -365,55 +359,44 @@ export default function AdminDashboard({ stats, recentDocuments, recentCareHomes
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
                             <Label htmlFor="ch-name">Care Home Name</Label>
-                            <Input
-                                id="ch-name"
-                                value={careHomeForm.data.name}
-                                onChange={(e) => careHomeForm.setData('name', e.target.value)}
-                                placeholder="Enter care home name"
-                            />
+                            <Input id="ch-name" value={careHomeForm.data.name} onChange={(e) => careHomeForm.setData('name', e.target.value)} placeholder="Enter care home name" />
                             {careHomeForm.errors.name && <p className="text-xs text-red-500">{careHomeForm.errors.name}</p>}
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="ch-admin-first">Administrator First Name</Label>
-                            <Input
-                                id="ch-admin-first"
-                                value={careHomeForm.data.admin_first_name}
-                                onChange={(e) => careHomeForm.setData('admin_first_name', e.target.value)}
-                                placeholder="Enter first name"
-                            />
-                            {careHomeForm.errors.admin_first_name && <p className="text-xs text-red-500">{careHomeForm.errors.admin_first_name}</p>}
+                            <Label htmlFor="ch-phone">Care Home Phone Number</Label>
+                            <Input id="ch-phone" type="tel" value={careHomeForm.data.phone_number} onChange={(e) => careHomeForm.setData('phone_number', e.target.value)} placeholder="Enter phone number" />
+                            {careHomeForm.errors.phone_number && <p className="text-xs text-red-500">{careHomeForm.errors.phone_number}</p>}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="grid gap-2">
+                                <Label htmlFor="ch-admin-first">Admin First Name</Label>
+                                <Input id="ch-admin-first" value={careHomeForm.data.admin_first_name} onChange={(e) => careHomeForm.setData('admin_first_name', e.target.value)} placeholder="First name" />
+                                {careHomeForm.errors.admin_first_name && <p className="text-xs text-red-500">{careHomeForm.errors.admin_first_name}</p>}
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="ch-admin-last">Admin Last Name</Label>
+                                <Input id="ch-admin-last" value={careHomeForm.data.admin_last_name} onChange={(e) => careHomeForm.setData('admin_last_name', e.target.value)} placeholder="Last name" />
+                                {careHomeForm.errors.admin_last_name && <p className="text-xs text-red-500">{careHomeForm.errors.admin_last_name}</p>}
+                            </div>
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="ch-admin-last">Administrator Last Name</Label>
-                            <Input
-                                id="ch-admin-last"
-                                value={careHomeForm.data.admin_last_name}
-                                onChange={(e) => careHomeForm.setData('admin_last_name', e.target.value)}
-                                placeholder="Enter last name"
-                            />
-                            {careHomeForm.errors.admin_last_name && <p className="text-xs text-red-500">{careHomeForm.errors.admin_last_name}</p>}
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="ch-admin-email">Administrator Email</Label>
-                            <Input
-                                id="ch-admin-email"
-                                type="email"
-                                value={careHomeForm.data.admin_email}
-                                onChange={(e) => careHomeForm.setData('admin_email', e.target.value)}
-                                placeholder="Enter email address"
-                            />
+                            <Label htmlFor="ch-admin-email">Admin Email</Label>
+                            <Input id="ch-admin-email" type="email" value={careHomeForm.data.admin_email} onChange={(e) => careHomeForm.setData('admin_email', e.target.value)} placeholder="Enter email address" />
                             {careHomeForm.errors.admin_email && <p className="text-xs text-red-500">{careHomeForm.errors.admin_email}</p>}
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="ch-admin-password">Administrator Password</Label>
-                            <Input
-                                id="ch-admin-password"
-                                type="password"
-                                value={careHomeForm.data.admin_password}
-                                onChange={(e) => careHomeForm.setData('admin_password', e.target.value)}
-                                placeholder="Enter password"
-                            />
+                            <Label htmlFor="ch-admin-phone">Admin Phone Number</Label>
+                            <Input id="ch-admin-phone" type="tel" value={careHomeForm.data.admin_phone_number} onChange={(e) => careHomeForm.setData('admin_phone_number', e.target.value)} placeholder="Enter phone number" />
+                            {careHomeForm.errors.admin_phone_number && <p className="text-xs text-red-500">{careHomeForm.errors.admin_phone_number}</p>}
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="ch-admin-password">Admin Password</Label>
+                            <Input id="ch-admin-password" type="password" value={careHomeForm.data.admin_password} onChange={(e) => careHomeForm.setData('admin_password', e.target.value)} placeholder="Enter password" />
                             {careHomeForm.errors.admin_password && <p className="text-xs text-red-500">{careHomeForm.errors.admin_password}</p>}
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="ch-admin-password-confirm">Confirm Password</Label>
+                            <Input id="ch-admin-password-confirm" type="password" value={careHomeForm.data.admin_password_confirmation} onChange={(e) => careHomeForm.setData('admin_password_confirmation', e.target.value)} placeholder="Confirm password" />
                         </div>
                     </div>
                     <DialogFooter>
@@ -433,54 +416,32 @@ export default function AdminDashboard({ stats, recentDocuments, recentCareHomes
                         <DialogDescription>Create a new health care worker account.</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="w-first">First Name</Label>
-                            <Input
-                                id="w-first"
-                                value={workerForm.data.first_name}
-                                onChange={(e) => workerForm.setData('first_name', e.target.value)}
-                                placeholder="Enter first name"
-                            />
-                            {workerForm.errors.first_name && <p className="text-xs text-red-500">{workerForm.errors.first_name}</p>}
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="w-last">Last Name</Label>
-                            <Input
-                                id="w-last"
-                                value={workerForm.data.last_name}
-                                onChange={(e) => workerForm.setData('last_name', e.target.value)}
-                                placeholder="Enter last name"
-                            />
-                            {workerForm.errors.last_name && <p className="text-xs text-red-500">{workerForm.errors.last_name}</p>}
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="grid gap-2">
+                                <Label htmlFor="w-first">First Name</Label>
+                                <Input id="w-first" value={workerForm.data.first_name} onChange={(e) => workerForm.setData('first_name', e.target.value)} placeholder="First name" />
+                                {workerForm.errors.first_name && <p className="text-xs text-red-500">{workerForm.errors.first_name}</p>}
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="w-last">Last Name</Label>
+                                <Input id="w-last" value={workerForm.data.last_name} onChange={(e) => workerForm.setData('last_name', e.target.value)} placeholder="Last name" />
+                                {workerForm.errors.last_name && <p className="text-xs text-red-500">{workerForm.errors.last_name}</p>}
+                            </div>
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="w-email">Email</Label>
-                            <Input
-                                id="w-email"
-                                type="email"
-                                value={workerForm.data.email}
-                                onChange={(e) => workerForm.setData('email', e.target.value)}
-                                placeholder="Enter email address"
-                            />
+                            <Input id="w-email" type="email" value={workerForm.data.email} onChange={(e) => workerForm.setData('email', e.target.value)} placeholder="Enter email address" />
                             {workerForm.errors.email && <p className="text-xs text-red-500">{workerForm.errors.email}</p>}
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="w-password">Password</Label>
-                            <Input
-                                id="w-password"
-                                type="password"
-                                value={workerForm.data.password}
-                                onChange={(e) => workerForm.setData('password', e.target.value)}
-                                placeholder="Enter password"
-                            />
-                            {workerForm.errors.password && <p className="text-xs text-red-500">{workerForm.errors.password}</p>}
+                            <Label htmlFor="w-phone">Phone Number</Label>
+                            <Input id="w-phone" type="tel" value={workerForm.data.phone_number} onChange={(e) => workerForm.setData('phone_number', e.target.value)} placeholder="Enter phone number" />
+                            {workerForm.errors.phone_number && <p className="text-xs text-red-500">{workerForm.errors.phone_number}</p>}
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="w-gender">Gender</Label>
                             <Select value={workerForm.data.gender} onValueChange={(v) => workerForm.setData('gender', v)}>
-                                <SelectTrigger id="w-gender">
-                                    <SelectValue placeholder="Select gender" />
-                                </SelectTrigger>
+                                <SelectTrigger id="w-gender"><SelectValue placeholder="Select gender" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="male">Male</SelectItem>
                                     <SelectItem value="female">Female</SelectItem>
@@ -490,18 +451,13 @@ export default function AdminDashboard({ stats, recentDocuments, recentCareHomes
                             {workerForm.errors.gender && <p className="text-xs text-red-500">{workerForm.errors.gender}</p>}
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="w-care-home">Care Home</Label>
-                            <Select value={workerForm.data.care_home_id} onValueChange={(v) => workerForm.setData('care_home_id', v)}>
-                                <SelectTrigger id="w-care-home">
-                                    <SelectValue placeholder="Select care home" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {careHomes.map((ch) => (
-                                        <SelectItem key={ch.id} value={ch.id}>{ch.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {workerForm.errors.care_home_id && <p className="text-xs text-red-500">{workerForm.errors.care_home_id}</p>}
+                            <Label htmlFor="w-password">Password</Label>
+                            <Input id="w-password" type="password" value={workerForm.data.password} onChange={(e) => workerForm.setData('password', e.target.value)} placeholder="Enter password" />
+                            {workerForm.errors.password && <p className="text-xs text-red-500">{workerForm.errors.password}</p>}
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="w-password-confirm">Confirm Password</Label>
+                            <Input id="w-password-confirm" type="password" value={workerForm.data.password_confirmation} onChange={(e) => workerForm.setData('password_confirmation', e.target.value)} placeholder="Confirm password" />
                         </div>
                     </div>
                     <DialogFooter>

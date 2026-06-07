@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Mail\UserStatusChanged;
 use App\Models\CareHome;
-use App\Models\Document;
 use App\Models\StatusChange;
 use App\Models\User;
 use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -62,49 +63,38 @@ class CareHomeManagementController extends Controller
     /**
      * Create a new care home
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:care_homes,name',
+            'phone_number' => 'nullable|string|max:20',
             'admin_first_name' => 'required|string|max:255',
             'admin_last_name' => 'required|string|max:255',
             'admin_email' => 'required|email|unique:users,email',
-            'admin_password' => 'required|string|min:8',
+            'admin_phone_number' => 'nullable|string|max:20',
+            'admin_password' => 'required|string|min:8|confirmed',
         ]);
 
-        try {
-            // Create care home
-            $careHome = CareHome::create([
-                'name' => $request->name,
-            ]);
+        $careHome = CareHome::create([
+            'name' => $request->name,
+            'phone_number' => $request->phone_number,
+        ]);
 
-            // Create admin user for the care home
-            $admin = User::create([
-                'first_name' => $request->admin_first_name,
-                'last_name' => $request->admin_last_name,
-                'email' => $request->admin_email,
-                'password' => Hash::make($request->admin_password),
-                'role' => 'care_home_admin',
-                'care_home_id' => $careHome->id,
-                'email_verified_at' => now(),
-            ]);
+        $admin = User::create([
+            'first_name' => $request->admin_first_name,
+            'last_name' => $request->admin_last_name,
+            'email' => $request->admin_email,
+            'phone_number' => $request->admin_phone_number,
+            'password' => Hash::make($request->admin_password),
+            'role' => 'care_home_admin',
+            'care_home_id' => $careHome->id,
+            'email_verified_at' => now(),
+        ]);
 
-            // Log activities
-            ActivityLogService::logCareHomeCreated($careHome);
-            ActivityLogService::logUserCreated($admin, $careHome->id);
+        ActivityLogService::logCareHomeCreated($careHome);
+        ActivityLogService::logUserCreated($admin, $careHome->id);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Care home created successfully',
-                'careHome' => $careHome->load('users'),
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create care home: ' . $e->getMessage(),
-            ], 500);
-        }
+        return redirect()->back()->with('success', 'Care home created successfully.');
     }
 
     /**
@@ -220,7 +210,7 @@ class CareHomeManagementController extends Controller
                         new UserStatusChanged($careHome->user, $oldStatus, 'approved', 'approve')
                     );
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send user status email', [
+                    Log::error('Failed to send user status email', [
                         'error' => $e->getMessage(),
                         'user_email' => $careHome->user->email,
                     ]);
@@ -283,7 +273,7 @@ class CareHomeManagementController extends Controller
                         new UserStatusChanged($careHome->user, $oldStatus, 'rejected', 'reject', $request->reason)
                     );
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send user status email', [
+                    Log::error('Failed to send user status email', [
                         'error' => $e->getMessage(),
                         'user_email' => $careHome->user->email,
                     ]);
@@ -346,7 +336,7 @@ class CareHomeManagementController extends Controller
                         new UserStatusChanged($careHome->user, $oldStatus, 'suspended', 'suspend', $request->reason)
                     );
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send user status email', [
+                    Log::error('Failed to send user status email', [
                         'error' => $e->getMessage(),
                         'user_email' => $careHome->user->email,
                     ]);
@@ -407,7 +397,7 @@ class CareHomeManagementController extends Controller
                         new UserStatusChanged($careHome->user, $oldStatus, 'approved', 'unsuspend')
                     );
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send user status email', [
+                    Log::error('Failed to send user status email', [
                         'error' => $e->getMessage(),
                         'user_email' => $careHome->user->email,
                     ]);

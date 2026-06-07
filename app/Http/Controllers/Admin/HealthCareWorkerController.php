@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
@@ -76,46 +77,33 @@ class HealthCareWorkerController extends Controller
     /**
      * Create a new health care worker
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): RedirectResponse
     {
         $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8',
-            'care_home_id' => 'required|exists:care_homes,id',
+            'phone_number' => 'nullable|string|max:20',
+            'password' => 'required|string|min:8|confirmed',
+            'care_home_id' => 'nullable|exists:care_homes,id',
             'gender' => 'required|in:male,female,other',
         ]);
 
-        try {
-            $healthCareWorker = User::create([
-                'first_name' => $request->first_name,
-                'last_name' => $request->last_name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'role' => 'health_worker',
-                'care_home_id' => $request->care_home_id,
-                'gender' => $request->gender,
-                'email_verified_at' => now(),
-            ]);
+        $healthCareWorker = User::create([
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+            'email' => $request->email,
+            'phone_number' => $request->phone_number,
+            'password' => Hash::make($request->password),
+            'role' => 'health_worker',
+            'care_home_id' => $request->care_home_id,
+            'gender' => $request->gender,
+            'email_verified_at' => now(),
+        ]);
 
-            $healthCareWorker->load('care_home');
+        ActivityLogService::logUserCreated($healthCareWorker, $request->care_home_id);
 
-            // Log activity
-            ActivityLogService::logUserCreated($healthCareWorker, $request->care_home_id);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Health care worker created successfully',
-                'healthCareWorker' => $healthCareWorker,
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create health care worker: ' . $e->getMessage(),
-            ], 500);
-        }
+        return redirect()->back()->with('success', 'Health care worker created successfully.');
     }
 
     /**
