@@ -63,6 +63,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('shifts')->name('shifts.')->group(function () {
         Route::patch('/{shift}/publish', [App\Http\Controllers\ShiftController::class, 'publish'])->name('publish');
         Route::patch('/{shift}/cancel', [App\Http\Controllers\ShiftController::class, 'cancel'])->name('cancel');
+        Route::patch('/{shift}/reject-worker', [App\Http\Controllers\ShiftController::class, 'rejectWorker'])->name('reject-worker');
     });
 
     // Application management routes for care homes

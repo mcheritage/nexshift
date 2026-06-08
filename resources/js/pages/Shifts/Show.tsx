@@ -9,20 +9,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import WorkerProfileModal from '@/components/WorkerProfileModal';
 import { ROLE_LABELS } from '@/constants/roles';
-import { 
-    ArrowLeft, 
-    Calendar, 
-    Clock, 
-    MapPin, 
-    Coins, 
-    Users, 
-    AlertTriangle, 
-    Edit, 
+import {
+    ArrowLeft,
+    Calendar,
+    Clock,
+    MapPin,
+    Coins,
+    Users,
+    AlertTriangle,
+    Edit,
     Eye,
     CheckCircle,
     XCircle,
     PlayCircle,
-    Pause
+    Pause,
+    UserX
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -60,6 +61,7 @@ interface Shift {
         last_name: string;
         email: string;
     };
+    is_pending_assignment: boolean;
 }
 
 interface ShiftShowProps extends SharedData {
@@ -219,24 +221,47 @@ export default function ShiftShow({ shift }: ShiftShowProps) {
                             )}
                         </div>
                         {shift.status === 'filled' && shift.selected_worker && (
-                            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                    <CheckCircle className="h-4 w-4 text-green-600" />
-                                    <span className="text-sm font-medium text-green-800">
-                                        Assigned to: 
-                                        <span className="ml-1 font-medium">
-                                            {shift.selected_worker.first_name} {shift.selected_worker.last_name}
-                                        </span>
-                                        <button 
-                                            onClick={() => handleWorkerClick(shift.selected_worker)}
-                                            className="ml-2 text-xs text-blue-600 hover:text-blue-800 underline"
-                                        >
-                                            View Profile
-                                        </button>
-                                    </span>
-                                </div>
-                                <div className="text-xs text-green-600 ml-6">
-                                    {shift.selected_worker.email}
+                            <div className={`mt-3 p-3 rounded-lg border ${shift.is_pending_assignment ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'}`}>
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            {shift.is_pending_assignment ? (
+                                                <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                                            ) : (
+                                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                            )}
+                                            <span className={`text-sm font-medium ${shift.is_pending_assignment ? 'text-yellow-800' : 'text-green-800'}`}>
+                                                {shift.is_pending_assignment ? 'Awaiting worker confirmation — ' : 'Assigned to: '}
+                                                {shift.selected_worker.first_name} {shift.selected_worker.last_name}
+                                            </span>
+                                            {!shift.is_pending_assignment && (
+                                                <button
+                                                    onClick={() => handleWorkerClick(shift.selected_worker)}
+                                                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                                >
+                                                    View Profile
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className={`text-xs ml-6 ${shift.is_pending_assignment ? 'text-yellow-600' : 'text-green-600'}`}>
+                                            {shift.selected_worker.email}
+                                        </div>
+                                        {shift.is_pending_assignment && (
+                                            <div className="ml-6 mt-0.5 text-xs text-yellow-700">
+                                                The worker has been notified and must confirm availability.
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            if (confirm('Remove this worker from the shift? The shift will be reopened and you and the admin will be notified.')) {
+                                                router.patch(`/shifts/${shift.id}/reject-worker`);
+                                            }
+                                        }}
+                                        className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 border border-red-200 rounded px-2 py-1 shrink-0"
+                                    >
+                                        <UserX className="h-3.5 w-3.5" /> Remove Worker
+                                    </button>
                                 </div>
                             </div>
                         )}

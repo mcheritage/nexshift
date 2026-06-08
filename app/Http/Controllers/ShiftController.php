@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Mail\ShiftCancelled;
+use App\Mail\ShiftRejectedCareHome;
+use App\Mail\ShiftRejectedWorker;
 use App\Models\ActivityLog;
+use App\Models\Application;
 use App\Models\Notification;
 use App\Models\Shift;
+use App\Models\User;
 use App\Services\ActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -57,6 +61,15 @@ class ShiftController extends Controller
         // Order by shift date and start time
         $shifts = $query->orderBy('start_datetime', 'desc')
             ->paginate(20);
+
+        // Tag each shift: is admin-assigned and worker hasn't accepted yet?
+        $shifts->each(function ($shift) {
+            $shift->is_pending_assignment = $shift->selected_worker_id
+                && $shift->applications->contains(function ($app) use ($shift) {
+                    return $app->worker_id === $shift->selected_worker_id
+                        && $app->status === Application::STATUS_ASSIGNED;
+                });
+        });
 
         // Get summary statistics
         $stats = [
@@ -220,6 +233,12 @@ class ShiftController extends Controller
 
         $shift->load(['careHome', 'selectedWorker', 'createdBy', 'applications.worker']);
         $shift->loadCount('applications');
+
+        $shift->is_pending_assignment = $shift->selected_worker_id
+            && $shift->applications->contains(function ($app) use ($shift) {
+                return $app->worker_id === $shift->selected_worker_id
+                    && $app->status === Application::STATUS_ASSIGNED;
+            });
 
         return Inertia::render('Shifts/Show', [
             'shift' => $shift,
@@ -485,5 +504,61 @@ class ShiftController extends Controller
 
         return redirect()->back()
             ->with('success', 'Shift cancelled successfully. Worker has been notified.');
+    }
+
+    public function rejectWorker(Shift $shift): RedirectResponse
+    {
+        $user = Auth::user();
+
+        if ($shift->care_home_id !== $user->care_home_id) {
+            abort(403, 'Access denied');
+        }
+
+        if (!$shift->selected_worker_id) {
+            return redirect()->back()->withErrors(['error' => 'No worker is assigned to this shift.']);
+        }
+
+        $application = Application::where('shift_id', $shift->id)
+            ->where('worker_id', $shift->selected_worker_id)
+            ->whereIn('status', [Application::STATUS_ASSIGNED, Application::STATUS_ACCEPTED])
+            ->first();
+
+        if (!$application) {
+            return redirect()->back()->withErrors(['error' => 'No active assignment found for this shift.']);
+        }
+
+        $application->update(['status' => Application::STATUS_REJECTED, 'reviewed_at' => now()]);
+        $shift->update(['selected_worker_id' => null, 'status' => Shift::STATUS_PUBLISHED]);
+
+        $application->load(['worker', 'shift.careHome']);
+
+        $worker    = $application->worker;
+        $careHome  = $application->shift->careHome;
+        $shiftDate = date('M d, Y', strtotime($application->shift->start_datetime));
+
+        // In-app + email: notify the worker
+        Notification::create([
+            'user_id' => $worker->id,
+            'type'    => 'shift_assignment_removed',
+            'title'   => 'Shift Assignment Update',
+            'message' => "Your assignment for {$application->shift->title} at {$careHome->name} on {$shiftDate} has been removed. Browse available shifts for other opportunities.",
+            'data'    => ['shift_id' => $application->shift_id],
+        ]);
+        Mail::to($worker->email)->send(new ShiftRejectedWorker($application));
+
+        // In-app + email: notify NexShift admins so they can reassign
+        $admins = User::whereIn('role', ['super_admin', 'nexshift_admin'])->get();
+        foreach ($admins as $admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'type'    => 'shift_worker_removed',
+                'title'   => 'Care Home Removed Worker from Shift',
+                'message' => "{$careHome->name} removed {$worker->first_name} {$worker->last_name} from {$application->shift->title} on {$shiftDate}. The shift needs a new worker.",
+                'data'    => ['shift_id' => $application->shift_id, 'worker_id' => $worker->id],
+            ]);
+            Mail::to($admin->email)->send(new ShiftRejectedCareHome($application, $admin));
+        }
+
+        return redirect()->back()->with('success', 'Worker removed from shift. The shift is now open again.');
     }
 }

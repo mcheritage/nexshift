@@ -7,6 +7,7 @@ use App\Mail\ShiftAssignedCareHome;
 use App\Mail\ShiftAssignedWorker;
 use App\Models\Application;
 use App\Models\CareHome;
+use App\Models\Notification;
 use App\Models\Shift;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -126,11 +127,35 @@ class AdminShiftController extends Controller
         // Load relationships needed by the mail templates
         $application->load(['worker', 'shift.careHome']);
 
+        $shift     = $application->shift;
+        $careHome  = $shift->careHome;
+        $shiftDate = date('M d, Y', strtotime($shift->start_datetime));
+
+        // In-app: notify the worker
+        Notification::create([
+            'user_id' => $worker->id,
+            'type'    => 'shift_assigned',
+            'title'   => 'You Have Been Assigned to a Shift',
+            'message' => "You have been assigned to {$shift->title} at {$careHome->name} on {$shiftDate}. Please log in to accept or decline.",
+            'data'    => ['shift_id' => $shift->id, 'application_id' => $application->id],
+        ]);
+
+        // In-app: notify the care home's primary admin
+        $careHomeAdmin = $careHome->user;
+        if ($careHomeAdmin) {
+            Notification::create([
+                'user_id' => $careHomeAdmin->id,
+                'type'    => 'worker_assigned',
+                'title'   => 'Worker Assigned to Your Shift',
+                'message' => "{$worker->first_name} {$worker->last_name} has been assigned to {$shift->title} on {$shiftDate}. They must confirm availability.",
+                'data'    => ['shift_id' => $shift->id, 'worker_id' => $worker->id],
+            ]);
+        }
+
         // Email the assigned worker
         Mail::to($worker->email)->send(new ShiftAssignedWorker($application));
 
         // Email the care home's primary administrator
-        $careHomeAdmin = $application->shift->careHome->user;
         if ($careHomeAdmin) {
             Mail::to($careHomeAdmin->email)->send(new ShiftAssignedCareHome($application, $careHomeAdmin));
         }

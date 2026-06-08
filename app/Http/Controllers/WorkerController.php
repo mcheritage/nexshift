@@ -851,9 +851,21 @@ class WorkerController extends Controller
 
         $application->load(['worker', 'shift.careHome']);
 
+        $shift     = $application->shift;
+        $careHome  = $shift->careHome;
+        $worker    = $application->worker;
+        $shiftDate = date('M d, Y', strtotime($shift->start_datetime));
+
         // Notify the care home's primary admin
-        $careHomeAdmin = $application->shift->careHome->user;
+        $careHomeAdmin = $careHome->user;
         if ($careHomeAdmin) {
+            Notification::create([
+                'user_id' => $careHomeAdmin->id,
+                'type'    => 'shift_assignment_accepted',
+                'title'   => 'Worker Confirmed for Shift',
+                'message' => "{$worker->first_name} {$worker->last_name} has accepted the shift assignment for {$shift->title} on {$shiftDate}.",
+                'data'    => ['shift_id' => $shift->id, 'worker_id' => $worker->id],
+            ]);
             Mail::to($careHomeAdmin->email)->send(new ShiftAssignmentAccepted($application, $careHomeAdmin));
         }
 
@@ -887,15 +899,35 @@ class WorkerController extends Controller
 
         $application->load(['worker', 'shift.careHome']);
 
-        // Notify the admin so they can reassign the shift
+        $shift     = $application->shift;
+        $careHome  = $shift->careHome;
+        $worker    = $application->worker;
+        $shiftDate = date('M d, Y', strtotime($shift->start_datetime));
+        $message   = "{$worker->first_name} {$worker->last_name} has declined the shift assignment for {$shift->title} on {$shiftDate}. The shift is now open.";
+
+        // In-app + email: notify NexShift admins
         $admins = User::whereIn('role', ['super_admin', 'nexshift_admin'])->get();
         foreach ($admins as $admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'type'    => 'shift_assignment_declined',
+                'title'   => 'Worker Declined Shift Assignment',
+                'message' => $message,
+                'data'    => ['shift_id' => $shift->id, 'worker_id' => $worker->id],
+            ]);
             Mail::to($admin->email)->send(new ShiftAssignmentDeclined($application, $admin));
         }
 
-        // Also notify the care home's primary admin
-        $careHomeAdmin = $application->shift->careHome->user;
+        // In-app + email: notify the care home's primary admin
+        $careHomeAdmin = $careHome->user;
         if ($careHomeAdmin) {
+            Notification::create([
+                'user_id' => $careHomeAdmin->id,
+                'type'    => 'shift_assignment_declined',
+                'title'   => 'Worker Declined Shift Assignment',
+                'message' => $message,
+                'data'    => ['shift_id' => $shift->id, 'worker_id' => $worker->id],
+            ]);
             Mail::to($careHomeAdmin->email)->send(new ShiftAssignmentDeclined($application, $careHomeAdmin));
         }
 
