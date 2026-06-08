@@ -6,8 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\CareHome;
 use App\Models\Document;
 use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -21,15 +19,11 @@ class AdminDashboardController extends Controller
         // Get overall statistics
         $stats = [
             'total_care_homes' => CareHome::count(),
-            'total_users' => User::count(),
-            'total_documents' => Document::count(),
-            'pending_documents' => Document::where('status', 'pending')->count(),
-            'approved_documents' => Document::where('status', 'approved')->count(),
-            'rejected_documents' => Document::where('status', 'rejected')->count(),
-            'requires_attention_documents' => Document::where('status', 'requires_attention')->count(),
-            'admin_users' => User::where('role', 'admin')->count(),
-            'care_home_admins' => User::where('role', 'care_home_admin')->count(),
+            'pending_care_homes' => CareHome::where('status', 'pending')->count(),
             'health_care_workers' => User::where('role', 'health_worker')->count(),
+            'pending_workers' => User::where('role', 'health_worker')->where('status', 'pending')->count(),
+            'pending_documents' => Document::where('status', 'pending')->count(),
+            'requires_attention_documents' => Document::where('status', 'requires_attention')->count(),
         ];
 
         // Get recent activity
@@ -44,6 +38,7 @@ class AdminDashboardController extends Controller
             ->get();
 
         $recentUsers = User::with('care_home')
+            ->where('role', 'health_worker')
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();

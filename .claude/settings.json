@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php -l /Users/supermadu/Sites/nexshift/app/Mail/ShiftAssignedWorker.php)",
+      "Bash(php -l /Users/supermadu/Sites/nexshift/app/Mail/ShiftAssignedCareHome.php)",
+      "Bash(php -l /Users/supermadu/Sites/nexshift/app/Http/Controllers/Admin/AdminShiftController.php)",
+      "Bash(php artisan *)"
+    ]
+  }
+}

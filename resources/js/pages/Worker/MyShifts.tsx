@@ -1,5 +1,5 @@
-import { Head, Link } from '@inertiajs/react';
-import { Calendar, Clock, MapPin, Coins, Plus, Eye, CheckCircle, XCircle, Edit, AlertTriangle } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { Bell, Calendar, Clock, MapPin, Coins, Plus, Eye, CheckCircle, XCircle, Edit, AlertTriangle } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,15 +31,23 @@ interface Shift {
     can_create_timesheet: boolean;
 }
 
+interface PendingAssignment {
+    application_id: string;
+    assigned_at: string;
+    review_notes: string | null;
+    shift: Shift & { care_home: CareHome; start_datetime: string; end_datetime: string };
+}
+
 interface Props {
     shifts: {
         data: Shift[];
         links: any[];
         meta: any;
     };
+    pendingAssignments: PendingAssignment[];
 }
 
-const MyShifts = ({ shifts }: Props) => {
+const MyShifts = ({ shifts, pendingAssignments }: Props) => {
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-GB', {
             weekday: 'long',
@@ -146,6 +154,78 @@ const MyShifts = ({ shifts }: Props) => {
                     </p>
                 </div>
 
+                {/* Pending Assignments from Admin */}
+                {pendingAssignments.length > 0 && (
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                            <Bell className="h-5 w-5 text-yellow-600" />
+                            <h2 className="text-lg font-semibold">Pending Assignments</h2>
+                            <Badge className="bg-yellow-100 text-yellow-800">{pendingAssignments.length}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            An admin has assigned you to the following shifts. Please accept or decline.
+                        </p>
+                        {pendingAssignments.map((pa) => (
+                            <Card key={pa.application_id} className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 dark:border-yellow-900">
+                                <CardContent className="p-5">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="space-y-2 flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-semibold text-base">{pa.shift.title}</h3>
+                                                <Badge className="bg-yellow-200 text-yellow-900 text-xs">Awaiting your response</Badge>
+                                            </div>
+                                            <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                                                <MapPin className="h-4 w-4" />
+                                                <span>{pa.shift.care_home?.name ?? pa.shift.careHome?.name}</span>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                                                    <span>{new Date(pa.shift.start_datetime).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Clock className="h-4 w-4 text-muted-foreground" />
+                                                    <span>
+                                                        {new Date(pa.shift.start_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        {' – '}
+                                                        {new Date(pa.shift.end_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Coins className="h-4 w-4 text-muted-foreground" />
+                                                    <span>£{pa.shift.hourly_rate}/hour</span>
+                                                </div>
+                                            </div>
+                                            {pa.review_notes && (
+                                                <p className="text-xs text-muted-foreground italic">Note: {pa.review_notes}</p>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col gap-2 shrink-0">
+                                            <Button
+                                                size="sm"
+                                                className="bg-green-600 hover:bg-green-700 text-white gap-1"
+                                                onClick={() => router.patch(`/worker/assignments/${pa.application_id}/accept`)}
+                                            >
+                                                <CheckCircle className="h-4 w-4" />
+                                                Accept
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="text-red-600 hover:text-red-700 border-red-200 gap-1"
+                                                onClick={() => router.patch(`/worker/assignments/${pa.application_id}/decline`)}
+                                            >
+                                                <XCircle className="h-4 w-4" />
+                                                Decline
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                )}
+
                 {shifts.data.length > 0 ? (
                     <div className="space-y-4">
                         {shifts.data.map((shift) => {
@@ -221,20 +301,20 @@ const MyShifts = ({ shifts }: Props) => {
                         )}
                     </div>
                 ) : (
-                    <Card>
-                        <CardContent className="p-12 text-center">
-                            <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold mb-2">No Shifts Yet</h3>
-                            <p className="text-muted-foreground mb-6">
-                                You don't have any accepted shifts yet. Apply for shifts to see them here.
-                            </p>
-                            <Link href="/worker/shifts">
-                                <Button>
-                                    Browse Available Shifts
-                                </Button>
-                            </Link>
-                        </CardContent>
-                    </Card>
+                    pendingAssignments.length === 0 && (
+                        <Card>
+                            <CardContent className="p-12 text-center">
+                                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                                <h3 className="text-lg font-semibold mb-2">No Shifts Yet</h3>
+                                <p className="text-muted-foreground mb-6">
+                                    You don't have any accepted shifts yet. Apply for shifts to see them here.
+                                </p>
+                                <Link href="/worker/shifts">
+                                    <Button>Browse Available Shifts</Button>
+                                </Link>
+                            </CardContent>
+                        </Card>
+                    )
                 )}
             </div>
         </AppLayout>

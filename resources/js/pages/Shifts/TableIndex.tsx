@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, MapPin, Users, TrendingUp, Plus, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, TrendingUp, Plus, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, UserX } from 'lucide-react';
 import { useState } from 'react';
 import WorkerProfileModal from '@/components/WorkerProfileModal';
 
@@ -51,6 +51,7 @@ interface Shift {
         last_name: string;
         email: string;
     };
+    is_pending_assignment: boolean;
     required_skills: string[];
     notes?: string;
 }
@@ -477,12 +478,28 @@ export default function ShiftsTableIndex({ shifts, stats, filters }: ShiftsPageP
                                                             <div className="text-sm text-muted-foreground">
                                                                 {shift.selected_worker.email}
                                                             </div>
-                                                            <button 
-                                                                onClick={() => handleWorkerClick(shift.selected_worker)}
-                                                                className="text-xs text-blue-600 hover:text-blue-800 underline"
-                                                            >
-                                                                View Profile
-                                                            </button>
+                                                            {shift.is_pending_assignment ? (
+                                                                <span className="inline-flex items-center gap-1 text-xs font-medium text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full">
+                                                                    Awaiting confirmation
+                                                                </span>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => handleWorkerClick(shift.selected_worker)}
+                                                                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                                                >
+                                                                    View Profile
+                                                                </button>
+                                                            )}
+                                                            <div>
+                                                                <button
+                                                                    onClick={() => router.patch(`/shifts/${shift.id}/reject-worker`, {}, {
+                                                                        onBefore: () => confirm('Remove this worker from the shift? The shift will be reopened.')
+                                                                    })}
+                                                                    className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-800 underline mt-0.5"
+                                                                >
+                                                                    <UserX className="h-3 w-3" /> Remove Worker
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     ) : (
                                                         <span className="text-muted-foreground">Not assigned</span>

@@ -62,6 +62,8 @@ class Application extends Model
     public const STATUS_ACCEPTED = 'accepted';
     public const STATUS_REJECTED = 'rejected';
     public const STATUS_WITHDRAWN = 'withdrawn';
+    public const STATUS_ASSIGNED = 'assigned';   // Admin-assigned, pending worker acceptance
+    public const STATUS_DECLINED = 'declined';   // Worker declined an admin assignment
 
     /**
      * Get all possible status values
@@ -69,11 +71,18 @@ class Application extends Model
     public static function getStatuses(): array
     {
         return [
-            self::STATUS_PENDING => 'Pending Review',
+            self::STATUS_PENDING  => 'Pending Review',
             self::STATUS_ACCEPTED => 'Accepted',
             self::STATUS_REJECTED => 'Rejected',
             self::STATUS_WITHDRAWN => 'Withdrawn',
+            self::STATUS_ASSIGNED => 'Assigned (Pending Acceptance)',
+            self::STATUS_DECLINED => 'Declined by Worker',
         ];
+    }
+
+    public function isAssigned(): bool
+    {
+        return $this->status === self::STATUS_ASSIGNED;
     }
 
     /**

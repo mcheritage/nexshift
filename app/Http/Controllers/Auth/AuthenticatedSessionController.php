@@ -33,22 +33,25 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        // Redirect based on user role/type
         $user = $request->user();
 
         if (! $user->hasVerifiedEmail()) {
             return redirect()->route('verification.notice');
         }
-        
+
+        // If an intended URL was stored (e.g. clicking a link in an email while logged out),
+        // send the user there instead of the default dashboard.
+        if ($request->session()->has('url.intended')) {
+            return redirect()->intended();
+        }
+
+        // Default role-based redirect
         if ($user->isAdmin()) {
-            // Admin should always go to admin dashboard
             return redirect()->route('admin.dashboard');
         } elseif ($user->role === 'health_worker') {
-            // Healthcare workers should go to worker dashboard
             return redirect()->route('worker.dashboard');
         }
-        
-        // Default to care home admin dashboard
+
         return redirect()->route('dashboard');
     }
 

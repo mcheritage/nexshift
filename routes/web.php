@@ -67,6 +67,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('shifts')->name('shifts.')->group(function () {
         Route::patch('/{shift}/publish', [App\Http\Controllers\ShiftController::class, 'publish'])->name('publish');
         Route::patch('/{shift}/cancel', [App\Http\Controllers\ShiftController::class, 'cancel'])->name('cancel');
+        Route::patch('/{shift}/reject-worker', [App\Http\Controllers\ShiftController::class, 'rejectWorker'])->name('reject-worker');
     });
 
     // Application management routes for care homes
@@ -118,6 +119,8 @@ Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worke
     Route::post('/shifts/{shift}/apply', [App\Http\Controllers\WorkerController::class, 'apply'])->name('apply');
     Route::get('/applications', [App\Http\Controllers\WorkerController::class, 'applications'])->name('applications');
     Route::patch('/applications/{application}/withdraw', [App\Http\Controllers\WorkerController::class, 'withdrawApplication'])->name('applications.withdraw');
+    Route::patch('/assignments/{application}/accept', [App\Http\Controllers\WorkerController::class, 'acceptAssignment'])->name('assignments.accept');
+    Route::patch('/assignments/{application}/decline', [App\Http\Controllers\WorkerController::class, 'declineAssignment'])->name('assignments.decline');
     
     // My Shifts page for workers
     Route::get('/my-shifts', [App\Http\Controllers\WorkerController::class, 'myShifts'])->name('my-shifts');
@@ -198,6 +201,11 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/healthcare-workers/{healthCareWorker}/unsuspend', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'unsuspend'])->name('healthcare-workers.unsuspend');
         Route::delete('/healthcare-workers/{healthCareWorker}', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'destroy'])->name('healthcare-workers.destroy');
         
+        // Shift Management
+        Route::get('/shifts', [App\Http\Controllers\Admin\AdminShiftController::class, 'index'])->name('shifts.index');
+        Route::post('/shifts/{shift}/assign', [App\Http\Controllers\Admin\AdminShiftController::class, 'assign'])->name('shifts.assign');
+        Route::patch('/shifts/{shift}/unassign', [App\Http\Controllers\Admin\AdminShiftController::class, 'unassign'])->name('shifts.unassign');
+
         // Wallet Management
         Route::get('/wallets', [App\Http\Controllers\Admin\WalletManagementController::class, 'index'])->name('wallets.index');
         Route::get('/wallets/{wallet}', [App\Http\Controllers\Admin\WalletManagementController::class, 'show'])->name('wallets.show');

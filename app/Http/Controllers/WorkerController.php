@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Mail\NewShiftApplication;
+use App\Mail\ShiftAssignmentAccepted;
+use App\Mail\ShiftAssignmentDeclined;
 use App\Mail\TimesheetStatusChanged;
 use App\Models\Application;
 use App\Models\Notification;
@@ -282,7 +284,22 @@ class WorkerController extends Controller
     {
         $user = Auth::user();
 
-        // Get shifts where worker has accepted applications
+        // Shifts assigned by admin but pending worker acceptance
+        $pendingAssignments = Application::where('worker_id', $user->id)
+            ->where('status', Application::STATUS_ASSIGNED)
+            ->with(['shift.careHome'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($application) {
+                return [
+                    'application_id'  => $application->id,
+                    'shift'           => $application->shift,
+                    'review_notes'    => $application->review_notes,
+                    'assigned_at'     => $application->reviewed_at,
+                ];
+            });
+
+        // Shifts where worker has accepted applications
         $shifts = Shift::whereHas('applications', function ($query) use ($user) {
                 $query->where('worker_id', $user->id)
                       ->where('status', Application::STATUS_ACCEPTED);
@@ -302,7 +319,8 @@ class WorkerController extends Controller
         });
 
         return Inertia::render('Worker/MyShifts', [
-            'shifts' => $shifts,
+            'shifts'             => $shifts,
+            'pendingAssignments' => $pendingAssignments,
         ]);
     }
 
@@ -803,5 +821,116 @@ class WorkerController extends Controller
             ]);
             return redirect()->back()->with('error', 'Failed to access Stripe dashboard: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Accept an admin-assigned shift
+     */
+    public function acceptAssignment(Application $application): RedirectResponse
+    {
+        $user = Auth::user();
+
+        if ($application->worker_id !== $user->id) {
+            abort(403, 'Access denied');
+        }
+
+        if ($application->status !== Application::STATUS_ASSIGNED) {
+            return redirect()->back()->withErrors(['error' => 'This shift is not awaiting your acceptance.']);
+        }
+
+        $application->update([
+            'status'      => Application::STATUS_ACCEPTED,
+            'reviewed_at' => now(),
+        ]);
+
+        $application->shift->update([
+            'status'             => Shift::STATUS_FILLED,
+            'selected_worker_id' => $user->id,
+            'filled_at'          => now(),
+        ]);
+
+        $application->load(['worker', 'shift.careHome']);
+
+        $shift     = $application->shift;
+        $careHome  = $shift->careHome;
+        $worker    = $application->worker;
+        $shiftDate = date('M d, Y', strtotime($shift->start_datetime));
+
+        // Notify the care home's primary admin
+        $careHomeAdmin = $careHome->user;
+        if ($careHomeAdmin) {
+            Notification::create([
+                'user_id' => $careHomeAdmin->id,
+                'type'    => 'shift_assignment_accepted',
+                'title'   => 'Worker Confirmed for Shift',
+                'message' => "{$worker->first_name} {$worker->last_name} has accepted the shift assignment for {$shift->title} on {$shiftDate}.",
+                'data'    => ['shift_id' => $shift->id, 'worker_id' => $worker->id],
+            ]);
+            Mail::to($careHomeAdmin->email)->send(new ShiftAssignmentAccepted($application, $careHomeAdmin));
+        }
+
+        return redirect()->back()->with('success', 'Shift accepted! It has been added to your schedule.');
+    }
+
+    /**
+     * Decline an admin-assigned shift
+     */
+    public function declineAssignment(Application $application): RedirectResponse
+    {
+        $user = Auth::user();
+
+        if ($application->worker_id !== $user->id) {
+            abort(403, 'Access denied');
+        }
+
+        if ($application->status !== Application::STATUS_ASSIGNED) {
+            return redirect()->back()->withErrors(['error' => 'This shift is not awaiting your acceptance.']);
+        }
+
+        $application->update([
+            'status'      => Application::STATUS_DECLINED,
+            'reviewed_at' => now(),
+        ]);
+
+        $application->shift->update([
+            'status'             => Shift::STATUS_PUBLISHED,
+            'selected_worker_id' => null,
+        ]);
+
+        $application->load(['worker', 'shift.careHome']);
+
+        $shift     = $application->shift;
+        $careHome  = $shift->careHome;
+        $worker    = $application->worker;
+        $shiftDate = date('M d, Y', strtotime($shift->start_datetime));
+        $message   = "{$worker->first_name} {$worker->last_name} has declined the shift assignment for {$shift->title} on {$shiftDate}. The shift is now open.";
+
+        // In-app + email: notify NexShift admins
+        $admins = User::whereIn('role', ['super_admin', 'nexshift_admin'])->get();
+        foreach ($admins as $admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'type'    => 'shift_assignment_declined',
+                'title'   => 'Worker Declined Shift Assignment',
+                'message' => $message,
+                'data'    => ['shift_id' => $shift->id, 'worker_id' => $worker->id],
+            ]);
+            Mail::to($admin->email)->send(new ShiftAssignmentDeclined($application, $admin));
+        }
+
+        // In-app + email: notify the care home's primary admin
+        $careHomeAdmin = $careHome->user;
+        if ($careHomeAdmin) {
+            Notification::create([
+                'user_id' => $careHomeAdmin->id,
+                'type'    => 'shift_assignment_declined',
+                'title'   => 'Worker Declined Shift Assignment',
+                'message' => $message,
+                'data'    => ['shift_id' => $shift->id, 'worker_id' => $worker->id],
+            ]);
+            Mail::to($careHomeAdmin->email)->send(new ShiftAssignmentDeclined($application, $careHomeAdmin));
+        }
+
+        return redirect()->back()->with('success', 'Shift declined.');
     }
 }

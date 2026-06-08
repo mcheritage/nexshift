@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\DocumentType;
+use App\DocumentVerificationStatus;
 use App\Http\Controllers\Controller;
 use App\Mail\UserStatusChanged;
+use App\Mail\WelcomeEmail;
 use App\Models\CareHome;
-use App\Models\Document;
 use App\Models\StatusChange;
 use App\Models\User;
 use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -40,10 +44,10 @@ class CareHomeManagementController extends Controller
      */
     public function show(CareHome $careHome): Response
     {
-        $careHome->load(['users', 'documents', 'statusChanges.changedBy']);
-        
+        $careHome->load(['users', 'documents.reviewer', 'statusChanges.changedBy']);
+
         $totalRequired = 18; // Based on DocumentType::getAllRequired()
-        
+
         $documentStats = [
             'total' => $careHome->documents()->count(),
             'approved' => $careHome->documents()->where('status', 'approved')->count(),
@@ -52,59 +56,97 @@ class CareHomeManagementController extends Controller
             'requires_attention' => $careHome->documents()->where('status', 'requires_attention')->count(),
         ];
 
+        $requiredDocuments = collect(DocumentType::getAllRequired())->map(function ($docType) use ($careHome) {
+            $documents = $careHome->documents->where('document_type', $docType->value)->map(function ($document) {
+                return [
+                    'id' => $document->id,
+                    'original_name' => $document->original_name,
+                    'file_size' => $document->file_size,
+                    'mime_type' => $document->mime_type,
+                    'status' => $document->status->value,
+                    'status_display' => $document->getStatusDisplayName(),
+                    'status_color' => $document->getStatusColor(),
+                    'status_icon' => $document->getStatusIcon(),
+                    'rejection_reason' => $document->rejection_reason,
+                    'action_required' => $document->action_required,
+                    'reviewed_by' => $document->reviewed_by,
+                    'reviewed_at' => $document->reviewed_at,
+                    'uploaded_at' => $document->uploaded_at,
+                    'reviewer' => $document->reviewer,
+                ];
+            })->values();
+
+            return [
+                'type' => [
+                    'value' => $docType->value,
+                    'displayName' => $docType->getDisplayName(),
+                    'description' => $docType->getDescription(),
+                ],
+                'documents' => $documents,
+            ];
+        });
+
+        $verificationStatuses = collect(DocumentVerificationStatus::cases())->map(function ($status) {
+            return [
+                'value' => $status->value,
+                'displayName' => $status->getDisplayName(),
+                'description' => $status->getDescription(),
+                'color' => $status->getColor(),
+                'icon' => $status->getIcon(),
+            ];
+        });
+
         return Inertia::render('admin/carehomes/show', [
             'careHome' => $careHome,
             'documentStats' => $documentStats,
             'totalRequired' => $totalRequired,
+            'requiredDocuments' => $requiredDocuments,
+            'verificationStatuses' => $verificationStatuses,
         ]);
     }
 
     /**
      * Create a new care home
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:care_homes,name',
+            'phone_number' => 'nullable|string|max:20',
             'admin_first_name' => 'required|string|max:255',
             'admin_last_name' => 'required|string|max:255',
             'admin_email' => 'required|email|unique:users,email',
-            'admin_password' => 'required|string|min:8',
+            'admin_phone_number' => 'nullable|string|max:20',
+            'admin_password' => 'required|string|min:8|confirmed',
         ]);
 
-        try {
-            // Create care home
-            $careHome = CareHome::create([
-                'name' => $request->name,
-            ]);
+        $careHome = CareHome::create([
+            'name' => $request->name,
+            'phone_number' => $request->phone_number,
+            'status' => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+        ]);
 
-            // Create admin user for the care home
-            $admin = User::create([
-                'first_name' => $request->admin_first_name,
-                'last_name' => $request->admin_last_name,
-                'email' => $request->admin_email,
-                'password' => Hash::make($request->admin_password),
-                'role' => 'care_home_admin',
-                'care_home_id' => $careHome->id,
-                'email_verified_at' => now(),
-            ]);
+        $admin = User::create([
+            'first_name' => $request->admin_first_name,
+            'last_name' => $request->admin_last_name,
+            'email' => $request->admin_email,
+            'phone_number' => $request->admin_phone_number,
+            'password' => Hash::make($request->admin_password),
+            'role' => 'care_home_admin',
+            'care_home_id' => $careHome->id,
+            'status' => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+        ]);
 
-            // Log activities
-            ActivityLogService::logCareHomeCreated($careHome);
-            ActivityLogService::logUserCreated($admin, $careHome->id);
+        ActivityLogService::logCareHomeCreated($careHome);
+        ActivityLogService::logUserCreated($admin, $careHome->id);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Care home created successfully',
-                'careHome' => $careHome->load('users'),
-            ]);
+        Mail::to($admin->email)->send(new WelcomeEmail($admin));
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create care home: ' . $e->getMessage(),
-            ], 500);
-        }
+        return redirect()->back()->with('success', 'Care home created successfully. A verification email has been sent to the administrator.');
     }
 
     /**
@@ -220,7 +262,7 @@ class CareHomeManagementController extends Controller
                         new UserStatusChanged($careHome->user, $oldStatus, 'approved', 'approve')
                     );
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send user status email', [
+                    Log::error('Failed to send user status email', [
                         'error' => $e->getMessage(),
                         'user_email' => $careHome->user->email,
                     ]);
@@ -283,7 +325,7 @@ class CareHomeManagementController extends Controller
                         new UserStatusChanged($careHome->user, $oldStatus, 'rejected', 'reject', $request->reason)
                     );
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send user status email', [
+                    Log::error('Failed to send user status email', [
                         'error' => $e->getMessage(),
                         'user_email' => $careHome->user->email,
                     ]);
@@ -346,7 +388,7 @@ class CareHomeManagementController extends Controller
                         new UserStatusChanged($careHome->user, $oldStatus, 'suspended', 'suspend', $request->reason)
                     );
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send user status email', [
+                    Log::error('Failed to send user status email', [
                         'error' => $e->getMessage(),
                         'user_email' => $careHome->user->email,
                     ]);
@@ -407,7 +449,7 @@ class CareHomeManagementController extends Controller
                         new UserStatusChanged($careHome->user, $oldStatus, 'approved', 'unsuspend')
                     );
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send user status email', [
+                    Log::error('Failed to send user status email', [
                         'error' => $e->getMessage(),
                         'user_email' => $careHome->user->email,
                     ]);
