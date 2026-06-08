@@ -282,7 +282,22 @@ class WorkerController extends Controller
     {
         $user = Auth::user();
 
-        // Get shifts where worker has accepted applications
+        // Shifts assigned by admin but pending worker acceptance
+        $pendingAssignments = Application::where('worker_id', $user->id)
+            ->where('status', Application::STATUS_ASSIGNED)
+            ->with(['shift.careHome'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($application) {
+                return [
+                    'application_id'  => $application->id,
+                    'shift'           => $application->shift,
+                    'review_notes'    => $application->review_notes,
+                    'assigned_at'     => $application->reviewed_at,
+                ];
+            });
+
+        // Shifts where worker has accepted applications
         $shifts = Shift::whereHas('applications', function ($query) use ($user) {
                 $query->where('worker_id', $user->id)
                       ->where('status', Application::STATUS_ACCEPTED);
@@ -302,7 +317,8 @@ class WorkerController extends Controller
         });
 
         return Inertia::render('Worker/MyShifts', [
-            'shifts' => $shifts,
+            'shifts'             => $shifts,
+            'pendingAssignments' => $pendingAssignments,
         ]);
     }
 
@@ -803,5 +819,62 @@ class WorkerController extends Controller
             ]);
             return redirect()->back()->with('error', 'Failed to access Stripe dashboard: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Accept an admin-assigned shift
+     */
+    public function acceptAssignment(Application $application): RedirectResponse
+    {
+        $user = Auth::user();
+
+        if ($application->worker_id !== $user->id) {
+            abort(403, 'Access denied');
+        }
+
+        if ($application->status !== Application::STATUS_ASSIGNED) {
+            return redirect()->back()->withErrors(['error' => 'This shift is not awaiting your acceptance.']);
+        }
+
+        $application->update([
+            'status'      => Application::STATUS_ACCEPTED,
+            'reviewed_at' => now(),
+        ]);
+
+        $application->shift->update([
+            'status'             => Shift::STATUS_FILLED,
+            'selected_worker_id' => $user->id,
+            'filled_at'          => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Shift accepted! It has been added to your schedule.');
+    }
+
+    /**
+     * Decline an admin-assigned shift
+     */
+    public function declineAssignment(Application $application): RedirectResponse
+    {
+        $user = Auth::user();
+
+        if ($application->worker_id !== $user->id) {
+            abort(403, 'Access denied');
+        }
+
+        if ($application->status !== Application::STATUS_ASSIGNED) {
+            return redirect()->back()->withErrors(['error' => 'This shift is not awaiting your acceptance.']);
+        }
+
+        $application->update([
+            'status'      => Application::STATUS_DECLINED,
+            'reviewed_at' => now(),
+        ]);
+
+        $application->shift->update([
+            'status'             => Shift::STATUS_PUBLISHED,
+            'selected_worker_id' => null,
+        ]);
+
+        return redirect()->back()->with('success', 'Shift declined.');
     }
 }
