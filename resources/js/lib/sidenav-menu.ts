@@ -81,6 +81,11 @@ const adminNavItems: NavItem[] = [
     icon: Calendar,
   },
   {
+    title: "Timesheets",
+    href: "/admin/timesheets",
+    icon: Clock,
+  },
+  {
     title: "Wallets",
     href: "/admin/wallets",
     icon: Wallet,

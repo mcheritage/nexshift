@@ -201,6 +201,9 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/healthcare-workers/{healthCareWorker}/unsuspend', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'unsuspend'])->name('healthcare-workers.unsuspend');
         Route::delete('/healthcare-workers/{healthCareWorker}', [App\Http\Controllers\Admin\HealthCareWorkerController::class, 'destroy'])->name('healthcare-workers.destroy');
         
+        // Timesheet Management
+        Route::get('/timesheets', [App\Http\Controllers\Admin\AdminTimesheetController::class, 'index'])->name('timesheets.index');
+
         // Shift Management
         Route::get('/shifts', [App\Http\Controllers\Admin\AdminShiftController::class, 'index'])->name('shifts.index');
         Route::post('/shifts/{shift}/assign', [App\Http\Controllers\Admin\AdminShiftController::class, 'assign'])->name('shifts.assign');
