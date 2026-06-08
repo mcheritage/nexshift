@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ShiftAssignedCareHome;
+use App\Mail\ShiftAssignedWorker;
 use App\Models\Application;
 use App\Models\CareHome;
 use App\Models\Shift;
@@ -10,6 +12,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -103,13 +106,13 @@ class AdminShiftController extends Controller
         }
 
         // Create or update the application for this worker
-        Application::updateOrCreate(
+        $application = Application::updateOrCreate(
             ['shift_id' => $shift->id, 'worker_id' => $worker->id],
             [
-                'status'      => Application::STATUS_ASSIGNED,
-                'applied_at'  => now(),
-                'reviewed_at' => now(),
-                'reviewed_by' => Auth::id(),
+                'status'       => Application::STATUS_ASSIGNED,
+                'applied_at'   => now(),
+                'reviewed_at'  => now(),
+                'reviewed_by'  => Auth::id(),
                 'review_notes' => 'Assigned by admin — pending worker acceptance.',
             ]
         );
@@ -119,6 +122,18 @@ class AdminShiftController extends Controller
             'selected_worker_id' => $worker->id,
             'status'             => Shift::STATUS_FILLED,
         ]);
+
+        // Load relationships needed by the mail templates
+        $application->load(['worker', 'shift.careHome']);
+
+        // Email the assigned worker
+        Mail::to($worker->email)->send(new ShiftAssignedWorker($application));
+
+        // Email the care home's primary administrator
+        $careHomeAdmin = $application->shift->careHome->user;
+        if ($careHomeAdmin) {
+            Mail::to($careHomeAdmin->email)->send(new ShiftAssignedCareHome($application, $careHomeAdmin));
+        }
 
         return redirect()->back()->with('success', "Shift assigned to {$worker->first_name} {$worker->last_name}. They will be notified to accept.");
     }
