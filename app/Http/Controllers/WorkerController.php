@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Mail\NewShiftApplication;
+use App\Mail\ShiftAssignmentAccepted;
+use App\Mail\ShiftAssignmentDeclined;
 use App\Mail\TimesheetStatusChanged;
 use App\Models\Application;
 use App\Models\Notification;
@@ -847,6 +849,14 @@ class WorkerController extends Controller
             'filled_at'          => now(),
         ]);
 
+        $application->load(['worker', 'shift.careHome']);
+
+        // Notify the care home's primary admin
+        $careHomeAdmin = $application->shift->careHome->user;
+        if ($careHomeAdmin) {
+            Mail::to($careHomeAdmin->email)->send(new ShiftAssignmentAccepted($application, $careHomeAdmin));
+        }
+
         return redirect()->back()->with('success', 'Shift accepted! It has been added to your schedule.');
     }
 
@@ -874,6 +884,20 @@ class WorkerController extends Controller
             'status'             => Shift::STATUS_PUBLISHED,
             'selected_worker_id' => null,
         ]);
+
+        $application->load(['worker', 'shift.careHome']);
+
+        // Notify the admin so they can reassign the shift
+        $admins = User::whereIn('role', ['super_admin', 'nexshift_admin'])->get();
+        foreach ($admins as $admin) {
+            Mail::to($admin->email)->send(new ShiftAssignmentDeclined($application, $admin));
+        }
+
+        // Also notify the care home's primary admin
+        $careHomeAdmin = $application->shift->careHome->user;
+        if ($careHomeAdmin) {
+            Mail::to($careHomeAdmin->email)->send(new ShiftAssignmentDeclined($application, $careHomeAdmin));
+        }
 
         return redirect()->back()->with('success', 'Shift declined.');
     }
