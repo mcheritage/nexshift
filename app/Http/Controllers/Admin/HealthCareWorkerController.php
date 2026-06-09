@@ -26,12 +26,25 @@ class HealthCareWorkerController extends Controller
      */
     public function index(): Response
     {
+        $requiredDocTypes = array_column(DocumentType::getAllRequiredForWorker(), 'value');
+        $totalRequired = count($requiredDocTypes);
+
         $healthCareWorkers = User::where('role', 'health_worker')
+            ->withCount([
+                'workExperiences',
+                'skills as skill_records_count',
+                'bankDetails',
+                'documents as required_docs_uploaded_count' => function ($q) use ($requiredDocTypes) {
+                    $q->whereIn('document_type', $requiredDocTypes)
+                      ->distinct('document_type');
+                },
+            ])
             ->orderBy('created_at', 'desc')
             ->get();
 
         return Inertia::render('admin/healthcare-workers/index', [
             'healthCareWorkers' => $healthCareWorkers,
+            'totalRequiredDocs' => $totalRequired,
         ]);
     }
 

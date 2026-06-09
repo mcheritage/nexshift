@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
@@ -45,10 +46,40 @@ interface HealthCareWorker {
     role: string;
     status: string;
     created_at: string;
+    profile_photo: string | null;
+    phone_number: string | null;
+    date_of_birth: string | null;
+    qualifications: string[] | null;
+    hourly_rate_min: number | null;
+    work_experiences_count: number;
+    skill_records_count: number;
+    bank_details_count: number;
+    required_docs_uploaded_count: number;
 }
 
 interface Props {
     healthCareWorkers: HealthCareWorker[];
+    totalRequiredDocs: number;
+}
+
+function profileCompletion(worker: HealthCareWorker, totalRequiredDocs: number): number {
+    const profileChecks = [
+        !!worker.profile_photo,
+        !!worker.phone_number,
+        !!worker.date_of_birth,
+        (worker.qualifications?.length ?? 0) > 0,
+        !!worker.hourly_rate_min,
+        worker.work_experiences_count > 0,
+        worker.skill_records_count > 0,
+        worker.bank_details_count > 0,
+    ];
+    const profileScore = (profileChecks.filter(Boolean).length / profileChecks.length) * 50;
+
+    const docScore = totalRequiredDocs > 0
+        ? (Math.min(worker.required_docs_uploaded_count, totalRequiredDocs) / totalRequiredDocs) * 50
+        : 0;
+
+    return Math.round(profileScore + docScore);
 }
 
 const genderOptions = [
@@ -57,7 +88,7 @@ const genderOptions = [
     { value: 'other', label: 'Other' },
 ];
 
-export default function HealthCareWorkersIndex({ healthCareWorkers }: Props) {
+export default function HealthCareWorkersIndex({ healthCareWorkers, totalRequiredDocs }: Props) {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [createSuccess, setCreateSuccess] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -390,7 +421,8 @@ export default function HealthCareWorkersIndex({ healthCareWorkers }: Props) {
                                                 {getSortIcon('status')}
                                             </div>
                                         </TableHead>
-                                        <TableHead 
+                                        <TableHead>Profile</TableHead>
+                                        <TableHead
                                             className="cursor-pointer select-none"
                                             onClick={() => handleSort('joined')}
                                         >
@@ -440,6 +472,18 @@ export default function HealthCareWorkersIndex({ healthCareWorkers }: Props) {
                                                         {worker.status === 'rejected' && <XCircle className="h-3 w-3 mr-1" />}
                                                         {worker.status.charAt(0).toUpperCase() + worker.status.slice(1)}
                                                     </Badge>
+                                                </TableCell>
+                                                <TableCell className="py-2">
+                                                    {(() => {
+                                                        const pct = profileCompletion(worker, totalRequiredDocs);
+                                                        const color = pct === 100 ? 'text-green-600' : pct >= 50 ? 'text-yellow-600' : 'text-red-500';
+                                                        return (
+                                                            <div className="flex items-center gap-2 min-w-[100px]">
+                                                                <Progress value={pct} className="h-1.5 flex-1" />
+                                                                <span className={`text-xs font-medium tabular-nums ${color}`}>{pct}%</span>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </TableCell>
                                                 <TableCell className="py-2">{new Date(worker.created_at).toLocaleDateString()}</TableCell>
                                                 <TableCell className="py-2">
