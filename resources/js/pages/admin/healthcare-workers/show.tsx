@@ -184,9 +184,14 @@ export default function HealthCareWorkerShow({ healthCareWorker: worker, documen
         worker.skills.length > 0,
         worker.has_bank_details,
     ];
-    const profileScore = Math.round((profileChecks.filter(Boolean).length / profileChecks.length) * 50);
-    const docScore = totalRequired > 0 ? Math.round((Math.min(documentStats.approved, totalRequired) / totalRequired) * 50) : 0;
-    const totalCompletionPct = profileScore + docScore;
+    const profileScore = Math.round((profileChecks.filter(Boolean).length / profileChecks.length) * 40);
+    const docScore = totalRequired > 0
+        ? Math.round((Math.min(documentStats.approved, totalRequired) / totalRequired) * 30)
+        : 0;
+    const trainingScore = trainingStats.total_mandatory > 0
+        ? Math.round((Math.min(trainingStats.valid, trainingStats.total_mandatory) / trainingStats.total_mandatory) * 30)
+        : 0;
+    const totalCompletionPct = profileScore + docScore + trainingScore;
 
     const [isApproveOpen, setIsApproveOpen] = useState(false);
     const [isRejectOpen, setIsRejectOpen] = useState(false);
@@ -323,7 +328,7 @@ export default function HealthCareWorkerShow({ healthCareWorker: worker, documen
                             <div>
                                 <span className="text-sm font-semibold">Profile Completion</span>
                                 <span className="text-xs text-muted-foreground ml-2">
-                                    Profile {profileScore}% · Documents {docScore}%
+                                    Profile {profileScore}% · Documents {docScore}% · Trainings {trainingScore}%
                                 </span>
                             </div>
                             <span className="text-2xl font-bold">{totalCompletionPct}%</span>

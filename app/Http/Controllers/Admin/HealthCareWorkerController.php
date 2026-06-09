@@ -28,6 +28,7 @@ class HealthCareWorkerController extends Controller
     {
         $requiredDocTypes = array_column(DocumentType::getAllRequiredForWorker(), 'value');
         $totalRequired = count($requiredDocTypes);
+        $totalMandatoryTrainings = \App\Models\TrainingType::where('is_mandatory', true)->where('is_active', true)->count();
 
         $healthCareWorkers = User::where('role', 'health_worker')
             ->withCount([
@@ -38,13 +39,19 @@ class HealthCareWorkerController extends Controller
                     $q->whereIn('document_type', $requiredDocTypes)
                       ->distinct('document_type');
                 },
+                'trainings as valid_trainings_count' => function ($q) {
+                    $now = now()->toDateString();
+                    $soon = now()->addDays(30)->toDateString();
+                    $q->where('status', 'approved')->where('expires_at', '>', $now);
+                },
             ])
             ->orderBy('created_at', 'desc')
             ->get();
 
         return Inertia::render('admin/healthcare-workers/index', [
-            'healthCareWorkers' => $healthCareWorkers,
-            'totalRequiredDocs' => $totalRequired,
+            'healthCareWorkers'      => $healthCareWorkers,
+            'totalRequiredDocs'      => $totalRequired,
+            'totalMandatoryTrainings'=> $totalMandatoryTrainings,
         ]);
     }
 
