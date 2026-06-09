@@ -141,6 +141,13 @@ Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worke
         Route::delete('/{document}', [App\Http\Controllers\WorkerDocumentController::class, 'destroy'])->name('destroy');
     });
 
+    Route::prefix('trainings')->name('trainings.')->group(function () {
+        Route::get('/', [App\Http\Controllers\WorkerTrainingController::class, 'index'])->name('index');
+        Route::post('/', [App\Http\Controllers\WorkerTrainingController::class, 'store'])->name('store');
+        Route::get('/{workerTraining}/download', [App\Http\Controllers\WorkerTrainingController::class, 'download'])->name('download');
+        Route::delete('/{workerTraining}', [App\Http\Controllers\WorkerTrainingController::class, 'destroy'])->name('destroy');
+    });
+
     // Finances routes for workers
     Route::prefix('finances')->name('finances.')->group(function () {
         Route::get('/', [App\Http\Controllers\Worker\FinancesController::class, 'index'])->name('index');
@@ -213,6 +220,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/shifts', [App\Http\Controllers\Admin\AdminShiftController::class, 'index'])->name('shifts.index');
         Route::post('/shifts/{shift}/assign', [App\Http\Controllers\Admin\AdminShiftController::class, 'assign'])->name('shifts.assign');
         Route::patch('/shifts/{shift}/unassign', [App\Http\Controllers\Admin\AdminShiftController::class, 'unassign'])->name('shifts.unassign');
+
+        // Worker Training Review
+        Route::get('/workers/{worker}/trainings', [App\Http\Controllers\Admin\AdminWorkerTrainingController::class, 'show'])->name('workers.trainings.show');
+        Route::patch('/workers/{worker}/trainings/{workerTraining}/approve', [App\Http\Controllers\Admin\AdminWorkerTrainingController::class, 'approve'])->name('workers.trainings.approve');
+        Route::patch('/workers/{worker}/trainings/{workerTraining}/reject', [App\Http\Controllers\Admin\AdminWorkerTrainingController::class, 'reject'])->name('workers.trainings.reject');
+        Route::get('/workers/{worker}/trainings/{workerTraining}/download', [App\Http\Controllers\Admin\AdminWorkerTrainingController::class, 'download'])->name('workers.trainings.download');
 
         // Training Type Management
         Route::get('/training-types', [App\Http\Controllers\Admin\AdminTrainingTypeController::class, 'index'])->name('training-types.index');

@@ -141,6 +141,11 @@ const healthCareWorkerNavItems: NavItem[] = [
     icon: Folder,
   },
   {
+    title: "My Trainings",
+    href: "/worker/trainings",
+    icon: GraduationCap,
+  },
+  {
     title: "Timesheets",
     href: "/worker/timesheets",
     icon: Clock,
