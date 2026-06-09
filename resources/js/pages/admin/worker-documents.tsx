@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,7 +21,7 @@ import {
     Save,
     Eye
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 
 interface Worker {
@@ -56,6 +57,7 @@ interface Document {
     status_icon: string;
     rejection_reason?: string;
     action_required?: string;
+    expiry_date?: string;
     reviewed_by?: number;
     reviewed_at?: string;
     uploaded_at: string;
@@ -110,6 +112,16 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
     const [newStatus, setNewStatus] = useState('');
     const [rejectionReason, setRejectionReason] = useState('');
     const [actionRequired, setActionRequired] = useState('');
+    const [expiryDate, setExpiryDate] = useState('');
+
+    const highlightType = new URLSearchParams(window.location.search).get('highlight');
+    const highlightRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (highlightRef.current) {
+            highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, []);
     const [viewDocument, setViewDocument] = useState<Document | null>(null);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [documentUrl, setDocumentUrl] = useState<string>('');
@@ -129,6 +141,7 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
         setNewStatus(document.status);
         setRejectionReason(document.rejection_reason || '');
         setActionRequired(document.action_required || '');
+        setExpiryDate(document.expiry_date || '');
         setIsDialogOpen(true);
     };
 
@@ -140,6 +153,7 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                 status: newStatus,
                 rejection_reason: rejectionReason,
                 action_required: actionRequired,
+                expiry_date: expiryDate || null,
             });
 
             // Reload the page to show updated status
@@ -207,10 +221,16 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                 {title}
                 {isRequired && <Badge variant="secondary">Required</Badge>}
             </h2>
-            
+
             <div className="grid gap-4">
-                {documents.map((requiredDoc) => (
-                    <Card key={requiredDoc.type.value}>
+                {documents.map((requiredDoc) => {
+                    const isHighlighted = highlightType === requiredDoc.type.value;
+                    return (
+                    <Card
+                        key={requiredDoc.type.value}
+                        ref={isHighlighted ? highlightRef : undefined}
+                        className={isHighlighted ? 'ring-2 ring-primary ring-offset-2' : ''}
+                    >
                         <CardHeader>
                             <CardTitle className="flex items-center justify-between">
                                 <span>{requiredDoc.type.displayName}</span>
@@ -234,9 +254,11 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                             {requiredDoc.document ? (
                                 <div className="space-y-4">
                                     <div className="grid gap-2 text-sm">
-                                        <div><strong>File:</strong> {requiredDoc.document.original_name}</div>
                                         <div><strong>Size:</strong> {(requiredDoc.document.file_size / 1024).toFixed(1)} KB</div>
                                         <div><strong>Uploaded:</strong> {new Date(requiredDoc.document.uploaded_at).toLocaleDateString()}</div>
+                                        {requiredDoc.document.expiry_date && (
+                                            <div><strong>Expires:</strong> {new Date(requiredDoc.document.expiry_date).toLocaleDateString()}</div>
+                                        )}
                                         {requiredDoc.document.reviewed_at && (
                                             <div><strong>Reviewed:</strong> {new Date(requiredDoc.document.reviewed_at).toLocaleDateString()}</div>
                                         )}
@@ -294,7 +316,8 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                             )}
                         </CardContent>
                     </Card>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
@@ -398,7 +421,17 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                                     </SelectContent>
                                 </Select>
                             </div>
-                            
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="expiry_date">Expiry Date <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                                <Input
+                                    id="expiry_date"
+                                    type="date"
+                                    value={expiryDate}
+                                    onChange={(e) => setExpiryDate(e.target.value)}
+                                />
+                            </div>
+
                             {(newStatus === 'rejected' || newStatus === 'requires_attention') && (
                                 <>
                                     <div className="grid gap-2">
@@ -410,7 +443,7 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                                             onChange={(e) => setRejectionReason(e.target.value)}
                                         />
                                     </div>
-                                    
+
                                     <div className="grid gap-2">
                                         <Label htmlFor="action_required">Action Required</Label>
                                         <Textarea

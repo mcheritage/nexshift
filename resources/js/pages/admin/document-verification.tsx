@@ -142,9 +142,9 @@ export default function AdminDocumentVerification({ pendingDocuments, careHomes,
 
     const goToOwner = (doc: PendingDocument) => {
         if (doc.owner_type === 'care_home') {
-            router.visit(`/admin/carehomes/${doc.owner.id}/documents`);
+            router.visit(`/admin/carehomes/${doc.owner.id}/documents?highlight=${doc.document_type}`);
         } else {
-            router.visit(`/admin/workers/${doc.owner.id}/documents`);
+            router.visit(`/admin/workers/${doc.owner.id}/documents?highlight=${doc.document_type}`);
         }
     };
 
@@ -230,7 +230,6 @@ export default function AdminDocumentVerification({ pendingDocuments, careHomes,
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Document Type</TableHead>
-                                        <TableHead>File Name</TableHead>
                                         <TableHead>Owner</TableHead>
                                         <TableHead>Type</TableHead>
                                         <TableHead>Size</TableHead>
@@ -243,9 +242,6 @@ export default function AdminDocumentVerification({ pendingDocuments, careHomes,
                                         <TableRow key={doc.id}>
                                             <TableCell className="font-medium">
                                                 {doc.document_type_display}
-                                            </TableCell>
-                                            <TableCell className="max-w-xs truncate">
-                                                {doc.original_name}
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col">

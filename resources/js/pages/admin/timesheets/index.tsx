@@ -1,88 +1,15 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DataTable } from '@/components/ui/data-table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/react';
-import { CalendarDays, CheckCircle, ChevronDown, Clock, HelpCircle, Search, X } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { type ColumnDef } from '@tanstack/react-table';
+import { ArrowUpDown, CalendarDays, CheckCircle, ChevronDown, Clock, HelpCircle, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-
-interface SearchableSelectProps {
-    value: string;
-    onChange: (val: string) => void;
-    options: { value: string; label: string }[];
-    placeholder: string;
-}
-
-function SearchableSelect({ value, onChange, options, placeholder }: SearchableSelectProps) {
-    const [open, setOpen] = useState(false);
-    const [query, setQuery] = useState('');
-    const containerRef = useRef<HTMLDivElement>(null);
-
-    const selected = options.find(o => o.value === value);
-    const filtered = query
-        ? options.filter(o => o.label.toLowerCase().includes(query.toLowerCase()))
-        : options;
-
-    useEffect(() => {
-        function handleClick(e: MouseEvent) {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-                setOpen(false);
-                setQuery('');
-            }
-        }
-        document.addEventListener('mousedown', handleClick);
-        return () => document.removeEventListener('mousedown', handleClick);
-    }, []);
-
-    return (
-        <div ref={containerRef} className="relative">
-            <button
-                type="button"
-                onClick={() => { setOpen(o => !o); setQuery(''); }}
-                className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-                <span className={selected ? 'text-foreground' : 'text-muted-foreground'}>
-                    {selected ? selected.label : placeholder}
-                </span>
-                <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-            </button>
-
-            {open && (
-                <div className="absolute z-50 mt-1 w-full min-w-[200px] rounded-md border bg-popover shadow-md">
-                    <div className="p-2 border-b">
-                        <div className="relative">
-                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                            <input
-                                autoFocus
-                                value={query}
-                                onChange={e => setQuery(e.target.value)}
-                                placeholder="Search…"
-                                className="w-full pl-7 pr-2 py-1 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
-                            />
-                        </div>
-                    </div>
-                    <ul className="max-h-56 overflow-y-auto py-1">
-                        {filtered.length === 0 ? (
-                            <li className="px-3 py-2 text-sm text-muted-foreground">No results</li>
-                        ) : filtered.map(o => (
-                            <li
-                                key={o.value}
-                                onMouseDown={() => { onChange(o.value); setOpen(false); setQuery(''); }}
-                                className={`px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground ${o.value === value ? 'font-medium' : ''}`}
-                            >
-                                {o.label}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-        </div>
-    );
-}
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Admin', href: '/admin' },
@@ -138,15 +65,157 @@ const statusConfig: Record<string, { label: string; className: string }> = {
     paid:      { label: 'Paid',      className: 'bg-purple-100 text-purple-800' },
 };
 
-function fmt(dt: string | null) {
-    if (!dt) return '—';
-    return new Date(dt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+const fmt = (dt: string | null) =>
+    dt ? new Date(dt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+
+const fmtDate = (dt: string | null) =>
+    dt ? new Date(dt).toLocaleDateString('en-GB', { dateStyle: 'medium' }) : '—';
+
+function SortableHeader({ column, label }: { column: any; label: string }) {
+    return (
+        <button
+            className="flex items-center gap-1 hover:text-foreground transition-colors"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+            {label}
+            <ArrowUpDown className="w-3.5 h-3.5" />
+        </button>
+    );
 }
 
-function fmtDate(dt: string | null) {
-    if (!dt) return '—';
-    return new Date(dt).toLocaleDateString('en-GB', { dateStyle: 'medium' });
+interface SearchableSelectProps {
+    value: string;
+    onChange: (val: string) => void;
+    options: { value: string; label: string }[];
+    placeholder: string;
 }
+
+function SearchableSelect({ value, onChange, options, placeholder }: SearchableSelectProps) {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState('');
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    const selected = options.find(o => o.value === value);
+    const filtered = query
+        ? options.filter(o => o.label.toLowerCase().includes(query.toLowerCase()))
+        : options;
+
+    useEffect(() => {
+        function handleClick(e: MouseEvent) {
+            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+                setOpen(false);
+                setQuery('');
+            }
+        }
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, []);
+
+    return (
+        <div ref={containerRef} className="relative">
+            <button type="button" onClick={() => { setOpen(o => !o); setQuery(''); }}
+                className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring">
+                <span className={selected ? 'text-foreground' : 'text-muted-foreground'}>
+                    {selected ? selected.label : placeholder}
+                </span>
+                <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+            </button>
+            {open && (
+                <div className="absolute z-50 mt-1 w-full min-w-[200px] rounded-md border bg-popover shadow-md">
+                    <div className="p-2 border-b">
+                        <div className="relative">
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                            <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Search…"
+                                className="w-full pl-7 pr-2 py-1 text-sm bg-transparent outline-none placeholder:text-muted-foreground" />
+                        </div>
+                    </div>
+                    <ul className="max-h-56 overflow-y-auto py-1">
+                        {filtered.length === 0
+                            ? <li className="px-3 py-2 text-sm text-muted-foreground">No results</li>
+                            : filtered.map(o => (
+                                <li key={o.value} onMouseDown={() => { onChange(o.value); setOpen(false); setQuery(''); }}
+                                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground ${o.value === value ? 'font-medium' : ''}`}>
+                                    {o.label}
+                                </li>
+                            ))}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+}
+
+const columns: ColumnDef<Timesheet>[] = [
+    {
+        id: 'worker',
+        accessorFn: row => `${row.worker.first_name} ${row.worker.last_name}`,
+        header: ({ column }) => <SortableHeader column={column} label="Carer" />,
+        cell: ({ row }) => (
+            <Link href={route('admin.timesheets.show', row.original.id)} className="hover:underline">
+                <div className="font-medium text-blue-600 hover:text-blue-800">{row.original.worker.first_name} {row.original.worker.last_name}</div>
+                <div className="text-xs text-muted-foreground">{row.original.worker.email}</div>
+            </Link>
+        ),
+    },
+    {
+        id: 'care_home',
+        accessorFn: row => row.care_home.name,
+        header: ({ column }) => <SortableHeader column={column} label="Care Home" />,
+        cell: ({ row }) => row.original.care_home.name,
+    },
+    {
+        id: 'shift',
+        accessorFn: row => row.shift?.title ?? '',
+        header: ({ column }) => <SortableHeader column={column} label="Shift" />,
+        cell: ({ row }) => row.original.shift ? (
+            <div>
+                <div className="font-medium text-sm">{row.original.shift.title}</div>
+                <div className="text-xs text-muted-foreground capitalize">{row.original.shift.role?.replace('_', ' ')}</div>
+            </div>
+        ) : '—',
+    },
+    {
+        accessorKey: 'clock_in_time',
+        header: ({ column }) => <SortableHeader column={column} label="Clock In" />,
+        cell: ({ row }) => <span className="whitespace-nowrap text-sm">{fmt(row.getValue('clock_in_time'))}</span>,
+    },
+    {
+        accessorKey: 'clock_out_time',
+        header: ({ column }) => <SortableHeader column={column} label="Clock Out" />,
+        cell: ({ row }) => <span className="whitespace-nowrap text-sm">{fmt(row.getValue('clock_out_time'))}</span>,
+    },
+    {
+        accessorKey: 'total_hours',
+        header: ({ column }) => <SortableHeader column={column} label="Hours" />,
+        cell: ({ row }) => <span className="font-medium">{row.getValue('total_hours')}h</span>,
+        sortingFn: (a, b) => Number(a.original.total_hours) - Number(b.original.total_hours),
+    },
+    {
+        accessorKey: 'hourly_rate',
+        header: ({ column }) => <SortableHeader column={column} label="Rate" />,
+        cell: ({ row }) => `£${parseFloat(row.getValue('hourly_rate')).toFixed(2)}`,
+        sortingFn: (a, b) => Number(a.original.hourly_rate) - Number(b.original.hourly_rate),
+    },
+    {
+        accessorKey: 'total_pay',
+        header: ({ column }) => <SortableHeader column={column} label="Pay" />,
+        cell: ({ row }) => <span className="font-semibold">£{parseFloat(row.getValue('total_pay')).toFixed(2)}</span>,
+        sortingFn: (a, b) => Number(a.original.total_pay) - Number(b.original.total_pay),
+    },
+    {
+        accessorKey: 'status',
+        header: ({ column }) => <SortableHeader column={column} label="Status" />,
+        cell: ({ row }) => {
+            const cfg = statusConfig[row.getValue('status') as string] ?? { label: row.getValue('status'), className: 'bg-gray-100 text-gray-700' };
+            return <Badge className={`${cfg.className} border-0 text-xs font-medium`}>{cfg.label}</Badge>;
+        },
+    },
+    {
+        accessorKey: 'submitted_at',
+        header: ({ column }) => <SortableHeader column={column} label="Submitted" />,
+        cell: ({ row }) => <span className="text-sm text-muted-foreground whitespace-nowrap">{fmtDate(row.getValue('submitted_at'))}</span>,
+    },
+];
 
 export default function AdminTimesheets({ timesheets, stats, careHomes, workers, filters }: Props) {
     const [search, setSearch]         = useState(filters.search ?? '');
@@ -204,19 +273,13 @@ export default function AdminTimesheets({ timesheets, stats, careHomes, workers,
                 <Card>
                     <CardContent className="pt-6">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-                            {/* Keyword search */}
                             <div className="relative xl:col-span-2">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Search carer, care home, shift…"
-                                    value={search}
+                                <Input placeholder="Search carer, care home, shift…" value={search}
                                     onChange={e => setSearch(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && applyFilters()}
-                                    className="pl-9"
-                                />
+                                    className="pl-9" />
                             </div>
-
-                            {/* Status */}
                             <Select value={status || 'all'} onValueChange={v => { const val = v === 'all' ? '' : v; setStatus(val); applyFilters({ status: val }); }}>
                                 <SelectTrigger><SelectValue placeholder="All statuses" /></SelectTrigger>
                                 <SelectContent>
@@ -229,30 +292,14 @@ export default function AdminTimesheets({ timesheets, stats, careHomes, workers,
                                     <SelectItem value="paid">Paid</SelectItem>
                                 </SelectContent>
                             </Select>
-
-                            {/* Care Home */}
-                            <SearchableSelect
-                                value={careHomeId}
+                            <SearchableSelect value={careHomeId}
                                 onChange={val => { setCareHomeId(val); applyFilters({ care_home_id: val }); }}
                                 placeholder="All care homes"
-                                options={[
-                                    { value: '', label: 'All care homes' },
-                                    ...careHomes.map(ch => ({ value: ch.id, label: ch.name })),
-                                ]}
-                            />
-
-                            {/* Worker */}
-                            <SearchableSelect
-                                value={workerId}
+                                options={[{ value: '', label: 'All care homes' }, ...careHomes.map(ch => ({ value: ch.id, label: ch.name }))]} />
+                            <SearchableSelect value={workerId}
                                 onChange={val => { setWorkerId(val); applyFilters({ worker_id: val }); }}
                                 placeholder="All carers"
-                                options={[
-                                    { value: '', label: 'All carers' },
-                                    ...workers.map(w => ({ value: w.id, label: `${w.first_name} ${w.last_name}` })),
-                                ]}
-                            />
-
-                            {/* Apply / Clear */}
+                                options={[{ value: '', label: 'All carers' }, ...workers.map(w => ({ value: w.id, label: `${w.first_name} ${w.last_name}` }))]} />
                             <div className="flex gap-2">
                                 <Button onClick={() => applyFilters()} className="flex-1">
                                     <Search className="w-4 h-4 mr-1" /> Search
@@ -264,19 +311,17 @@ export default function AdminTimesheets({ timesheets, stats, careHomes, workers,
                                 )}
                             </div>
                         </div>
-
-                        {/* Date range row */}
                         <div className="flex flex-wrap gap-3 mt-3 items-center">
                             <CalendarDays className="w-4 h-4 text-muted-foreground" />
-                            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-40" placeholder="From" />
+                            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-40" />
                             <span className="text-muted-foreground text-sm">to</span>
-                            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-40" placeholder="To" />
+                            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-40" />
                             <Button variant="outline" size="sm" onClick={() => applyFilters()}>Apply dates</Button>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Table */}
+                {/* DataTable */}
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center justify-between">
@@ -286,62 +331,8 @@ export default function AdminTimesheets({ timesheets, stats, careHomes, workers,
                             </span>
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Carer</TableHead>
-                                        <TableHead>Care Home</TableHead>
-                                        <TableHead>Shift</TableHead>
-                                        <TableHead>Clock In</TableHead>
-                                        <TableHead>Clock Out</TableHead>
-                                        <TableHead>Hours</TableHead>
-                                        <TableHead>Rate</TableHead>
-                                        <TableHead>Pay</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Submitted</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {timesheets.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
-                                                No timesheets found.
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : timesheets.map(ts => {
-                                        const cfg = statusConfig[ts.status] ?? { label: ts.status, className: 'bg-gray-100 text-gray-700' };
-                                        return (
-                                            <TableRow key={ts.id} className="hover:bg-muted/50">
-                                                <TableCell>
-                                                    <div className="font-medium">{ts.worker.first_name} {ts.worker.last_name}</div>
-                                                    <div className="text-xs text-muted-foreground">{ts.worker.email}</div>
-                                                </TableCell>
-                                                <TableCell>{ts.care_home.name}</TableCell>
-                                                <TableCell>
-                                                    {ts.shift ? (
-                                                        <div>
-                                                            <div className="font-medium text-sm">{ts.shift.title}</div>
-                                                            <div className="text-xs text-muted-foreground capitalize">{ts.shift.role?.replace('_', ' ')}</div>
-                                                        </div>
-                                                    ) : '—'}
-                                                </TableCell>
-                                                <TableCell className="whitespace-nowrap text-sm">{fmt(ts.clock_in_time)}</TableCell>
-                                                <TableCell className="whitespace-nowrap text-sm">{fmt(ts.clock_out_time)}</TableCell>
-                                                <TableCell className="font-medium">{ts.total_hours ?? '—'}h</TableCell>
-                                                <TableCell>£{parseFloat(ts.hourly_rate).toFixed(2)}</TableCell>
-                                                <TableCell className="font-semibold">£{parseFloat(ts.total_pay).toFixed(2)}</TableCell>
-                                                <TableCell>
-                                                    <Badge className={`${cfg.className} border-0 text-xs font-medium`}>{cfg.label}</Badge>
-                                                </TableCell>
-                                                <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{fmtDate(ts.submitted_at)}</TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </div>
+                    <CardContent>
+                        <DataTable columns={columns} data={timesheets} />
                     </CardContent>
                 </Card>
             </div>

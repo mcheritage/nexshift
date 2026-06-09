@@ -119,6 +119,7 @@ class DocumentVerificationController extends Controller
                     'status_icon' => $document->getStatusIcon(),
                     'rejection_reason' => $document->rejection_reason,
                     'action_required' => $document->action_required,
+                    'expiry_date' => $document->expiry_date?->format('Y-m-d'),
                     'reviewed_by' => $document->reviewed_by,
                     'reviewed_at' => $document->reviewed_at,
                     'uploaded_at' => $document->uploaded_at,
@@ -160,6 +161,7 @@ class DocumentVerificationController extends Controller
             'status' => 'required|string|in:' . implode(',', array_column(DocumentVerificationStatus::cases(), 'value')),
             'rejection_reason' => 'nullable|string|max:1000',
             'action_required' => 'nullable|string|max:1000',
+            'expiry_date' => 'nullable|date',
         ]);
 
         $oldStatus = $document->status;
@@ -170,6 +172,7 @@ class DocumentVerificationController extends Controller
             'status' => $newStatus,
             'reviewed_by' => Auth::id(),
             'reviewed_at' => now(),
+            'expiry_date' => $request->expiry_date ?: null,
         ];
 
         if ($newStatus->value === 'approved' || $newStatus->value === 'pending') {
@@ -406,6 +409,7 @@ class DocumentVerificationController extends Controller
                     'status_icon' => $document->getStatusIcon(),
                     'rejection_reason' => $document->rejection_reason,
                     'action_required' => $document->action_required,
+                    'expiry_date' => $document->expiry_date?->format('Y-m-d'),
                     'uploaded_at' => $document->uploaded_at,
                     'reviewed_at' => $document->reviewed_at,
                     'reviewer' => $document->reviewer ? [
@@ -440,6 +444,7 @@ class DocumentVerificationController extends Controller
                     'status_icon' => $document->getStatusIcon(),
                     'rejection_reason' => $document->rejection_reason,
                     'action_required' => $document->action_required,
+                    'expiry_date' => $document->expiry_date?->format('Y-m-d'),
                     'uploaded_at' => $document->uploaded_at,
                     'reviewed_at' => $document->reviewed_at,
                     'reviewer' => $document->reviewer ? [

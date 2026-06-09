@@ -86,6 +86,11 @@ const adminNavItems: NavItem[] = [
     icon: Clock,
   },
   {
+    title: "Invoices",
+    href: "/admin/invoices",
+    icon: Receipt,
+  },
+  {
     title: "Wallets",
     href: "/admin/wallets",
     icon: Wallet,

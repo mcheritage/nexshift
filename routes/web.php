@@ -203,6 +203,11 @@ Route::middleware(['auth'])->group(function () {
         
         // Timesheet Management
         Route::get('/timesheets', [App\Http\Controllers\Admin\AdminTimesheetController::class, 'index'])->name('timesheets.index');
+        Route::get('/timesheets/{timesheet}', [App\Http\Controllers\Admin\AdminTimesheetController::class, 'show'])->name('timesheets.show');
+
+        // Invoice Management
+        Route::get('/invoices', [App\Http\Controllers\Admin\AdminInvoiceController::class, 'index'])->name('invoices.index');
+        Route::get('/invoices/{invoice}', [App\Http\Controllers\Admin\AdminInvoiceController::class, 'show'])->name('invoices.show');
 
         // Shift Management
         Route::get('/shifts', [App\Http\Controllers\Admin\AdminShiftController::class, 'index'])->name('shifts.index');
