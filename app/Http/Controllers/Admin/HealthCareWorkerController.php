@@ -131,6 +131,7 @@ class HealthCareWorkerController extends Controller
                     'proficiency_level' => $s->proficiency_level,
                     'years_experience' => $s->years_experience,
                 ]),
+                'has_bank_details' => $healthCareWorker->bankDetails()->exists(),
             ],
             'documentStats' => $documentStats,
             'totalRequired' => $totalRequired,
