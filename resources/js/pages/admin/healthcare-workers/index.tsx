@@ -10,17 +10,18 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
 import {
-    UserCheck,
-    Plus,
-    Download,
-    Search,
-    Clock,
-    CheckCircle,
-    XCircle,
-    ChevronUp,
+    Ban,
     ChevronDown,
+    ChevronUp,
     ChevronsUpDown,
+    CheckCircle,
+    Clock,
+    Download,
     Eye,
+    Plus,
+    Search,
+    UserCheck,
+    XCircle,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
@@ -44,10 +45,6 @@ interface HealthCareWorker {
     role: string;
     status: string;
     created_at: string;
-    documents_count: number;
-    pending_documents_count: number;
-    approved_documents_count: number;
-    rejected_documents_count: number;
 }
 
 interface Props {
@@ -124,10 +121,6 @@ export default function HealthCareWorkersIndex({ healthCareWorkers }: Props) {
                     aValue = a.status.toLowerCase();
                     bValue = b.status.toLowerCase();
                     break;
-                case 'documents':
-                    aValue = a.documents_count;
-                    bValue = b.documents_count;
-                    break;
                 case 'joined':
                     aValue = new Date(a.created_at).getTime();
                     bValue = new Date(b.created_at).getTime();
@@ -161,15 +154,12 @@ export default function HealthCareWorkersIndex({ healthCareWorkers }: Props) {
 
     const handleExport = () => {
         const csvContent = [
-            ['Name', 'Email', 'Gender', 'Total Documents', 'Pending', 'Approved', 'Rejected', 'Joined Date'],
+            ['Name', 'Email', 'Gender', 'Status', 'Joined Date'],
             ...healthCareWorkers.map(worker => [
                 `${worker.first_name} ${worker.last_name}`,
                 worker.email,
                 worker.gender,
-                worker.documents_count.toString(),
-                worker.pending_documents_count.toString(),
-                worker.approved_documents_count.toString(),
-                worker.rejected_documents_count.toString(),
+                worker.status,
                 new Date(worker.created_at).toLocaleDateString()
             ])
         ]
@@ -185,19 +175,13 @@ export default function HealthCareWorkersIndex({ healthCareWorkers }: Props) {
         window.URL.revokeObjectURL(url);
     };
 
-    const stats = useMemo(() => {
-        const totalWorkers = healthCareWorkers.length;
-        const totalPending = healthCareWorkers.reduce((sum, worker) => sum + worker.pending_documents_count, 0);
-        const totalApproved = healthCareWorkers.reduce((sum, worker) => sum + worker.approved_documents_count, 0);
-        const totalRejected = healthCareWorkers.reduce((sum, worker) => sum + worker.rejected_documents_count, 0);
-        
-        return {
-            totalWorkers,
-            totalPending,
-            totalApproved,
-            totalRejected,
-        };
-    }, [healthCareWorkers]);
+    const stats = useMemo(() => ({
+        total: healthCareWorkers.length,
+        approved: healthCareWorkers.filter(w => w.status === 'approved').length,
+        pending: healthCareWorkers.filter(w => w.status === 'pending').length,
+        suspended: healthCareWorkers.filter(w => w.status === 'suspended').length,
+        rejected: healthCareWorkers.filter(w => w.status === 'rejected').length,
+    }), [healthCareWorkers]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -302,44 +286,50 @@ export default function HealthCareWorkersIndex({ healthCareWorkers }: Props) {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Total Workers</CardTitle>
                             <UserCheck className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{stats.totalWorkers}</div>
+                            <div className="text-2xl font-bold">{stats.total}</div>
                         </CardContent>
                     </Card>
-                    
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Pending Documents</CardTitle>
-                            <Clock className="h-4 w-4 text-yellow-600" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-yellow-600">{stats.totalPending}</div>
-                        </CardContent>
-                    </Card>
-                    
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Approved Documents</CardTitle>
+                            <CardTitle className="text-sm font-medium">Approved</CardTitle>
                             <CheckCircle className="h-4 w-4 text-green-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-green-600">{stats.totalApproved}</div>
+                            <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
                         </CardContent>
                     </Card>
-                    
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Rejected Documents</CardTitle>
+                            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                            <Clock className="h-4 w-4 text-yellow-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Suspended</CardTitle>
+                            <Ban className="h-4 w-4 text-orange-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-orange-600">{stats.suspended}</div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Rejected</CardTitle>
                             <XCircle className="h-4 w-4 text-red-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-red-600">{stats.totalRejected}</div>
+                            <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
                         </CardContent>
                     </Card>
                 </div>
@@ -402,15 +392,6 @@ export default function HealthCareWorkersIndex({ healthCareWorkers }: Props) {
                                         </TableHead>
                                         <TableHead 
                                             className="cursor-pointer select-none"
-                                            onClick={() => handleSort('documents')}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                Documents
-                                                {getSortIcon('documents')}
-                                            </div>
-                                        </TableHead>
-                                        <TableHead 
-                                            className="cursor-pointer select-none"
                                             onClick={() => handleSort('joined')}
                                         >
                                             <div className="flex items-center gap-2">
@@ -459,26 +440,6 @@ export default function HealthCareWorkersIndex({ healthCareWorkers }: Props) {
                                                         {worker.status === 'rejected' && <XCircle className="h-3 w-3 mr-1" />}
                                                         {worker.status.charAt(0).toUpperCase() + worker.status.slice(1)}
                                                     </Badge>
-                                                </TableCell>
-                                                <TableCell className="py-2">
-                                                    <div className="inline-flex flex-col border rounded-md overflow-hidden min-w-[140px]">
-                                                        <div className="flex items-center justify-between px-2 py-1 bg-muted border-b">
-                                                            <span className="font-medium text-xs">Total</span>
-                                                            <span className="font-bold text-xs">{worker.documents_count}</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-between px-2 py-0.5 border-b">
-                                                            <span className="text-xs text-muted-foreground">Pending</span>
-                                                            <span className="text-xs font-medium tabular-nums">{worker.pending_documents_count}</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-between px-2 py-0.5 border-b bg-green-50 dark:bg-green-950/20">
-                                                            <span className="text-xs text-green-700 dark:text-green-400">Approved</span>
-                                                            <span className="text-xs font-medium text-green-700 dark:text-green-400 tabular-nums">{worker.approved_documents_count}</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-between px-2 py-0.5 bg-red-50 dark:bg-red-950/20">
-                                                            <span className="text-xs text-red-700 dark:text-red-400">Rejected</span>
-                                                            <span className="text-xs font-medium text-red-700 dark:text-red-400 tabular-nums">{worker.rejected_documents_count}</span>
-                                                        </div>
-                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="py-2">{new Date(worker.created_at).toLocaleDateString()}</TableCell>
                                                 <TableCell className="py-2">

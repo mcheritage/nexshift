@@ -27,18 +27,6 @@ class HealthCareWorkerController extends Controller
     public function index(): Response
     {
         $healthCareWorkers = User::where('role', 'health_worker')
-            ->withCount([
-                'documents',
-                'documents as pending_documents_count' => function ($query) {
-                    $query->where('status', 'pending');
-                },
-                'documents as approved_documents_count' => function ($query) {
-                    $query->where('status', 'approved');
-                },
-                'documents as rejected_documents_count' => function ($query) {
-                    $query->where('status', 'rejected');
-                }
-            ])
             ->orderBy('created_at', 'desc')
             ->get();
 
