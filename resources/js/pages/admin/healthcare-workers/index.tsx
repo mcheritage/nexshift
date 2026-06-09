@@ -8,20 +8,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router, useForm } from '@inertiajs/react';
-import { 
-    UserCheck, 
+import { Head, Link, useForm } from '@inertiajs/react';
+import {
+    UserCheck,
     Plus,
-    Trash2,
     Download,
-    FileText,
     Search,
     Clock,
     CheckCircle,
     XCircle,
     ChevronUp,
     ChevronDown,
-    ChevronsUpDown
+    ChevronsUpDown,
+    Eye,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
@@ -169,38 +168,6 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                 setTimeout(() => { setIsCreateDialogOpen(false); setCreateSuccess(false); }, 2000);
             },
         });
-    };
-
-    const handleDelete = (workerId: string) => {
-        if (confirm('Are you sure you want to delete this health care worker? This action cannot be undone.')) {
-            router.delete(`/admin/healthcare-workers/${workerId}`);
-        }
-    };
-
-    const handleApprove = (workerId: string) => {
-        if (confirm('Are you sure you want to approve this healthcare worker?')) {
-            router.patch(`/admin/healthcare-workers/${workerId}/approve`);
-        }
-    };
-
-    const handleReject = (workerId: string) => {
-        const reason = prompt('Please provide a reason for rejection:');
-        if (reason) {
-            router.patch(`/admin/healthcare-workers/${workerId}/reject`, { reason });
-        }
-    };
-
-    const handleSuspend = (workerId: string) => {
-        const reason = prompt('Please provide a reason for suspension:');
-        if (reason) {
-            router.patch(`/admin/healthcare-workers/${workerId}/suspend`, { reason });
-        }
-    };
-
-    const handleUnsuspend = (workerId: string) => {
-        if (confirm('Are you sure you want to unsuspend this healthcare worker?')) {
-            router.patch(`/admin/healthcare-workers/${workerId}/unsuspend`);
-        }
     };
 
     const handleExport = () => {
@@ -543,63 +510,11 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                                 <TableCell className="py-2">{new Date(worker.created_at).toLocaleDateString()}</TableCell>
                                                 <TableCell className="py-2">
                                                     <div className="flex gap-2 justify-end">
-                                                        {worker.status === 'pending' && (
-                                                            <>
-                                                                <Button 
-                                                                    variant="outline" 
-                                                                    size="sm"
-                                                                    onClick={() => handleApprove(worker.id)}
-                                                                    className="text-green-600 hover:text-green-700"
-                                                                >
-                                                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                                                    Approve
-                                                                </Button>
-                                                                <Button 
-                                                                    variant="outline" 
-                                                                    size="sm"
-                                                                    onClick={() => handleReject(worker.id)}
-                                                                    className="text-red-600 hover:text-red-700"
-                                                                >
-                                                                    <XCircle className="h-4 w-4 mr-1" />
-                                                                    Reject
-                                                                </Button>
-                                                            </>
-                                                        )}
-                                                        {worker.status === 'approved' && (
-                                                            <Button 
-                                                                variant="outline" 
-                                                                size="sm"
-                                                                onClick={() => handleSuspend(worker.id)}
-                                                                className="text-orange-600 hover:text-orange-700"
-                                                            >
-                                                                <XCircle className="h-4 w-4 mr-1" />
-                                                                Suspend
-                                                            </Button>
-                                                        )}
-                                                        {worker.status === 'suspended' && (
-                                                            <Button 
-                                                                variant="outline" 
-                                                                size="sm"
-                                                                onClick={() => handleUnsuspend(worker.id)}
-                                                                className="text-green-600 hover:text-green-700"
-                                                            >
-                                                                <CheckCircle className="h-4 w-4 mr-1" />
-                                                                Unsuspend
-                                                            </Button>
-                                                        )}
                                                         <Button asChild variant="outline" size="sm">
-                                                            <a href={`/admin/workers/${worker.id}/documents`}>
-                                                                <FileText className="h-4 w-4 mr-2" />
-                                                                Documents
-                                                            </a>
-                                                        </Button>
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm"
-                                                            onClick={() => handleDelete(worker.id)}
-                                                            className="text-red-600 hover:text-red-700"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
+                                                            <Link href={`/admin/healthcare-workers/${worker.id}`}>
+                                                                <Eye className="h-4 w-4 mr-2" />
+                                                                View Profile
+                                                            </Link>
                                                         </Button>
                                                     </div>
                                                 </TableCell>
