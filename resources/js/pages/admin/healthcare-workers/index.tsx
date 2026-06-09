@@ -92,6 +92,7 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, totalRequire
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [createSuccess, setCreateSuccess] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
     const [sortColumn, setSortColumn] = useState<string>('');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
     const [currentPage, setCurrentPage] = useState(1);
@@ -120,13 +121,14 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, totalRequire
     const filteredWorkers = useMemo(() => {
         return healthCareWorkers.filter(worker => {
             const searchLower = searchTerm.toLowerCase();
-            return (
+            const matchesSearch =
                 worker.first_name.toLowerCase().includes(searchLower) ||
                 worker.last_name.toLowerCase().includes(searchLower) ||
-                worker.email.toLowerCase().includes(searchLower)
-            );
+                worker.email.toLowerCase().includes(searchLower);
+            const matchesStatus = statusFilter === 'all' || worker.status === statusFilter;
+            return matchesSearch && matchesStatus;
         });
-    }, [healthCareWorkers, searchTerm]);
+    }, [healthCareWorkers, searchTerm, statusFilter]);
 
     const sortedWorkers = useMemo(() => {
         if (!sortColumn) return filteredWorkers;
@@ -317,8 +319,16 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, totalRequire
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
-                    <Card>
+                {(() => {
+                    const cardClass = (filter: string) =>
+                        `cursor-pointer transition-all hover:shadow-md hover:border-primary/50 ${statusFilter === filter ? 'ring-2 ring-primary border-primary' : ''}`;
+                    const handleCard = (filter: string) => {
+                        setStatusFilter(filter);
+                        setCurrentPage(1);
+                    };
+                    return (
+                    <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
+                    <Card className={cardClass('all')} onClick={() => handleCard('all')}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Total Workers</CardTitle>
                             <UserCheck className="h-4 w-4 text-muted-foreground" />
@@ -327,7 +337,7 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, totalRequire
                             <div className="text-2xl font-bold">{stats.total}</div>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card className={cardClass('approved')} onClick={() => handleCard('approved')}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Approved</CardTitle>
                             <CheckCircle className="h-4 w-4 text-green-600" />
@@ -336,7 +346,7 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, totalRequire
                             <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card className={cardClass('pending')} onClick={() => handleCard('pending')}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Pending</CardTitle>
                             <Clock className="h-4 w-4 text-yellow-600" />
@@ -345,7 +355,7 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, totalRequire
                             <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card className={cardClass('suspended')} onClick={() => handleCard('suspended')}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Suspended</CardTitle>
                             <Ban className="h-4 w-4 text-orange-600" />
@@ -354,7 +364,7 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, totalRequire
                             <div className="text-2xl font-bold text-orange-600">{stats.suspended}</div>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card className={cardClass('rejected')} onClick={() => handleCard('rejected')}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Rejected</CardTitle>
                             <XCircle className="h-4 w-4 text-red-600" />
@@ -364,6 +374,8 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, totalRequire
                         </CardContent>
                     </Card>
                 </div>
+                    );
+                })()}
 
                 {/* Search */}
                 <div className="flex items-center gap-2">
