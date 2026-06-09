@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\DocumentType;
 use App\Http\Controllers\Controller;
 use App\Mail\UserStatusChanged;
 use App\Mail\WelcomeEmail;
 use App\Models\CareHome;
+use App\Models\Document;
 use App\Models\StatusChange;
 use App\Models\User;
 use App\Services\ActivityLogService;
@@ -13,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -54,8 +57,20 @@ class HealthCareWorkerController extends Controller
     public function show(User $healthCareWorker): Response
     {
         $healthCareWorker->load(['care_home', 'statusChanges.changedBy']);
+        // Query separately to avoid conflict with the 'skills' JSON column on users
+        $workExperiences = $healthCareWorker->workExperiences()->get();
+        $workerSkills = $healthCareWorker->skills()->get();
 
-        // Add Stripe status information
+        $documentStats = [
+            'total' => Document::where('user_id', $healthCareWorker->id)->count(),
+            'pending' => Document::where('user_id', $healthCareWorker->id)->where('status', 'pending')->count(),
+            'approved' => Document::where('user_id', $healthCareWorker->id)->where('status', 'approved')->count(),
+            'rejected' => Document::where('user_id', $healthCareWorker->id)->where('status', 'rejected')->count(),
+            'requires_attention' => Document::where('user_id', $healthCareWorker->id)->where('status', 'requires_attention')->count(),
+        ];
+
+        $totalRequired = count(DocumentType::getAllRequiredForWorker());
+
         $stripeStatus = null;
         if ($healthCareWorker->stripe_account_id) {
             $stripeStatus = [
@@ -70,7 +85,58 @@ class HealthCareWorkerController extends Controller
         }
 
         return Inertia::render('admin/healthcare-workers/show', [
-            'healthCareWorker' => $healthCareWorker,
+            'healthCareWorker' => [
+                'id' => $healthCareWorker->id,
+                'first_name' => $healthCareWorker->first_name,
+                'last_name' => $healthCareWorker->last_name,
+                'email' => $healthCareWorker->email,
+                'phone_number' => $healthCareWorker->phone_number,
+                'gender' => $healthCareWorker->gender,
+                'date_of_birth' => $healthCareWorker->date_of_birth?->format('Y-m-d'),
+                'profile_photo' => $healthCareWorker->profile_photo,
+                'qualifications' => $healthCareWorker->qualifications ?? [],
+                'hourly_rate_min' => $healthCareWorker->hourly_rate_min,
+                'hourly_rate_max' => $healthCareWorker->hourly_rate_max,
+                'status' => $healthCareWorker->status,
+                'rejection_reason' => $healthCareWorker->rejection_reason,
+                'approved_at' => $healthCareWorker->approved_at?->format('Y-m-d'),
+                'created_at' => $healthCareWorker->created_at,
+                'care_home' => $healthCareWorker->care_home ? [
+                    'id' => $healthCareWorker->care_home->id,
+                    'name' => $healthCareWorker->care_home->name,
+                ] : null,
+                'status_changes' => $healthCareWorker->statusChanges->map(fn ($sc) => [
+                    'id' => $sc->id,
+                    'old_status' => $sc->old_status,
+                    'new_status' => $sc->new_status,
+                    'action' => $sc->action,
+                    'reason' => $sc->reason,
+                    'created_at' => $sc->created_at,
+                    'changed_by' => $sc->changedBy ? [
+                        'id' => $sc->changedBy->id,
+                        'first_name' => $sc->changedBy->first_name,
+                        'last_name' => $sc->changedBy->last_name,
+                    ] : null,
+                ]),
+                'work_experiences' => $workExperiences->map(fn ($we) => [
+                    'id' => $we->id,
+                    'company_name' => $we->company_name,
+                    'position' => $we->position,
+                    'start_date' => $we->start_date?->format('Y-m-d'),
+                    'end_date' => $we->end_date?->format('Y-m-d'),
+                    'is_current' => $we->is_current,
+                    'description' => $we->description,
+                ]),
+                'skills' => $workerSkills->map(fn ($s) => [
+                    'id' => $s->id,
+                    'name' => $s->name,
+                    'category' => $s->category,
+                    'proficiency_level' => $s->proficiency_level,
+                    'years_experience' => $s->years_experience,
+                ]),
+            ],
+            'documentStats' => $documentStats,
+            'totalRequired' => $totalRequired,
             'stripeStatus' => $stripeStatus,
         ]);
     }
@@ -260,7 +326,7 @@ class HealthCareWorkerController extends Controller
                     new UserStatusChanged($healthCareWorker, $oldStatus, 'approved', 'approve')
                 );
             } catch (\Exception $e) {
-                \Log::error('Failed to send user status email', [
+                Log::error('Failed to send user status email', [
                     'error' => $e->getMessage(),
                     'user_email' => $healthCareWorker->email,
                 ]);
@@ -321,7 +387,7 @@ class HealthCareWorkerController extends Controller
                     new UserStatusChanged($healthCareWorker, $oldStatus, 'rejected', 'reject', $request->reason)
                 );
             } catch (\Exception $e) {
-                \Log::error('Failed to send user status email', [
+                Log::error('Failed to send user status email', [
                     'error' => $e->getMessage(),
                     'user_email' => $healthCareWorker->email,
                 ]);
