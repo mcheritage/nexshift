@@ -1,11 +1,18 @@
 import { type SharedData } from '@/types';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { Calendar, Clock, Users, Shield, TrendingUp, CheckCircle, Mail, Phone, X, Send } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function LandingPage() {
     const { auth } = usePage<SharedData>().props;
     const [showContact, setShowContact] = useState(false);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('popup') === 'contactform') {
+            setShowContact(true);
+        }
+    }, []);
     const { data, setData, post, processing, errors, wasSuccessful, reset } = useForm({
         name: '', email: '', message: '',
     });

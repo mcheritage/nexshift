@@ -62,6 +62,7 @@ enum DocumentType: string
     case WORKER_ADDRESS_PROOF = 'worker_address_proof';
     case WORKER_IMMUNIZATION_RECORDS = 'worker_immunization_records';
     case WORKER_HEALTH_DECLARATION = 'worker_health_declaration';
+    case WORKER_CV_RESUME = 'worker_cv_resume';
 
     public function getDisplayName(): string
     {
@@ -111,6 +112,7 @@ enum DocumentType: string
             self::WORKER_ADDRESS_PROOF => 'Proof of Address',
             self::WORKER_IMMUNIZATION_RECORDS => 'Immunization Records',
             self::WORKER_HEALTH_DECLARATION => 'Health Declaration',
+            self::WORKER_CV_RESUME => 'CV/Resume',
         };
     }
 
@@ -149,6 +151,7 @@ enum DocumentType: string
             self::WORKER_ADDRESS_PROOF => 'Proof of current address (utility bill or bank statement)',
             self::WORKER_IMMUNIZATION_RECORDS => 'Immunization records (Hep B, COVID-19, etc.)',
             self::WORKER_HEALTH_DECLARATION => 'Occupational health declaration',
+            self::WORKER_CV_RESUME => 'Current CV or resume detailing your work experience, qualifications, and skills',
             self::NMC_PIN => 'Nursing and Midwifery Council PIN for registered nurses',
             self::HCPC_REGISTRATION => 'Health and Care Professions Council registration for allied health professionals',
             self::CARE_CERTIFICATE => 'Care Certificate or equivalent vocational qualifications',
@@ -188,6 +191,9 @@ enum DocumentType: string
             ],
             'Training Certifications' => [
                 self::TRAINING_CERTIFICATIONS,
+            ],
+            'General Documents' => [
+                self::WORKER_CV_RESUME,
             ]
         ];
     }
@@ -243,6 +249,7 @@ enum DocumentType: string
             self::WORKER_RIGHT_TO_WORK,
             self::WORKER_ADDRESS_PROOF,
             self::WORKER_REFERENCES,
+            self::WORKER_CV_RESUME,
         ];
     }
 
