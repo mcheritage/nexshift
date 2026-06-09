@@ -68,6 +68,17 @@ class HealthCareWorkerController extends Controller
 
         $totalRequired = count(DocumentType::getAllRequiredForWorker());
 
+        $mandatoryTrainingCount = \App\Models\TrainingType::where('is_mandatory', true)->where('is_active', true)->count();
+        $workerTrainings = \App\Models\WorkerTraining::where('user_id', $healthCareWorker->id)->get();
+        $trainingStats = [
+            'total_mandatory' => $mandatoryTrainingCount,
+            'uploaded'        => $workerTrainings->count(),
+            'valid'           => $workerTrainings->filter(fn($t) => in_array($t->compliance_status, ['valid', 'approved']))->count(),
+            'pending'         => $workerTrainings->where('status', 'pending')->count(),
+            'expiring_soon'   => $workerTrainings->filter(fn($t) => $t->compliance_status === 'expiring_soon')->count(),
+            'expired'         => $workerTrainings->filter(fn($t) => in_array($t->compliance_status, ['expired', 'rejected']))->count(),
+        ];
+
         $stripeStatus = null;
         if ($healthCareWorker->stripe_account_id) {
             $stripeStatus = [
@@ -133,9 +144,10 @@ class HealthCareWorkerController extends Controller
                 ]),
                 'has_bank_details' => $healthCareWorker->bankDetails()->exists(),
             ],
-            'documentStats' => $documentStats,
-            'totalRequired' => $totalRequired,
-            'stripeStatus' => $stripeStatus,
+            'documentStats'  => $documentStats,
+            'totalRequired'  => $totalRequired,
+            'trainingStats'  => $trainingStats,
+            'stripeStatus'   => $stripeStatus,
         ]);
     }
 

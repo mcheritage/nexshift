@@ -19,6 +19,7 @@ import {
     Clock,
     CreditCard,
     FileText,
+    GraduationCap,
     Shield,
     Star,
     User,
@@ -101,10 +102,20 @@ interface StripeStatus {
     account_type: string;
 }
 
+interface TrainingStats {
+    total_mandatory: number;
+    uploaded: number;
+    valid: number;
+    pending: number;
+    expiring_soon: number;
+    expired: number;
+}
+
 interface Props {
     healthCareWorker: HealthCareWorker;
     documentStats: DocumentStats;
     totalRequired: number;
+    trainingStats: TrainingStats;
     stripeStatus?: StripeStatus | null;
 }
 
@@ -160,7 +171,7 @@ function formatDateRange(start: string | null, end: string | null, isCurrent: bo
     return `${s} – ${e}`;
 }
 
-export default function HealthCareWorkerShow({ healthCareWorker: worker, documentStats, totalRequired, stripeStatus }: Props) {
+export default function HealthCareWorkerShow({ healthCareWorker: worker, documentStats, totalRequired, trainingStats, stripeStatus }: Props) {
     const completionPct = totalRequired > 0 ? Math.round((documentStats.approved / totalRequired) * 100) : 0;
 
     const profileChecks = [
@@ -505,6 +516,49 @@ export default function HealthCareWorkerShow({ healthCareWorker: worker, documen
                         </CardContent>
                     </Card>
                 )}
+
+                {/* Trainings */}
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                        <div>
+                            <CardTitle className="flex items-center gap-2">
+                                <GraduationCap className="h-5 w-5" />
+                                Trainings
+                            </CardTitle>
+                            <CardDescription>Training certificate compliance</CardDescription>
+                        </div>
+                        <Button asChild variant="outline" size="sm">
+                            <Link href={`/admin/workers/${worker.id}/trainings`}>
+                                <GraduationCap className="h-4 w-4 mr-2" />
+                                View Trainings
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+                            {[
+                                { label: 'Mandatory', value: trainingStats.total_mandatory, icon: Shield, color: 'text-muted-foreground' },
+                                { label: 'Valid', value: trainingStats.valid, icon: CheckCircle, color: 'text-green-600' },
+                                { label: 'Pending', value: trainingStats.pending, icon: Clock, color: 'text-yellow-600' },
+                                { label: 'Expired / Rejected', value: trainingStats.expired, icon: XCircle, color: 'text-red-600' },
+                            ].map(({ label, value, icon: Icon, color }) => (
+                                <div key={label} className="rounded-lg border bg-card p-3">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs text-muted-foreground">{label}</span>
+                                        <Icon className={`h-3.5 w-3.5 ${color}`} />
+                                    </div>
+                                    <div className={`text-2xl font-bold ${color}`}>{value}</div>
+                                </div>
+                            ))}
+                        </div>
+                        {trainingStats.expiring_soon > 0 && (
+                            <div className="flex items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-200">
+                                <AlertTriangle className="h-4 w-4 shrink-0" />
+                                {trainingStats.expiring_soon} training{trainingStats.expiring_soon > 1 ? 's' : ''} expiring within 30 days
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
                 {/* Stripe */}
                 <Card>
