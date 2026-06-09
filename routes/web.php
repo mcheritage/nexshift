@@ -214,6 +214,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/shifts/{shift}/assign', [App\Http\Controllers\Admin\AdminShiftController::class, 'assign'])->name('shifts.assign');
         Route::patch('/shifts/{shift}/unassign', [App\Http\Controllers\Admin\AdminShiftController::class, 'unassign'])->name('shifts.unassign');
 
+        // Training Type Management
+        Route::get('/training-types', [App\Http\Controllers\Admin\AdminTrainingTypeController::class, 'index'])->name('training-types.index');
+        Route::post('/training-types', [App\Http\Controllers\Admin\AdminTrainingTypeController::class, 'store'])->name('training-types.store');
+        Route::put('/training-types/{trainingType}', [App\Http\Controllers\Admin\AdminTrainingTypeController::class, 'update'])->name('training-types.update');
+        Route::delete('/training-types/{trainingType}', [App\Http\Controllers\Admin\AdminTrainingTypeController::class, 'destroy'])->name('training-types.destroy');
+
         // Wallet Management
         Route::get('/wallets', [App\Http\Controllers\Admin\WalletManagementController::class, 'index'])->name('wallets.index');
         Route::get('/wallets/{wallet}', [App\Http\Controllers\Admin\WalletManagementController::class, 'show'])->name('wallets.show');
