@@ -299,71 +299,88 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
                                     {requiredDoc.documents && requiredDoc.documents.length > 0 ? (
                                         <div className="space-y-4">
                                             {requiredDoc.documents.map((document) => (
-                                                <div key={document.id} className="p-4 border rounded-lg space-y-3 bg-gray-50 dark:bg-gray-800">
-                                                    <div className="flex items-center justify-between">
+                                                <div key={document.id} className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 space-y-3">
+                                                    {/* Status + Actions row */}
+                                                    <div className="flex flex-wrap items-center justify-between gap-2">
                                                         <Badge
                                                             className={`${getStatusColor(document.status)} flex items-center gap-1`}
                                                         >
                                                             {getStatusIcon(document.status)}
                                                             {document.status_display}
                                                         </Badge>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => openViewDialog(document)}
+                                                            >
+                                                                <Eye className="h-4 w-4 mr-2" />
+                                                                View
+                                                            </Button>
+                                                            <Button asChild variant="outline" size="sm">
+                                                                <a href={`/admin/documents/${document.id}/download`}>
+                                                                    <Download className="h-4 w-4 mr-2" />
+                                                                    Download
+                                                                </a>
+                                                            </Button>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => openStatusDialog(document)}
+                                                            >
+                                                                <Save className="h-4 w-4 mr-2" />
+                                                                Update Status
+                                                            </Button>
+                                                        </div>
                                                     </div>
 
-                                                    <div className="grid gap-2 text-sm">
-                                                        <div><strong>Size:</strong> {(document.file_size / 1024).toFixed(1)} KB</div>
-                                                        <div><strong>Uploaded:</strong> {new Date(document.uploaded_at).toLocaleDateString()}</div>
+                                                    {/* Metadata row */}
+                                                    <div className="flex flex-wrap gap-x-6 gap-y-2">
+                                                        <div>
+                                                            <p className="text-xs text-muted-foreground">Size</p>
+                                                            <p className="text-sm font-medium">{(document.file_size / 1024).toFixed(1)} KB</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs text-muted-foreground">Uploaded</p>
+                                                            <p className="text-sm font-medium">{new Date(document.uploaded_at).toLocaleDateString()}</p>
+                                                        </div>
                                                         {document.expiry_date && (
-                                                            <div><strong>Expires:</strong> {new Date(document.expiry_date).toLocaleDateString()}</div>
+                                                            <div>
+                                                                <p className="text-xs text-muted-foreground">Expires</p>
+                                                                <p className="text-sm font-medium">{new Date(document.expiry_date).toLocaleDateString()}</p>
+                                                            </div>
                                                         )}
                                                         {document.reviewed_at && (
-                                                            <div><strong>Reviewed:</strong> {new Date(document.reviewed_at).toLocaleDateString()}</div>
+                                                            <div>
+                                                                <p className="text-xs text-muted-foreground">Reviewed</p>
+                                                                <p className="text-sm font-medium">{new Date(document.reviewed_at).toLocaleDateString()}</p>
+                                                            </div>
                                                         )}
                                                         {document.reviewer && (
-                                                            <div><strong>Reviewed by:</strong> {document.reviewer.name}</div>
+                                                            <div>
+                                                                <p className="text-xs text-muted-foreground">Reviewed by</p>
+                                                                <p className="text-sm font-medium">{document.reviewer.name}</p>
+                                                            </div>
                                                         )}
                                                     </div>
-                                                    
+
+                                                    {/* Rejection / action text */}
                                                     {(document.rejection_reason || document.action_required) && (
-                                                        <div className="space-y-2">
+                                                        <div className="flex flex-wrap gap-x-6 gap-y-2 pt-1 border-t">
                                                             {document.rejection_reason && (
                                                                 <div>
-                                                                    <strong className="text-red-600">Rejection Reason:</strong>
+                                                                    <p className="text-xs font-semibold text-red-600">Rejection Reason</p>
                                                                     <p className="text-sm text-red-600">{document.rejection_reason}</p>
                                                                 </div>
                                                             )}
                                                             {document.action_required && (
                                                                 <div>
-                                                                    <strong className="text-orange-600">Action Required:</strong>
+                                                                    <p className="text-xs font-semibold text-orange-600">Action Required</p>
                                                                     <p className="text-sm text-orange-600">{document.action_required}</p>
                                                                 </div>
                                                             )}
                                                         </div>
                                                     )}
-                                                    
-                                                    <div className="flex gap-2">
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm"
-                                                            onClick={() => openViewDialog(document)}
-                                                        >
-                                                            <Eye className="h-4 w-4 mr-2" />
-                                                            View
-                                                        </Button>
-                                                        <Button asChild variant="outline" size="sm">
-                                                            <a href={`/admin/documents/${document.id}/download`}>
-                                                                <Download className="h-4 w-4 mr-2" />
-                                                                Download
-                                                            </a>
-                                                        </Button>
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm"
-                                                            onClick={() => openStatusDialog(document)}
-                                                        >
-                                                            <Save className="h-4 w-4 mr-2" />
-                                                            Update Status
-                                                        </Button>
-                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
