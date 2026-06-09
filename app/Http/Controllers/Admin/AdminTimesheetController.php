@@ -84,4 +84,19 @@ class AdminTimesheetController extends Controller
             'filters'    => $request->only(['search', 'status', 'care_home_id', 'worker_id', 'date_from', 'date_to']),
         ]);
     }
+
+    public function show(Timesheet $timesheet): Response
+    {
+        $timesheet->load([
+            'worker:id,first_name,last_name,email,phone_number',
+            'careHome:id,name,address,postcode,phone_number',
+            'shift:id,title,role,start_datetime,end_datetime',
+            'approver:id,first_name,last_name',
+            'statusHistory.changedBy:id,first_name,last_name',
+        ]);
+
+        return Inertia::render('admin/timesheets/show', [
+            'timesheet' => $timesheet,
+        ]);
+    }
 }
