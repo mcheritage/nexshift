@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -22,53 +23,60 @@ class DocumentVerificationController extends Controller
     /**
      * Show the admin document verification dashboard
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        // Get all pending documents with their associated care homes or users
-        $pendingDocuments = Document::with(['careHome.user', 'user', 'reviewer'])
-            ->where('status', 'pending')
-            ->orderBy('created_at', 'asc')
-            ->get()
-            ->map(function ($document) {
-                $owner = null;
-                $ownerType = null;
-                
-                if ($document->careHome) {
-                    $owner = [
-                        'id' => $document->careHome->id,
-                        'name' => $document->careHome->name,
-                        'email' => $document->careHome->user?->email,
-                    ];
-                    $ownerType = 'care_home';
-                } elseif ($document->user) {
-                    $owner = [
-                        'id' => $document->user->id,
-                        'name' => $document->user->name,
-                        'email' => $document->user->email,
-                    ];
-                    $ownerType = 'healthcare_worker';
-                }
+        $validStatuses = array_column(DocumentVerificationStatus::cases(), 'value');
+        $requestedStatus = $request->get('status');
 
-                return [
-                    'id' => $document->id,
-                    'document_type' => $document->document_type,
-                    'document_type_display' => DocumentType::tryFrom($document->document_type)?->getDisplayName() ?? $document->document_type,
-                    'original_name' => $document->original_name,
-                    'file_size' => $document->file_size,
-                    'mime_type' => $document->mime_type,
-                    'status' => $document->status->value,
-                    'status_display' => $document->getStatusDisplayName(),
-                    'status_color' => $document->getStatusColor(),
-                    'status_icon' => $document->getStatusIcon(),
-                    'uploaded_at' => $document->created_at,
-                    'owner' => $owner,
-                    'owner_type' => $ownerType,
+        if ($requestedStatus === 'all') {
+            $filter = 'all';
+        } elseif (in_array($requestedStatus, $validStatuses)) {
+            $filter = $requestedStatus;
+        } else {
+            $filter = 'pending'; // default
+        }
+
+        $query = Document::with(['careHome.user', 'user', 'reviewer']);
+        if ($filter !== 'all') {
+            $query->where('status', $filter);
+        }
+
+        $documents = $query->orderBy('created_at', 'asc')->limit(1000)->get()->map(function ($document) {
+            $owner = null;
+            $ownerType = null;
+
+            if ($document->careHome) {
+                $owner = [
+                    'id' => $document->careHome->id,
+                    'name' => $document->careHome->name,
+                    'email' => $document->careHome->user?->email,
                 ];
-            });
+                $ownerType = 'care_home';
+            } elseif ($document->user) {
+                $owner = [
+                    'id' => $document->user->id,
+                    'name' => $document->user->name,
+                    'email' => $document->user->email,
+                ];
+                $ownerType = 'healthcare_worker';
+            }
 
-        $careHomes = CareHome::with(['users', 'documents' => function ($query) {
-            $query->orderBy('created_at', 'desc');
-        }])->get();
+            return [
+                'id' => $document->id,
+                'document_type' => $document->document_type,
+                'document_type_display' => DocumentType::tryFrom($document->document_type)?->getDisplayName() ?? $document->document_type,
+                'original_name' => $document->original_name,
+                'file_size' => $document->file_size,
+                'mime_type' => $document->mime_type,
+                'status' => $document->status->value,
+                'status_display' => $document->getStatusDisplayName(),
+                'status_color' => $document->getStatusColor(),
+                'status_icon' => $document->getStatusIcon(),
+                'uploaded_at' => $document->created_at,
+                'owner' => $owner,
+                'owner_type' => $ownerType,
+            ];
+        });
 
         $documentStats = [
             'total_documents' => Document::count(),
@@ -78,13 +86,9 @@ class DocumentVerificationController extends Controller
             'requires_attention_documents' => Document::where('status', 'requires_attention')->count(),
         ];
 
-        // Debug: Check what we're passing
-        \Log::info('Pending documents count: ' . $pendingDocuments->count());
-        \Log::info('Pending documents data: ', $pendingDocuments->toArray());
-
         return Inertia::render('admin/document-verification', [
-            'pendingDocuments' => $pendingDocuments,
-            'careHomes' => $careHomes,
+            'documents' => $documents,
+            'currentFilter' => $filter,
             'documentStats' => $documentStats,
             'verificationStatuses' => collect(DocumentVerificationStatus::cases())->map(function ($status) {
                 return [
@@ -272,8 +276,7 @@ class DocumentVerificationController extends Controller
             return;
         }
 
-        // Create in-platform notification
-        $notification = Notification::create([
+        Notification::create([
             'user_id' => $administrator->id,
             'type' => 'document_status_changed',
             'title' => 'Document Status Updated',
@@ -288,11 +291,10 @@ class DocumentVerificationController extends Controller
             ],
         ]);
 
-        // Send email notification
         try {
             Mail::to($administrator->email)->send(new \App\Mail\DocumentStatusChanged($document, $oldStatus, $newStatus));
         } catch (\Exception $e) {
-            \Log::error('Failed to send email notification', [
+            Log::error('Failed to send email notification', [
                 'error' => $e->getMessage(),
                 'administrator_email' => $administrator->email,
             ]);
@@ -310,8 +312,7 @@ class DocumentVerificationController extends Controller
             return;
         }
 
-        // Create in-platform notification
-        $notification = Notification::create([
+        Notification::create([
             'user_id' => $worker->id,
             'type' => 'document_status_changed',
             'title' => 'Document Status Updated',
@@ -326,11 +327,10 @@ class DocumentVerificationController extends Controller
             ],
         ]);
 
-        // Send email notification
         try {
             Mail::to($worker->email)->send(new \App\Mail\DocumentStatusChanged($document, $oldStatus, $newStatus));
         } catch (\Exception $e) {
-            \Log::error('Failed to send email notification', [
+            Log::error('Failed to send email notification', [
                 'error' => $e->getMessage(),
                 'worker_email' => $worker->email,
             ]);
