@@ -2,25 +2,26 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { 
-    Clock, 
-    CheckCircle, 
-    XCircle, 
-    AlertTriangle, 
-    FileText, 
+import {
+    Clock,
+    CheckCircle,
+    XCircle,
+    AlertTriangle,
+    FileText,
     Users,
     Download,
     ArrowLeft,
     Save,
     Eye
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -58,6 +59,7 @@ interface Document {
     status_icon: string;
     rejection_reason?: string;
     action_required?: string;
+    expiry_date?: string;
     reviewed_by?: number;
     reviewed_at?: string;
     uploaded_at: string;
@@ -110,11 +112,21 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
     const [newStatus, setNewStatus] = useState<string>('');
     const [rejectionReason, setRejectionReason] = useState<string>('');
     const [actionRequired, setActionRequired] = useState<string>('');
+    const [expiryDate, setExpiryDate] = useState<string>('');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [viewDocument, setViewDocument] = useState<Document | null>(null);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [documentUrl, setDocumentUrl] = useState<string>('');
     const [isLoadingDocument, setIsLoadingDocument] = useState(false);
+
+    const highlightType = new URLSearchParams(window.location.search).get('highlight');
+    const highlightRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (highlightRef.current) {
+            highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, []);
 
     const getStatusIcon = (status: string) => {
         const IconComponent = statusIcons[status as keyof typeof statusIcons];
@@ -132,6 +144,7 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
             status: newStatus,
             rejection_reason: rejectionReason || null,
             action_required: actionRequired || null,
+            expiry_date: expiryDate || null,
         }, {
             onSuccess: () => {
                 setIsDialogOpen(false);
@@ -139,6 +152,7 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
                 setNewStatus('');
                 setRejectionReason('');
                 setActionRequired('');
+                setExpiryDate('');
             },
         });
     };
@@ -148,6 +162,7 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
         setNewStatus(document.status);
         setRejectionReason(document.rejection_reason || '');
         setActionRequired(document.action_required || '');
+        setExpiryDate(document.expiry_date || '');
         setIsDialogOpen(true);
     };
 
@@ -259,8 +274,14 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
                     <h2 className="text-xl font-semibold">Required Documents</h2>
                     
                     <div className="grid gap-4">
-                        {requiredDocuments.map((requiredDoc) => (
-                            <Card key={requiredDoc.type.value}>
+                        {requiredDocuments.map((requiredDoc) => {
+                            const isHighlighted = highlightType === requiredDoc.type.value;
+                            return (
+                            <Card
+                                key={requiredDoc.type.value}
+                                ref={isHighlighted ? highlightRef : undefined}
+                                className={isHighlighted ? 'ring-2 ring-primary ring-offset-2' : ''}
+                            >
                                 <CardHeader>
                                     <CardTitle className="flex items-center justify-between">
                                         <span>{requiredDoc.type.displayName}</span>
@@ -278,69 +299,88 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
                                     {requiredDoc.documents && requiredDoc.documents.length > 0 ? (
                                         <div className="space-y-4">
                                             {requiredDoc.documents.map((document) => (
-                                                <div key={document.id} className="p-4 border rounded-lg space-y-3 bg-gray-50 dark:bg-gray-800">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="font-medium">{document.original_name}</div>
-                                                        <Badge 
+                                                <div key={document.id} className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 space-y-3">
+                                                    {/* Status + Actions row */}
+                                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                                        <Badge
                                                             className={`${getStatusColor(document.status)} flex items-center gap-1`}
                                                         >
                                                             {getStatusIcon(document.status)}
                                                             {document.status_display}
                                                         </Badge>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => openViewDialog(document)}
+                                                            >
+                                                                <Eye className="h-4 w-4 mr-2" />
+                                                                View
+                                                            </Button>
+                                                            <Button asChild variant="outline" size="sm">
+                                                                <a href={`/admin/documents/${document.id}/download`}>
+                                                                    <Download className="h-4 w-4 mr-2" />
+                                                                    Download
+                                                                </a>
+                                                            </Button>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => openStatusDialog(document)}
+                                                            >
+                                                                <Save className="h-4 w-4 mr-2" />
+                                                                Update Status
+                                                            </Button>
+                                                        </div>
                                                     </div>
-                                                    
-                                                    <div className="grid gap-2 text-sm">
-                                                        <div><strong>Size:</strong> {(document.file_size / 1024).toFixed(1)} KB</div>
-                                                        <div><strong>Uploaded:</strong> {new Date(document.uploaded_at).toLocaleDateString()}</div>
+
+                                                    {/* Metadata row */}
+                                                    <div className="flex flex-wrap gap-x-6 gap-y-2">
+                                                        <div>
+                                                            <p className="text-xs text-muted-foreground">Size</p>
+                                                            <p className="text-sm font-medium">{(document.file_size / 1024).toFixed(1)} KB</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs text-muted-foreground">Uploaded</p>
+                                                            <p className="text-sm font-medium">{new Date(document.uploaded_at).toLocaleDateString()}</p>
+                                                        </div>
+                                                        {document.expiry_date && (
+                                                            <div>
+                                                                <p className="text-xs text-muted-foreground">Expires</p>
+                                                                <p className="text-sm font-medium">{new Date(document.expiry_date).toLocaleDateString()}</p>
+                                                            </div>
+                                                        )}
                                                         {document.reviewed_at && (
-                                                            <div><strong>Reviewed:</strong> {new Date(document.reviewed_at).toLocaleDateString()}</div>
+                                                            <div>
+                                                                <p className="text-xs text-muted-foreground">Reviewed</p>
+                                                                <p className="text-sm font-medium">{new Date(document.reviewed_at).toLocaleDateString()}</p>
+                                                            </div>
                                                         )}
                                                         {document.reviewer && (
-                                                            <div><strong>Reviewed by:</strong> {document.reviewer.name}</div>
+                                                            <div>
+                                                                <p className="text-xs text-muted-foreground">Reviewed by</p>
+                                                                <p className="text-sm font-medium">{document.reviewer.name}</p>
+                                                            </div>
                                                         )}
                                                     </div>
-                                                    
+
+                                                    {/* Rejection / action text */}
                                                     {(document.rejection_reason || document.action_required) && (
-                                                        <div className="space-y-2">
+                                                        <div className="flex flex-wrap gap-x-6 gap-y-2 pt-1 border-t">
                                                             {document.rejection_reason && (
                                                                 <div>
-                                                                    <strong className="text-red-600">Rejection Reason:</strong>
+                                                                    <p className="text-xs font-semibold text-red-600">Rejection Reason</p>
                                                                     <p className="text-sm text-red-600">{document.rejection_reason}</p>
                                                                 </div>
                                                             )}
                                                             {document.action_required && (
                                                                 <div>
-                                                                    <strong className="text-orange-600">Action Required:</strong>
+                                                                    <p className="text-xs font-semibold text-orange-600">Action Required</p>
                                                                     <p className="text-sm text-orange-600">{document.action_required}</p>
                                                                 </div>
                                                             )}
                                                         </div>
                                                     )}
-                                                    
-                                                    <div className="flex gap-2">
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm"
-                                                            onClick={() => openViewDialog(document)}
-                                                        >
-                                                            <Eye className="h-4 w-4 mr-2" />
-                                                            View
-                                                        </Button>
-                                                        <Button asChild variant="outline" size="sm">
-                                                            <a href={`/admin/documents/${document.id}/download`}>
-                                                                <Download className="h-4 w-4 mr-2" />
-                                                                Download
-                                                            </a>
-                                                        </Button>
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm"
-                                                            onClick={() => openStatusDialog(document)}
-                                                        >
-                                                            <Save className="h-4 w-4 mr-2" />
-                                                            Update Status
-                                                        </Button>
-                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -351,7 +391,8 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
                                     )}
                                 </CardContent>
                             </Card>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -380,7 +421,17 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
                                     </SelectContent>
                                 </Select>
                             </div>
-                            
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="expiry_date">Expiry Date <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                                <Input
+                                    id="expiry_date"
+                                    type="date"
+                                    value={expiryDate}
+                                    onChange={(e) => setExpiryDate(e.target.value)}
+                                />
+                            </div>
+
                             {(newStatus === 'rejected' || newStatus === 'requires_attention') && (
                                 <>
                                     <div className="grid gap-2">
@@ -392,7 +443,7 @@ export default function CareHomeDocuments({ careHome, requiredDocuments, verific
                                             onChange={(e) => setRejectionReason(e.target.value)}
                                         />
                                     </div>
-                                    
+
                                     <div className="grid gap-2">
                                         <Label htmlFor="action_required">Action Required</Label>
                                         <Textarea

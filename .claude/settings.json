@@ -4,7 +4,8 @@
       "Bash(php -l /Users/supermadu/Sites/nexshift/app/Mail/ShiftAssignedWorker.php)",
       "Bash(php -l /Users/supermadu/Sites/nexshift/app/Mail/ShiftAssignedCareHome.php)",
       "Bash(php -l /Users/supermadu/Sites/nexshift/app/Http/Controllers/Admin/AdminShiftController.php)",
-      "Bash(php artisan *)"
+      "Bash(php artisan *)",
+      "Bash(grep -n 'protected $fillable\\\\|public function\\\\|protected $casts\\\\|protected $dates\\\\|phone\\\\|avatar\\\\|profile\\\\|address\\\\|date_of_birth\\\\|specialty\\\\|qualification\\\\|status\\\\|stripe' /Users/supermadu/Sites/nexshift/app/Models/User.php)"
     ]
   }
 }

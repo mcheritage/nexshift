@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,7 +21,7 @@ import {
     Save,
     Eye
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 
 interface Worker {
@@ -56,6 +57,7 @@ interface Document {
     status_icon: string;
     rejection_reason?: string;
     action_required?: string;
+    expiry_date?: string;
     reviewed_by?: number;
     reviewed_at?: string;
     uploaded_at: string;
@@ -110,6 +112,16 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
     const [newStatus, setNewStatus] = useState('');
     const [rejectionReason, setRejectionReason] = useState('');
     const [actionRequired, setActionRequired] = useState('');
+    const [expiryDate, setExpiryDate] = useState('');
+
+    const highlightType = new URLSearchParams(window.location.search).get('highlight');
+    const highlightRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (highlightRef.current) {
+            highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, []);
     const [viewDocument, setViewDocument] = useState<Document | null>(null);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [documentUrl, setDocumentUrl] = useState<string>('');
@@ -129,6 +141,7 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
         setNewStatus(document.status);
         setRejectionReason(document.rejection_reason || '');
         setActionRequired(document.action_required || '');
+        setExpiryDate(document.expiry_date || '');
         setIsDialogOpen(true);
     };
 
@@ -140,6 +153,7 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                 status: newStatus,
                 rejection_reason: rejectionReason,
                 action_required: actionRequired,
+                expiry_date: expiryDate || null,
             });
 
             // Reload the page to show updated status
@@ -207,10 +221,16 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                 {title}
                 {isRequired && <Badge variant="secondary">Required</Badge>}
             </h2>
-            
+
             <div className="grid gap-4">
-                {documents.map((requiredDoc) => (
-                    <Card key={requiredDoc.type.value}>
+                {documents.map((requiredDoc) => {
+                    const isHighlighted = highlightType === requiredDoc.type.value;
+                    return (
+                    <Card
+                        key={requiredDoc.type.value}
+                        ref={isHighlighted ? highlightRef : undefined}
+                        className={isHighlighted ? 'ring-2 ring-primary ring-offset-2' : ''}
+                    >
                         <CardHeader>
                             <CardTitle className="flex items-center justify-between">
                                 <span>{requiredDoc.type.displayName}</span>
@@ -232,39 +252,11 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                         </CardHeader>
                         <CardContent>
                             {requiredDoc.document ? (
-                                <div className="space-y-4">
-                                    <div className="grid gap-2 text-sm">
-                                        <div><strong>File:</strong> {requiredDoc.document.original_name}</div>
-                                        <div><strong>Size:</strong> {(requiredDoc.document.file_size / 1024).toFixed(1)} KB</div>
-                                        <div><strong>Uploaded:</strong> {new Date(requiredDoc.document.uploaded_at).toLocaleDateString()}</div>
-                                        {requiredDoc.document.reviewed_at && (
-                                            <div><strong>Reviewed:</strong> {new Date(requiredDoc.document.reviewed_at).toLocaleDateString()}</div>
-                                        )}
-                                        {requiredDoc.document.reviewer && (
-                                            <div><strong>Reviewed by:</strong> {requiredDoc.document.reviewer.name}</div>
-                                        )}
-                                    </div>
-                                    
-                                    {(requiredDoc.document.rejection_reason || requiredDoc.document.action_required) && (
-                                        <div className="space-y-2">
-                                            {requiredDoc.document.rejection_reason && (
-                                                <div>
-                                                    <strong className="text-red-600">Rejection Reason:</strong>
-                                                    <p className="text-sm text-red-600">{requiredDoc.document.rejection_reason}</p>
-                                                </div>
-                                            )}
-                                            {requiredDoc.document.action_required && (
-                                                <div>
-                                                    <strong className="text-orange-600">Action Required:</strong>
-                                                    <p className="text-sm text-orange-600">{requiredDoc.document.action_required}</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                    
-                                    <div className="flex gap-2">
-                                        <Button 
-                                            variant="outline" 
+                                <div className="space-y-3">
+                                    {/* Actions row */}
+                                    <div className="flex flex-wrap justify-end gap-2">
+                                        <Button
+                                            variant="outline"
                                             size="sm"
                                             onClick={() => openViewDialog(requiredDoc.document!)}
                                         >
@@ -277,8 +269,8 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                                                 Download
                                             </a>
                                         </Button>
-                                        <Button 
-                                            variant="outline" 
+                                        <Button
+                                            variant="outline"
                                             size="sm"
                                             onClick={() => openStatusDialog(requiredDoc.document!)}
                                         >
@@ -286,6 +278,54 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                                             Update Status
                                         </Button>
                                     </div>
+
+                                    {/* Metadata row */}
+                                    <div className="flex flex-wrap gap-x-6 gap-y-2">
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">Size</p>
+                                            <p className="text-sm font-medium">{(requiredDoc.document.file_size / 1024).toFixed(1)} KB</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">Uploaded</p>
+                                            <p className="text-sm font-medium">{new Date(requiredDoc.document.uploaded_at).toLocaleDateString()}</p>
+                                        </div>
+                                        {requiredDoc.document.expiry_date && (
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">Expires</p>
+                                                <p className="text-sm font-medium">{new Date(requiredDoc.document.expiry_date).toLocaleDateString()}</p>
+                                            </div>
+                                        )}
+                                        {requiredDoc.document.reviewed_at && (
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">Reviewed</p>
+                                                <p className="text-sm font-medium">{new Date(requiredDoc.document.reviewed_at).toLocaleDateString()}</p>
+                                            </div>
+                                        )}
+                                        {requiredDoc.document.reviewer && (
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">Reviewed by</p>
+                                                <p className="text-sm font-medium">{requiredDoc.document.reviewer.name}</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Rejection / action text */}
+                                    {(requiredDoc.document.rejection_reason || requiredDoc.document.action_required) && (
+                                        <div className="flex flex-wrap gap-x-6 gap-y-2 pt-1 border-t">
+                                            {requiredDoc.document.rejection_reason && (
+                                                <div>
+                                                    <p className="text-xs font-semibold text-red-600">Rejection Reason</p>
+                                                    <p className="text-sm text-red-600">{requiredDoc.document.rejection_reason}</p>
+                                                </div>
+                                            )}
+                                            {requiredDoc.document.action_required && (
+                                                <div>
+                                                    <p className="text-xs font-semibold text-orange-600">Action Required</p>
+                                                    <p className="text-sm text-orange-600">{requiredDoc.document.action_required}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="text-muted-foreground">
@@ -294,7 +334,8 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                             )}
                         </CardContent>
                     </Card>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
@@ -398,7 +439,17 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                                     </SelectContent>
                                 </Select>
                             </div>
-                            
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="expiry_date">Expiry Date <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                                <Input
+                                    id="expiry_date"
+                                    type="date"
+                                    value={expiryDate}
+                                    onChange={(e) => setExpiryDate(e.target.value)}
+                                />
+                            </div>
+
                             {(newStatus === 'rejected' || newStatus === 'requires_attention') && (
                                 <>
                                     <div className="grid gap-2">
@@ -410,7 +461,7 @@ export default function WorkerDocuments({ worker, requiredDocuments, optionalDoc
                                             onChange={(e) => setRejectionReason(e.target.value)}
                                         />
                                     </div>
-                                    
+
                                     <div className="grid gap-2">
                                         <Label htmlFor="action_required">Action Required</Label>
                                         <Textarea

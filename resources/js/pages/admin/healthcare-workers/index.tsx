@@ -5,23 +5,24 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router, useForm } from '@inertiajs/react';
-import { 
-    UserCheck, 
-    Plus,
-    Trash2,
-    Download,
-    FileText,
-    Search,
-    Clock,
-    CheckCircle,
-    XCircle,
-    ChevronUp,
+import { Head, Link, useForm } from '@inertiajs/react';
+import {
+    Ban,
     ChevronDown,
-    ChevronsUpDown
+    ChevronUp,
+    ChevronsUpDown,
+    CheckCircle,
+    Clock,
+    Download,
+    Eye,
+    Plus,
+    Search,
+    UserCheck,
+    XCircle,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
@@ -45,25 +46,40 @@ interface HealthCareWorker {
     role: string;
     status: string;
     created_at: string;
-    documents_count: number;
-    pending_documents_count: number;
-    approved_documents_count: number;
-    rejected_documents_count: number;
-}
-
-interface CareHome {
-    id: string;
-    name: string;
-    user: {
-        id: string;
-        name: string;
-        email: string;
-    };
+    profile_photo: string | null;
+    phone_number: string | null;
+    date_of_birth: string | null;
+    qualifications: string[] | null;
+    hourly_rate_min: number | null;
+    work_experiences_count: number;
+    skill_records_count: number;
+    bank_details_count: number;
+    required_docs_uploaded_count: number;
 }
 
 interface Props {
     healthCareWorkers: HealthCareWorker[];
-    careHomes: CareHome[];
+    totalRequiredDocs: number;
+}
+
+function profileCompletion(worker: HealthCareWorker, totalRequiredDocs: number): number {
+    const profileChecks = [
+        !!worker.profile_photo,
+        !!worker.phone_number,
+        !!worker.date_of_birth,
+        (worker.qualifications?.length ?? 0) > 0,
+        !!worker.hourly_rate_min,
+        worker.work_experiences_count > 0,
+        worker.skill_records_count > 0,
+        worker.bank_details_count > 0,
+    ];
+    const profileScore = (profileChecks.filter(Boolean).length / profileChecks.length) * 50;
+
+    const docScore = totalRequiredDocs > 0
+        ? (Math.min(worker.required_docs_uploaded_count, totalRequiredDocs) / totalRequiredDocs) * 50
+        : 0;
+
+    return Math.round(profileScore + docScore);
 }
 
 const genderOptions = [
@@ -72,15 +88,16 @@ const genderOptions = [
     { value: 'other', label: 'Other' },
 ];
 
-export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }: Props) {
+export default function HealthCareWorkersIndex({ healthCareWorkers, totalRequiredDocs }: Props) {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [createSuccess, setCreateSuccess] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
     const [sortColumn, setSortColumn] = useState<string>('');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
-    const form = useForm({ first_name: '', last_name: '', email: '', phone_number: '', password: '', password_confirmation: '', care_home_id: '', gender: '' });
+    const form = useForm({ first_name: '', last_name: '', email: '', phone_number: '', password: '', password_confirmation: '', gender: '' });
 
     const handleSort = (column: string) => {
         if (sortColumn === column) {
@@ -104,13 +121,14 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
     const filteredWorkers = useMemo(() => {
         return healthCareWorkers.filter(worker => {
             const searchLower = searchTerm.toLowerCase();
-            return (
+            const matchesSearch =
                 worker.first_name.toLowerCase().includes(searchLower) ||
                 worker.last_name.toLowerCase().includes(searchLower) ||
-                worker.email.toLowerCase().includes(searchLower)
-            );
+                worker.email.toLowerCase().includes(searchLower);
+            const matchesStatus = statusFilter === 'all' || worker.status === statusFilter;
+            return matchesSearch && matchesStatus;
         });
-    }, [healthCareWorkers, searchTerm]);
+    }, [healthCareWorkers, searchTerm, statusFilter]);
 
     const sortedWorkers = useMemo(() => {
         if (!sortColumn) return filteredWorkers;
@@ -135,10 +153,6 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                 case 'status':
                     aValue = a.status.toLowerCase();
                     bValue = b.status.toLowerCase();
-                    break;
-                case 'documents':
-                    aValue = a.documents_count;
-                    bValue = b.documents_count;
                     break;
                 case 'joined':
                     aValue = new Date(a.created_at).getTime();
@@ -171,49 +185,14 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
         });
     };
 
-    const handleDelete = (workerId: string) => {
-        if (confirm('Are you sure you want to delete this health care worker? This action cannot be undone.')) {
-            router.delete(`/admin/healthcare-workers/${workerId}`);
-        }
-    };
-
-    const handleApprove = (workerId: string) => {
-        if (confirm('Are you sure you want to approve this healthcare worker?')) {
-            router.patch(`/admin/healthcare-workers/${workerId}/approve`);
-        }
-    };
-
-    const handleReject = (workerId: string) => {
-        const reason = prompt('Please provide a reason for rejection:');
-        if (reason) {
-            router.patch(`/admin/healthcare-workers/${workerId}/reject`, { reason });
-        }
-    };
-
-    const handleSuspend = (workerId: string) => {
-        const reason = prompt('Please provide a reason for suspension:');
-        if (reason) {
-            router.patch(`/admin/healthcare-workers/${workerId}/suspend`, { reason });
-        }
-    };
-
-    const handleUnsuspend = (workerId: string) => {
-        if (confirm('Are you sure you want to unsuspend this healthcare worker?')) {
-            router.patch(`/admin/healthcare-workers/${workerId}/unsuspend`);
-        }
-    };
-
     const handleExport = () => {
         const csvContent = [
-            ['Name', 'Email', 'Gender', 'Total Documents', 'Pending', 'Approved', 'Rejected', 'Joined Date'],
+            ['Name', 'Email', 'Gender', 'Status', 'Joined Date'],
             ...healthCareWorkers.map(worker => [
                 `${worker.first_name} ${worker.last_name}`,
                 worker.email,
                 worker.gender,
-                worker.documents_count.toString(),
-                worker.pending_documents_count.toString(),
-                worker.approved_documents_count.toString(),
-                worker.rejected_documents_count.toString(),
+                worker.status,
                 new Date(worker.created_at).toLocaleDateString()
             ])
         ]
@@ -229,19 +208,13 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
         window.URL.revokeObjectURL(url);
     };
 
-    const stats = useMemo(() => {
-        const totalWorkers = healthCareWorkers.length;
-        const totalPending = healthCareWorkers.reduce((sum, worker) => sum + worker.pending_documents_count, 0);
-        const totalApproved = healthCareWorkers.reduce((sum, worker) => sum + worker.approved_documents_count, 0);
-        const totalRejected = healthCareWorkers.reduce((sum, worker) => sum + worker.rejected_documents_count, 0);
-        
-        return {
-            totalWorkers,
-            totalPending,
-            totalApproved,
-            totalRejected,
-        };
-    }, [healthCareWorkers]);
+    const stats = useMemo(() => ({
+        total: healthCareWorkers.length,
+        approved: healthCareWorkers.filter(w => w.status === 'approved').length,
+        pending: healthCareWorkers.filter(w => w.status === 'pending').length,
+        suspended: healthCareWorkers.filter(w => w.status === 'suspended').length,
+        rejected: healthCareWorkers.filter(w => w.status === 'rejected').length,
+    }), [healthCareWorkers]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -321,22 +294,6 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                                 {form.errors.gender && <p className="text-xs text-red-500">{form.errors.gender}</p>}
                                             </div>
                                             <div className="grid gap-2">
-                                                <Label htmlFor="care_home_id">Care Home</Label>
-                                                <Select value={form.data.care_home_id} onValueChange={(value) => form.setData('care_home_id', value)}>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select care home" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {careHomes.map((ch) => (
-                                                            <SelectItem key={ch.id} value={ch.id}>
-                                                                {ch.name}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                {form.errors.care_home_id && <p className="text-xs text-red-500">{form.errors.care_home_id}</p>}
-                                            </div>
-                                            <div className="grid gap-2">
                                                 <Label htmlFor="password">Password</Label>
                                                 <Input id="password" type="password" value={form.data.password} onChange={(e) => form.setData('password', e.target.value)} placeholder="Enter password" />
                                                 {form.errors.password && <p className="text-xs text-red-500">{form.errors.password}</p>}
@@ -362,47 +319,63 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <Card>
+                {(() => {
+                    const cardClass = (filter: string) =>
+                        `cursor-pointer transition-all hover:shadow-md hover:border-primary/50 ${statusFilter === filter ? 'ring-2 ring-primary border-primary' : ''}`;
+                    const handleCard = (filter: string) => {
+                        setStatusFilter(filter);
+                        setCurrentPage(1);
+                    };
+                    return (
+                    <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
+                    <Card className={cardClass('all')} onClick={() => handleCard('all')}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Total Workers</CardTitle>
                             <UserCheck className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{stats.totalWorkers}</div>
+                            <div className="text-2xl font-bold">{stats.total}</div>
                         </CardContent>
                     </Card>
-                    
-                    <Card>
+                    <Card className={cardClass('approved')} onClick={() => handleCard('approved')}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Pending Documents</CardTitle>
-                            <Clock className="h-4 w-4 text-yellow-600" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-yellow-600">{stats.totalPending}</div>
-                        </CardContent>
-                    </Card>
-                    
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Approved Documents</CardTitle>
+                            <CardTitle className="text-sm font-medium">Approved</CardTitle>
                             <CheckCircle className="h-4 w-4 text-green-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-green-600">{stats.totalApproved}</div>
+                            <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
                         </CardContent>
                     </Card>
-                    
-                    <Card>
+                    <Card className={cardClass('pending')} onClick={() => handleCard('pending')}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Rejected Documents</CardTitle>
+                            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                            <Clock className="h-4 w-4 text-yellow-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+                        </CardContent>
+                    </Card>
+                    <Card className={cardClass('suspended')} onClick={() => handleCard('suspended')}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Suspended</CardTitle>
+                            <Ban className="h-4 w-4 text-orange-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-orange-600">{stats.suspended}</div>
+                        </CardContent>
+                    </Card>
+                    <Card className={cardClass('rejected')} onClick={() => handleCard('rejected')}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Rejected</CardTitle>
                             <XCircle className="h-4 w-4 text-red-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-red-600">{stats.totalRejected}</div>
+                            <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
                         </CardContent>
                     </Card>
                 </div>
+                    );
+                })()}
 
                 {/* Search */}
                 <div className="flex items-center gap-2">
@@ -460,16 +433,8 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                                 {getSortIcon('status')}
                                             </div>
                                         </TableHead>
-                                        <TableHead 
-                                            className="cursor-pointer select-none"
-                                            onClick={() => handleSort('documents')}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                Documents
-                                                {getSortIcon('documents')}
-                                            </div>
-                                        </TableHead>
-                                        <TableHead 
+                                        <TableHead>Profile</TableHead>
+                                        <TableHead
                                             className="cursor-pointer select-none"
                                             onClick={() => handleSort('joined')}
                                         >
@@ -521,85 +486,25 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="py-2">
-                                                    <div className="inline-flex flex-col border rounded-md overflow-hidden min-w-[140px]">
-                                                        <div className="flex items-center justify-between px-2 py-1 bg-muted border-b">
-                                                            <span className="font-medium text-xs">Total</span>
-                                                            <span className="font-bold text-xs">{worker.documents_count}</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-between px-2 py-0.5 border-b">
-                                                            <span className="text-xs text-muted-foreground">Pending</span>
-                                                            <span className="text-xs font-medium tabular-nums">{worker.pending_documents_count}</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-between px-2 py-0.5 border-b bg-green-50 dark:bg-green-950/20">
-                                                            <span className="text-xs text-green-700 dark:text-green-400">Approved</span>
-                                                            <span className="text-xs font-medium text-green-700 dark:text-green-400 tabular-nums">{worker.approved_documents_count}</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-between px-2 py-0.5 bg-red-50 dark:bg-red-950/20">
-                                                            <span className="text-xs text-red-700 dark:text-red-400">Rejected</span>
-                                                            <span className="text-xs font-medium text-red-700 dark:text-red-400 tabular-nums">{worker.rejected_documents_count}</span>
-                                                        </div>
-                                                    </div>
+                                                    {(() => {
+                                                        const pct = profileCompletion(worker, totalRequiredDocs);
+                                                        const color = pct === 100 ? 'text-green-600' : pct >= 50 ? 'text-yellow-600' : 'text-red-500';
+                                                        return (
+                                                            <div className="flex items-center gap-2 min-w-[100px]">
+                                                                <Progress value={pct} className="h-1.5 flex-1" />
+                                                                <span className={`text-xs font-medium tabular-nums ${color}`}>{pct}%</span>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </TableCell>
                                                 <TableCell className="py-2">{new Date(worker.created_at).toLocaleDateString()}</TableCell>
                                                 <TableCell className="py-2">
                                                     <div className="flex gap-2 justify-end">
-                                                        {worker.status === 'pending' && (
-                                                            <>
-                                                                <Button 
-                                                                    variant="outline" 
-                                                                    size="sm"
-                                                                    onClick={() => handleApprove(worker.id)}
-                                                                    className="text-green-600 hover:text-green-700"
-                                                                >
-                                                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                                                    Approve
-                                                                </Button>
-                                                                <Button 
-                                                                    variant="outline" 
-                                                                    size="sm"
-                                                                    onClick={() => handleReject(worker.id)}
-                                                                    className="text-red-600 hover:text-red-700"
-                                                                >
-                                                                    <XCircle className="h-4 w-4 mr-1" />
-                                                                    Reject
-                                                                </Button>
-                                                            </>
-                                                        )}
-                                                        {worker.status === 'approved' && (
-                                                            <Button 
-                                                                variant="outline" 
-                                                                size="sm"
-                                                                onClick={() => handleSuspend(worker.id)}
-                                                                className="text-orange-600 hover:text-orange-700"
-                                                            >
-                                                                <XCircle className="h-4 w-4 mr-1" />
-                                                                Suspend
-                                                            </Button>
-                                                        )}
-                                                        {worker.status === 'suspended' && (
-                                                            <Button 
-                                                                variant="outline" 
-                                                                size="sm"
-                                                                onClick={() => handleUnsuspend(worker.id)}
-                                                                className="text-green-600 hover:text-green-700"
-                                                            >
-                                                                <CheckCircle className="h-4 w-4 mr-1" />
-                                                                Unsuspend
-                                                            </Button>
-                                                        )}
                                                         <Button asChild variant="outline" size="sm">
-                                                            <a href={`/admin/workers/${worker.id}/documents`}>
-                                                                <FileText className="h-4 w-4 mr-2" />
-                                                                Documents
-                                                            </a>
-                                                        </Button>
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm"
-                                                            onClick={() => handleDelete(worker.id)}
-                                                            className="text-red-600 hover:text-red-700"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
+                                                            <Link href={`/admin/healthcare-workers/${worker.id}`}>
+                                                                <Eye className="h-4 w-4 mr-2" />
+                                                                View Profile
+                                                            </Link>
                                                         </Button>
                                                     </div>
                                                 </TableCell>
