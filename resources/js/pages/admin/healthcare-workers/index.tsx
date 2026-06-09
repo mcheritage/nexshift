@@ -50,19 +50,8 @@ interface HealthCareWorker {
     rejected_documents_count: number;
 }
 
-interface CareHome {
-    id: string;
-    name: string;
-    user: {
-        id: string;
-        name: string;
-        email: string;
-    };
-}
-
 interface Props {
     healthCareWorkers: HealthCareWorker[];
-    careHomes: CareHome[];
 }
 
 const genderOptions = [
@@ -71,7 +60,7 @@ const genderOptions = [
     { value: 'other', label: 'Other' },
 ];
 
-export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }: Props) {
+export default function HealthCareWorkersIndex({ healthCareWorkers }: Props) {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [createSuccess, setCreateSuccess] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -79,7 +68,7 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
-    const form = useForm({ first_name: '', last_name: '', email: '', phone_number: '', password: '', password_confirmation: '', care_home_id: '', gender: '' });
+    const form = useForm({ first_name: '', last_name: '', email: '', phone_number: '', password: '', password_confirmation: '', gender: '' });
 
     const handleSort = (column: string) => {
         if (sortColumn === column) {
@@ -286,22 +275,6 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, careHomes }:
                                                     </SelectContent>
                                                 </Select>
                                                 {form.errors.gender && <p className="text-xs text-red-500">{form.errors.gender}</p>}
-                                            </div>
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="care_home_id">Care Home</Label>
-                                                <Select value={form.data.care_home_id} onValueChange={(value) => form.setData('care_home_id', value)}>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select care home" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {careHomes.map((ch) => (
-                                                            <SelectItem key={ch.id} value={ch.id}>
-                                                                {ch.name}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                {form.errors.care_home_id && <p className="text-xs text-red-500">{form.errors.care_home_id}</p>}
                                             </div>
                                             <div className="grid gap-2">
                                                 <Label htmlFor="password">Password</Label>

@@ -6,7 +6,6 @@ use App\DocumentType;
 use App\Http\Controllers\Controller;
 use App\Mail\UserStatusChanged;
 use App\Mail\WelcomeEmail;
-use App\Models\CareHome;
 use App\Models\Document;
 use App\Models\StatusChange;
 use App\Models\User;
@@ -43,11 +42,8 @@ class HealthCareWorkerController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $careHomes = CareHome::with('users')->get();
-
         return Inertia::render('admin/healthcare-workers/index', [
             'healthCareWorkers' => $healthCareWorkers,
-            'careHomes' => $careHomes,
         ]);
     }
 
