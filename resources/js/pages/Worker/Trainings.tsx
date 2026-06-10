@@ -91,20 +91,35 @@ export default function WorkerTrainings({ trainingTypes }: Props) {
     const uploadForm = useForm<{
         training_type_id: number | '';
         completed_at: string;
+        expires_at: string;
         certificate: File | null;
         notes: string;
     }>({
         training_type_id: '',
         completed_at: '',
+        expires_at: '',
         certificate: null,
         notes: '',
     });
 
+    function localDateString(d = new Date()): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function calcExpiry(completedAt: string, validityMonths: number): string {
+        if (!completedAt) return '';
+        const d = new Date(completedAt);
+        d.setMonth(d.getMonth() + validityMonths);
+        return d.toISOString().split('T')[0];
+    }
+
     function openUpload(type: TrainingType) {
         setUploadTarget(type);
+        const completedAt = type.training?.completed_at ?? '';
         uploadForm.setData({
             training_type_id: type.id,
-            completed_at: type.training?.completed_at ?? '',
+            completed_at: completedAt,
+            expires_at: type.training?.expires_at ?? calcExpiry(completedAt, type.validity_months),
             certificate: null,
             notes: type.training?.notes ?? '',
         });
@@ -207,27 +222,41 @@ export default function WorkerTrainings({ trainingTypes }: Props) {
                     </DialogHeader>
                     <form onSubmit={handleUpload} className="space-y-4">
                         <input type="hidden" value={uploadTarget?.id ?? ''} />
-                        <div className="space-y-1.5">
-                            <Label htmlFor="completed_at">Completion Date <span className="text-destructive">*</span></Label>
-                            <Input
-                                id="completed_at"
-                                type="date"
-                                max={new Date().toISOString().split('T')[0]}
-                                value={uploadForm.data.completed_at}
-                                onChange={(e) => uploadForm.setData('completed_at', e.target.value)}
-                            />
-                            {uploadForm.errors.completed_at && (
-                                <p className="text-xs text-destructive">{uploadForm.errors.completed_at}</p>
-                            )}
-                            {uploadForm.data.completed_at && uploadTarget && (
-                                <p className="text-xs text-muted-foreground">
-                                    Expires: {formatDate(
-                                        new Date(new Date(uploadForm.data.completed_at).setMonth(
-                                            new Date(uploadForm.data.completed_at).getMonth() + uploadTarget.validity_months
-                                        )).toISOString().split('T')[0]
-                                    )}
-                                </p>
-                            )}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="completed_at">Completion Date <span className="text-destructive">*</span></Label>
+                                <Input
+                                    id="completed_at"
+                                    type="date"
+                                    max={localDateString()}
+                                    value={uploadForm.data.completed_at}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        uploadForm.setData('completed_at', val);
+                                        if (uploadTarget) {
+                                            uploadForm.setData('expires_at', calcExpiry(val, uploadTarget.validity_months));
+                                        }
+                                    }}
+                                />
+                                {uploadForm.errors.completed_at && (
+                                    <p className="text-xs text-destructive">{uploadForm.errors.completed_at}</p>
+                                )}
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="expires_at">
+                                    Expiry Date <span className="text-destructive">*</span>
+                                </Label>
+                                <Input
+                                    id="expires_at"
+                                    type="date"
+                                    value={uploadForm.data.expires_at}
+                                    onChange={(e) => uploadForm.setData('expires_at', e.target.value)}
+                                />
+                                {uploadForm.errors.expires_at && (
+                                    <p className="text-xs text-destructive">{uploadForm.errors.expires_at}</p>
+                                )}
+                                <p className="text-xs text-muted-foreground">As shown on your certificate</p>
+                            </div>
                         </div>
 
                         <div className="space-y-1.5">
@@ -267,7 +296,7 @@ export default function WorkerTrainings({ trainingTypes }: Props) {
                             <Button type="button" variant="outline" onClick={() => { setUploadTarget(null); uploadForm.reset(); }}>
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={uploadForm.processing || !uploadForm.data.completed_at}>
+                            <Button type="submit" disabled={uploadForm.processing || !uploadForm.data.completed_at || !uploadForm.data.expires_at}>
                                 {uploadTarget?.training ? <><RefreshCw className="h-4 w-4 mr-2" />Update</> : <><Upload className="h-4 w-4 mr-2" />Upload</>}
                             </Button>
                         </DialogFooter>

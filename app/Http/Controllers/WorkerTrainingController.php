@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\TrainingType;
 use App\Models\WorkerTraining;
-use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -57,13 +56,14 @@ class WorkerTrainingController extends Controller
         $request->validate([
             'training_type_id' => 'required|exists:training_types,id',
             'completed_at'     => 'required|date|before_or_equal:today',
+            'expires_at'       => 'required|date|after:completed_at',
             'certificate'      => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'notes'            => 'nullable|string|max:500',
         ]);
 
         $user = $request->user();
         $type = TrainingType::findOrFail($request->training_type_id);
-        $expiresAt = Carbon::parse($request->completed_at)->addMonths($type->validity_months);
+        $expiresAt = $request->expires_at;
 
         $existing = WorkerTraining::where('user_id', $user->id)
             ->where('training_type_id', $type->id)
