@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\TrainingType;
+use App\Services\ActivityLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -32,13 +33,20 @@ class AdminTrainingTypeController extends Controller
             'is_mandatory'     => 'required|boolean',
         ]);
 
-        TrainingType::create([
+        $trainingType = TrainingType::create([
             'name'            => $request->name,
             'description'     => $request->description,
             'validity_months' => $request->validity_months,
             'is_mandatory'    => $request->is_mandatory,
             'is_active'       => true,
         ]);
+
+        ActivityLogService::log(
+            action: 'training_type_created',
+            description: "Training type '{$trainingType->name}' was created",
+            subject: $trainingType,
+            properties: ['name' => $trainingType->name, 'validity_months' => $trainingType->validity_months, 'is_mandatory' => $trainingType->is_mandatory],
+        );
 
         return redirect()->back()->with('success', 'Training type created successfully.');
     }
@@ -53,7 +61,15 @@ class AdminTrainingTypeController extends Controller
             'is_active'       => 'required|boolean',
         ]);
 
+        $old = $trainingType->only(['name', 'description', 'validity_months', 'is_mandatory', 'is_active']);
         $trainingType->update($request->only(['name', 'description', 'validity_months', 'is_mandatory', 'is_active']));
+
+        ActivityLogService::log(
+            action: 'training_type_updated',
+            description: "Training type '{$trainingType->name}' was updated",
+            subject: $trainingType,
+            properties: ['old' => $old, 'new' => $trainingType->only(['name', 'description', 'validity_months', 'is_mandatory', 'is_active'])],
+        );
 
         return redirect()->back()->with('success', 'Training type updated successfully.');
     }
@@ -66,7 +82,14 @@ class AdminTrainingTypeController extends Controller
             ]);
         }
 
+        $name = $trainingType->name;
         $trainingType->delete();
+
+        ActivityLogService::log(
+            action: 'training_type_deleted',
+            description: "Training type '{$name}' was deleted",
+            properties: ['name' => $name],
+        );
 
         return redirect()->back()->with('success', 'Training type deleted.');
     }

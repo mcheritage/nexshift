@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\TrainingType;
 use App\Models\User;
 use App\Models\WorkerTraining;
+use App\Services\ActivityLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -66,12 +67,21 @@ class AdminWorkerTrainingController extends Controller
     {
         abort_unless($workerTraining->user_id === $worker->id, 404);
 
+        $reviewerId = auth()->user()?->id;
+
         $workerTraining->update([
             'status'           => 'approved',
             'rejection_reason' => null,
-            'reviewed_by'      => auth()->id(),
+            'reviewed_by'      => $reviewerId,
             'reviewed_at'      => now(),
         ]);
+
+        ActivityLogService::log(
+            action: 'training_approved',
+            description: "Training '{$workerTraining->trainingType->name}' approved for {$worker->first_name} {$worker->last_name}",
+            subject: $workerTraining,
+            properties: ['training_type' => $workerTraining->trainingType->name, 'worker_id' => $worker->id, 'worker_name' => "{$worker->first_name} {$worker->last_name}"],
+        );
 
         return redirect()->back()->with('success', 'Training approved.');
     }
@@ -84,17 +94,26 @@ class AdminWorkerTrainingController extends Controller
             'reason' => 'required|string|max:500',
         ]);
 
+        $reviewerId = auth()->user()?->id;
+
         $workerTraining->update([
             'status'           => 'rejected',
             'rejection_reason' => $request->reason,
-            'reviewed_by'      => auth()->id(),
+            'reviewed_by'      => $reviewerId,
             'reviewed_at'      => now(),
         ]);
+
+        ActivityLogService::log(
+            action: 'training_rejected',
+            description: "Training '{$workerTraining->trainingType->name}' rejected for {$worker->first_name} {$worker->last_name}",
+            subject: $workerTraining,
+            properties: ['training_type' => $workerTraining->trainingType->name, 'worker_id' => $worker->id, 'worker_name' => "{$worker->first_name} {$worker->last_name}", 'reason' => $request->reason],
+        );
 
         return redirect()->back()->with('success', 'Training rejected.');
     }
 
-    public function download(User $worker, WorkerTraining $workerTraining): mixed
+    public function download(User $worker, WorkerTraining $workerTraining): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         abort_unless($workerTraining->user_id === $worker->id, 404);
 

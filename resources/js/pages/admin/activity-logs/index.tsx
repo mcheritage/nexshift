@@ -432,11 +432,10 @@ export default function ActivityLogsIndex({ activityLogs, actions, filters }: Pr
                                                     <FileText className="h-5 w-5 text-amber-700 dark:text-amber-300" />
                                                 </div>
                                                 <div className="flex-1 min-w-0 space-y-2">
-                                                    <div className="flex items-center gap-2">
+                                                    <div>
                                                         <Badge variant="secondary" className="text-xs">
                                                             {selectedLog.subject.type}
                                                         </Badge>
-                                                        <span className="text-xs text-gray-500 font-mono">ID: {selectedLog.subject.id}</span>
                                                     </div>
                                                     {selectedLog.subject.name && (
                                                         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{selectedLog.subject.name}</p>
