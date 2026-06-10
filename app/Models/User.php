@@ -240,6 +240,15 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->status === 'approved';
     }
 
+    public function hasExpiredRequiredDocuments(): bool
+    {
+        return $this->documents()
+            ->whereIn('document_type', \App\DocumentType::getAllRequiredForWorker())
+            ->whereNotNull('expiry_date')
+            ->whereDate('expiry_date', '<', today())
+            ->exists();
+    }
+
     /**
      * Check if the user is pending approval
      */

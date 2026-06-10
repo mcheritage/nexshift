@@ -169,6 +169,11 @@ class WorkerController extends Controller
             return redirect()->back()->withErrors(['error' => 'Your account must be approved before you can apply for shifts']);
         }
 
+        // Block if worker has expired required documents
+        if ($user->hasExpiredRequiredDocuments()) {
+            return redirect()->back()->withErrors(['error' => 'You have one or more expired required documents. Please renew them before applying for shifts.']);
+        }
+
         // Check if shift is available for applications
         if ($shift->status !== Shift::STATUS_PUBLISHED) {
             return redirect()->back()->withErrors(['error' => 'This shift is no longer available for applications']);
@@ -836,6 +841,10 @@ class WorkerController extends Controller
 
         if ($application->status !== Application::STATUS_ASSIGNED) {
             return redirect()->back()->withErrors(['error' => 'This shift is not awaiting your acceptance.']);
+        }
+
+        if ($user->hasExpiredRequiredDocuments()) {
+            return redirect()->back()->withErrors(['error' => 'You have one or more expired required documents. Please renew them before accepting shifts.']);
         }
 
         $application->update([
