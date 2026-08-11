@@ -15,10 +15,10 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function () {
     // registration routes
     Route::get('register', [RegisteredHealthWorkerController::class, 'create'])->name('register');
-    Route::post('register', [RegisteredHealthWorkerController::class, 'store']);
+    Route::post('register', [RegisteredHealthWorkerController::class, 'store'])->middleware('throttle:5,1');
 
     Route::get('register/carehome', [RegisteredCareHomeController::class, 'create'])->name('register.carehome');
-    Route::post('register/carehome', [RegisteredCareHomeController::class, 'store']);
+    Route::post('register/carehome', [RegisteredCareHomeController::class, 'store'])->middleware('throttle:5,1');
 
 
     // login routes
