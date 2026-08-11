@@ -331,7 +331,7 @@ class InvoiceController extends Controller
     /**
      * Create Stripe checkout session for invoice payment
      */
-    public function createStripeCheckout(Invoice $invoice)
+    public function createStripeCheckout(Request $request, Invoice $invoice)
     {
         $user = Auth::user();
         $careHome = $user->care_home;
@@ -341,6 +341,9 @@ class InvoiceController extends Controller
         }
 
         if ($invoice->status === 'paid') {
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'This invoice has already been paid'], 422);
+            }
             return back()->with('error', 'This invoice has already been paid');
         }
 
@@ -382,6 +385,9 @@ class InvoiceController extends Controller
                 'stripe_session_id' => $session->id,
             ]);
 
+            if ($request->wantsJson()) {
+                return response()->json(['url' => $session->url]);
+            }
             return redirect($session->url);
 
         } catch (\Exception $e) {
@@ -389,6 +395,9 @@ class InvoiceController extends Controller
                 'invoice_id' => $invoice->id,
                 'error' => $e->getMessage(),
             ]);
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Failed to create payment session: ' . $e->getMessage()], 422);
+            }
             return back()->with('error', 'Failed to create payment session: ' . $e->getMessage());
         }
     }
