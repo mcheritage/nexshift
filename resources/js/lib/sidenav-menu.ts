@@ -17,6 +17,7 @@ import {
   Receipt,
   Activity,
   Wallet,
+  GraduationCap,
 } from "lucide-react";
 
 // Care Home Admin Navigation Items
@@ -101,6 +102,11 @@ const adminNavItems: NavItem[] = [
     icon: FileText,
   },
   {
+    title: "Training Types",
+    href: "/admin/training-types",
+    icon: GraduationCap,
+  },
+  {
     title: "Activity Logs",
     href: "/admin/activity-logs",
     icon: Activity,
@@ -133,6 +139,11 @@ const healthCareWorkerNavItems: NavItem[] = [
     title: "My Documents",
     href: "/worker/documents",
     icon: Folder,
+  },
+  {
+    title: "My Trainings",
+    href: "/worker/trainings",
+    icon: GraduationCap,
   },
   {
     title: "Timesheets",

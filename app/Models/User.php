@@ -176,6 +176,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(BankDetails::class);
     }
 
+    public function trainings()
+    {
+        return $this->hasMany(\App\Models\WorkerTraining::class);
+    }
+
     /**
      * Get the user's wallet
      */
@@ -233,6 +238,15 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isApproved(): bool
     {
         return $this->status === 'approved';
+    }
+
+    public function hasExpiredRequiredDocuments(): bool
+    {
+        return $this->documents()
+            ->whereIn('document_type', \App\DocumentType::getAllRequiredForWorker())
+            ->whereNotNull('expiry_date')
+            ->whereDate('expiry_date', '<', today())
+            ->exists();
     }
 
     /**

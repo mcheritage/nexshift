@@ -1,10 +1,19 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
 import { SharedData } from '@/types';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, CheckCircle, Printer } from 'lucide-react';
+
+// Reads the CSRF token from the XSRF-TOKEN cookie, which Laravel refreshes on
+// every request, unlike the csrf-token meta tag which is frozen at initial page load
+// and can go stale on long-lived Inertia SPA sessions, causing 419 errors.
+const getCsrfTokenFromCookie = () => {
+    const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
+    return match ? decodeURIComponent(match[1]) : '';
+};
 
 interface Worker {
     id: string;
@@ -82,21 +91,37 @@ export default function ShowInvoice({ invoice }: ShowInvoiceProps) {
         }).format(amount);
     };
 
-    const handlePayInvoice = () => {
-        // Use a form to make a standard POST request (not AJAX) so we can redirect to Stripe
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = route('invoices.stripe-checkout', invoice.id);
-        
-        // Add CSRF token
-        const csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = '_token';
-        csrfInput.value = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-        form.appendChild(csrfInput);
-        
-        document.body.appendChild(form);
-        form.submit();
+    const [isPaying, setIsPaying] = useState(false);
+    const [payError, setPayError] = useState<string | null>(null);
+
+    const handlePayInvoice = async () => {
+        setIsPaying(true);
+        setPayError(null);
+
+        try {
+            const response = await fetch(route('invoices.stripe-checkout', invoice.id), {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-XSRF-TOKEN': getCsrfTokenFromCookie(),
+                },
+                credentials: 'same-origin',
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.url) {
+                window.location.href = data.url;
+                return;
+            }
+
+            setPayError(data.message || 'Failed to start payment. Please try again.');
+        } catch (error) {
+            setPayError('Failed to start payment. Please try again.');
+        } finally {
+            setIsPaying(false);
+        }
     };
 
     const handlePrint = () => {
@@ -127,13 +152,16 @@ export default function ShowInvoice({ invoice }: ShowInvoiceProps) {
                             Print
                         </Button>
                         {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
-                            <Button onClick={handlePayInvoice}>
+                            <Button onClick={handlePayInvoice} disabled={isPaying}>
                                 <CheckCircle className="w-4 h-4 mr-2" />
-                                Pay with Stripe
+                                {isPaying ? 'Redirecting…' : 'Pay with Stripe'}
                             </Button>
                         )}
                     </div>
                 </div>
+                {payError && (
+                    <p className="text-sm text-red-600 print:hidden">{payError}</p>
+                )}
 
                 <Card className="print:shadow-none print:border-0">
                     <CardContent className="p-8">

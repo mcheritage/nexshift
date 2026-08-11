@@ -19,6 +19,7 @@ import {
     Clock,
     CreditCard,
     FileText,
+    GraduationCap,
     Shield,
     Star,
     User,
@@ -80,6 +81,7 @@ interface HealthCareWorker {
     status_changes: StatusChange[];
     work_experiences: WorkExperience[];
     skills: Skill[];
+    has_bank_details: boolean;
 }
 
 interface DocumentStats {
@@ -100,10 +102,20 @@ interface StripeStatus {
     account_type: string;
 }
 
+interface TrainingStats {
+    total_mandatory: number;
+    uploaded: number;
+    valid: number;
+    pending: number;
+    expiring_soon: number;
+    expired: number;
+}
+
 interface Props {
     healthCareWorker: HealthCareWorker;
     documentStats: DocumentStats;
     totalRequired: number;
+    trainingStats: TrainingStats;
     stripeStatus?: StripeStatus | null;
 }
 
@@ -159,8 +171,27 @@ function formatDateRange(start: string | null, end: string | null, isCurrent: bo
     return `${s} – ${e}`;
 }
 
-export default function HealthCareWorkerShow({ healthCareWorker: worker, documentStats, totalRequired, stripeStatus }: Props) {
+export default function HealthCareWorkerShow({ healthCareWorker: worker, documentStats, totalRequired, trainingStats, stripeStatus }: Props) {
     const completionPct = totalRequired > 0 ? Math.round((documentStats.approved / totalRequired) * 100) : 0;
+
+    const profileChecks = [
+        !!worker.profile_photo,
+        !!worker.phone_number,
+        !!worker.date_of_birth,
+        (worker.qualifications?.length ?? 0) > 0,
+        !!worker.hourly_rate_min,
+        worker.work_experiences.length > 0,
+        worker.skills.length > 0,
+        worker.has_bank_details,
+    ];
+    const profileScore = Math.round((profileChecks.filter(Boolean).length / profileChecks.length) * 40);
+    const docScore = totalRequired > 0
+        ? Math.round((Math.min(documentStats.approved, totalRequired) / totalRequired) * 30)
+        : 0;
+    const trainingScore = trainingStats.total_mandatory > 0
+        ? Math.round((Math.min(trainingStats.valid, trainingStats.total_mandatory) / trainingStats.total_mandatory) * 30)
+        : 0;
+    const totalCompletionPct = profileScore + docScore + trainingScore;
 
     const [isApproveOpen, setIsApproveOpen] = useState(false);
     const [isRejectOpen, setIsRejectOpen] = useState(false);
@@ -241,12 +272,6 @@ export default function HealthCareWorkerShow({ healthCareWorker: worker, documen
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2 items-start">
                         <div className="flex flex-wrap gap-2">
-                            <Button asChild variant="outline">
-                                <Link href={`/admin/workers/${worker.id}/documents`}>
-                                    <FileText className="h-4 w-4 mr-2" />
-                                    Documents
-                                </Link>
-                            </Button>
                             {worker.status === 'pending' && (
                                 <>
                                     <Button variant="default" onClick={() => setIsApproveOpen(true)}>
@@ -296,40 +321,67 @@ export default function HealthCareWorkerShow({ healthCareWorker: worker, documen
                     </Card>
                 )}
 
-                {/* Document Stats */}
-                <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
-                    {[
-                        { label: 'Total Documents', value: documentStats.total, icon: FileText, color: 'text-muted-foreground' },
-                        { label: 'Pending', value: documentStats.pending, icon: Clock, color: 'text-yellow-600' },
-                        { label: 'Approved', value: documentStats.approved, icon: CheckCircle, color: 'text-green-600' },
-                        { label: 'Rejected', value: documentStats.rejected, icon: XCircle, color: 'text-red-600' },
-                        { label: 'Needs Attention', value: documentStats.requires_attention, icon: AlertTriangle, color: 'text-orange-600' },
-                    ].map(({ label, value, icon: Icon, color }) => (
-                        <Link key={label} href={`/admin/workers/${worker.id}/documents`}>
-                            <Card className="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all">
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">{label}</CardTitle>
-                                    <Icon className={`h-4 w-4 ${color}`} />
-                                </CardHeader>
-                                <CardContent>
-                                    <div className={`text-2xl font-bold ${color}`}>{value}</div>
-                                </CardContent>
-                            </Card>
-                        </Link>
-                    ))}
-                </div>
-
-                {/* Document completion */}
+                {/* Profile completion */}
                 <Card>
-                    <CardContent className="pt-4">
+                    <CardContent className="pt-5 pb-5">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium">Document Completion</span>
-                            <span className="text-sm font-medium">{completionPct}%</span>
+                            <div>
+                                <span className="text-sm font-semibold">Profile Completion</span>
+                                <span className="text-xs text-muted-foreground ml-2">
+                                    Profile {profileScore}% · Documents {docScore}% · Trainings {trainingScore}%
+                                </span>
+                            </div>
+                            <span className="text-2xl font-bold">{totalCompletionPct}%</span>
                         </div>
-                        <Progress value={completionPct} className="h-2" />
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {documentStats.approved} of {totalRequired} required documents approved
-                        </p>
+                        <Progress value={totalCompletionPct} className="h-2.5" />
+                    </CardContent>
+                </Card>
+
+                {/* Documents card */}
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                        <div>
+                            <CardTitle className="flex items-center gap-2">
+                                <FileText className="h-5 w-5" />
+                                Documents
+                            </CardTitle>
+                            <CardDescription>Document upload status and compliance</CardDescription>
+                        </div>
+                        <Button asChild variant="outline" size="sm">
+                            <Link href={`/admin/workers/${worker.id}/documents`}>
+                                <FileText className="h-4 w-4 mr-2" />
+                                View Documents
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
+                            {[
+                                { label: 'Total', value: documentStats.total, icon: FileText, color: 'text-muted-foreground' },
+                                { label: 'Pending', value: documentStats.pending, icon: Clock, color: 'text-yellow-600' },
+                                { label: 'Approved', value: documentStats.approved, icon: CheckCircle, color: 'text-green-600' },
+                                { label: 'Rejected', value: documentStats.rejected, icon: XCircle, color: 'text-red-600' },
+                                { label: 'Needs Attention', value: documentStats.requires_attention, icon: AlertTriangle, color: 'text-orange-600' },
+                            ].map(({ label, value, icon: Icon, color }) => (
+                                <div key={label} className="rounded-lg border bg-card p-3">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs text-muted-foreground">{label}</span>
+                                        <Icon className={`h-3.5 w-3.5 ${color}`} />
+                                    </div>
+                                    <div className={`text-2xl font-bold ${color}`}>{value}</div>
+                                </div>
+                            ))}
+                        </div>
+                        <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-sm font-medium">Completion</span>
+                                <span className="text-sm font-medium">{completionPct}%</span>
+                            </div>
+                            <Progress value={completionPct} className="h-2" />
+                            <p className="text-xs text-muted-foreground mt-1">
+                                {documentStats.approved} of {totalRequired} required documents approved
+                            </p>
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -469,6 +521,49 @@ export default function HealthCareWorkerShow({ healthCareWorker: worker, documen
                         </CardContent>
                     </Card>
                 )}
+
+                {/* Trainings */}
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                        <div>
+                            <CardTitle className="flex items-center gap-2">
+                                <GraduationCap className="h-5 w-5" />
+                                Trainings
+                            </CardTitle>
+                            <CardDescription>Training certificate compliance</CardDescription>
+                        </div>
+                        <Button asChild variant="outline" size="sm">
+                            <Link href={`/admin/workers/${worker.id}/trainings`}>
+                                <GraduationCap className="h-4 w-4 mr-2" />
+                                View Trainings
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+                            {[
+                                { label: 'Mandatory', value: trainingStats.total_mandatory, icon: Shield, color: 'text-muted-foreground' },
+                                { label: 'Valid', value: trainingStats.valid, icon: CheckCircle, color: 'text-green-600' },
+                                { label: 'Pending', value: trainingStats.pending, icon: Clock, color: 'text-yellow-600' },
+                                { label: 'Expired / Rejected', value: trainingStats.expired, icon: XCircle, color: 'text-red-600' },
+                            ].map(({ label, value, icon: Icon, color }) => (
+                                <div key={label} className="rounded-lg border bg-card p-3">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs text-muted-foreground">{label}</span>
+                                        <Icon className={`h-3.5 w-3.5 ${color}`} />
+                                    </div>
+                                    <div className={`text-2xl font-bold ${color}`}>{value}</div>
+                                </div>
+                            ))}
+                        </div>
+                        {trainingStats.expiring_soon > 0 && (
+                            <div className="flex items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-200">
+                                <AlertTriangle className="h-4 w-4 shrink-0" />
+                                {trainingStats.expiring_soon} training{trainingStats.expiring_soon > 1 ? 's' : ''} expiring within 30 days
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
                 {/* Stripe */}
                 <Card>

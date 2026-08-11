@@ -55,14 +55,16 @@ interface HealthCareWorker {
     skill_records_count: number;
     bank_details_count: number;
     required_docs_uploaded_count: number;
+    valid_trainings_count: number;
 }
 
 interface Props {
     healthCareWorkers: HealthCareWorker[];
     totalRequiredDocs: number;
+    totalMandatoryTrainings: number;
 }
 
-function profileCompletion(worker: HealthCareWorker, totalRequiredDocs: number): number {
+function profileCompletion(worker: HealthCareWorker, totalRequiredDocs: number, totalMandatoryTrainings: number): number {
     const profileChecks = [
         !!worker.profile_photo,
         !!worker.phone_number,
@@ -73,13 +75,17 @@ function profileCompletion(worker: HealthCareWorker, totalRequiredDocs: number):
         worker.skill_records_count > 0,
         worker.bank_details_count > 0,
     ];
-    const profileScore = (profileChecks.filter(Boolean).length / profileChecks.length) * 50;
+    const profileScore = (profileChecks.filter(Boolean).length / profileChecks.length) * 40;
 
     const docScore = totalRequiredDocs > 0
-        ? (Math.min(worker.required_docs_uploaded_count, totalRequiredDocs) / totalRequiredDocs) * 50
+        ? (Math.min(worker.required_docs_uploaded_count, totalRequiredDocs) / totalRequiredDocs) * 30
         : 0;
 
-    return Math.round(profileScore + docScore);
+    const trainingScore = totalMandatoryTrainings > 0
+        ? (Math.min(worker.valid_trainings_count, totalMandatoryTrainings) / totalMandatoryTrainings) * 30
+        : 0;
+
+    return Math.round(profileScore + docScore + trainingScore);
 }
 
 const genderOptions = [
@@ -88,7 +94,7 @@ const genderOptions = [
     { value: 'other', label: 'Other' },
 ];
 
-export default function HealthCareWorkersIndex({ healthCareWorkers, totalRequiredDocs }: Props) {
+export default function HealthCareWorkersIndex({ healthCareWorkers, totalRequiredDocs, totalMandatoryTrainings }: Props) {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [createSuccess, setCreateSuccess] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -487,7 +493,7 @@ export default function HealthCareWorkersIndex({ healthCareWorkers, totalRequire
                                                 </TableCell>
                                                 <TableCell className="py-2">
                                                     {(() => {
-                                                        const pct = profileCompletion(worker, totalRequiredDocs);
+                                                        const pct = profileCompletion(worker, totalRequiredDocs, totalMandatoryTrainings);
                                                         const color = pct === 100 ? 'text-green-600' : pct >= 50 ? 'text-yellow-600' : 'text-red-500';
                                                         return (
                                                             <div className="flex items-center gap-2 min-w-[100px]">

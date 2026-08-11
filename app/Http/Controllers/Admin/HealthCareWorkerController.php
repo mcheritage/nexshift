@@ -28,6 +28,7 @@ class HealthCareWorkerController extends Controller
     {
         $requiredDocTypes = array_column(DocumentType::getAllRequiredForWorker(), 'value');
         $totalRequired = count($requiredDocTypes);
+        $totalMandatoryTrainings = \App\Models\TrainingType::where('is_mandatory', true)->where('is_active', true)->count();
 
         $healthCareWorkers = User::where('role', 'health_worker')
             ->withCount([
@@ -38,13 +39,19 @@ class HealthCareWorkerController extends Controller
                     $q->whereIn('document_type', $requiredDocTypes)
                       ->distinct('document_type');
                 },
+                'trainings as valid_trainings_count' => function ($q) {
+                    $now = now()->toDateString();
+                    $soon = now()->addDays(30)->toDateString();
+                    $q->where('status', 'approved')->where('expires_at', '>', $now);
+                },
             ])
             ->orderBy('created_at', 'desc')
             ->get();
 
         return Inertia::render('admin/healthcare-workers/index', [
-            'healthCareWorkers' => $healthCareWorkers,
-            'totalRequiredDocs' => $totalRequired,
+            'healthCareWorkers'      => $healthCareWorkers,
+            'totalRequiredDocs'      => $totalRequired,
+            'totalMandatoryTrainings'=> $totalMandatoryTrainings,
         ]);
     }
 
@@ -67,6 +74,17 @@ class HealthCareWorkerController extends Controller
         ];
 
         $totalRequired = count(DocumentType::getAllRequiredForWorker());
+
+        $mandatoryTrainingCount = \App\Models\TrainingType::where('is_mandatory', true)->where('is_active', true)->count();
+        $workerTrainings = \App\Models\WorkerTraining::where('user_id', $healthCareWorker->id)->get();
+        $trainingStats = [
+            'total_mandatory' => $mandatoryTrainingCount,
+            'uploaded'        => $workerTrainings->count(),
+            'valid'           => $workerTrainings->filter(fn($t) => in_array($t->compliance_status, ['valid', 'approved']))->count(),
+            'pending'         => $workerTrainings->where('status', 'pending')->count(),
+            'expiring_soon'   => $workerTrainings->filter(fn($t) => $t->compliance_status === 'expiring_soon')->count(),
+            'expired'         => $workerTrainings->filter(fn($t) => in_array($t->compliance_status, ['expired', 'rejected']))->count(),
+        ];
 
         $stripeStatus = null;
         if ($healthCareWorker->stripe_account_id) {
@@ -131,10 +149,12 @@ class HealthCareWorkerController extends Controller
                     'proficiency_level' => $s->proficiency_level,
                     'years_experience' => $s->years_experience,
                 ]),
+                'has_bank_details' => $healthCareWorker->bankDetails()->exists(),
             ],
-            'documentStats' => $documentStats,
-            'totalRequired' => $totalRequired,
-            'stripeStatus' => $stripeStatus,
+            'documentStats'  => $documentStats,
+            'totalRequired'  => $totalRequired,
+            'trainingStats'  => $trainingStats,
+            'stripeStatus'   => $stripeStatus,
         ]);
     }
 

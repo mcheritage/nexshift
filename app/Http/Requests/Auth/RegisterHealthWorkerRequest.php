@@ -25,13 +25,25 @@ class RegisterHealthWorkerRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'other_names' => 'nullable|string|max:255',
+            'first_name' => ['required', 'string', 'max:255', 'regex:/^[\p{L}\s\'-]+$/u'],
+            'last_name' => ['required', 'string', 'max:255', 'regex:/^[\p{L}\s\'-]+$/u'],
+            'other_names' => ['nullable', 'string', 'max:255', 'regex:/^[\p{L}\s\'-]+$/u'],
             'gender' => 'required|in:male,female,other',
             'phone_number' => 'nullable|string|max:20',
             'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ];
+    }
+
+    /**
+     * Get custom error messages for validator errors.
+     */
+    public function messages(): array
+    {
+        return [
+            'first_name.regex' => 'Name may only contain letters, spaces, hyphens and apostrophes.',
+            'last_name.regex' => 'Name may only contain letters, spaces, hyphens and apostrophes.',
+            'other_names.regex' => 'Name may only contain letters, spaces, hyphens and apostrophes.',
         ];
     }
 

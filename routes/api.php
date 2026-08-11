@@ -17,7 +17,7 @@ use App\Http\Controllers\Api\EarningsController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\StripeController;
 
-Route::post('/auth/register', [RegisterUserController::class, 'store']);
+Route::post('/auth/register', [RegisterUserController::class, 'store'])->middleware('throttle:5,1');
 Route::post('/auth/login', [LoginController::class, 'login']);
 Route::post('/auth/forgot-password', [PasswordResetController::class, 'sendResetLink']);
 Route::post('/auth/reset-password', [PasswordResetController::class, 'resetPassword']);

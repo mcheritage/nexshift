@@ -25,11 +25,14 @@ class RegisterUserController extends Controller
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'first_name' => 'required|string',
-            'last_name' => 'required|string',
+            'first_name' => ['required', 'string', 'max:255', 'regex:/^[\p{L}\s\'-]+$/u'],
+            'last_name' => ['required', 'string', 'max:255', 'regex:/^[\p{L}\s\'-]+$/u'],
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'phone_number' => 'required|string|max:32',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ], [
+            'first_name.regex' => 'Name may only contain letters, spaces, hyphens and apostrophes.',
+            'last_name.regex' => 'Name may only contain letters, spaces, hyphens and apostrophes.',
         ]);
 
         $user = User::create([

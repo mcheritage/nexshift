@@ -112,6 +112,79 @@ const getActionColor = (action: string) => {
     return 'outline';
 };
 
+function formatPropLabel(key: string): string {
+    return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatPropValue(value: unknown): string {
+    if (value === null || value === undefined) return '—';
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+}
+
+// Keys we never want to show as detail rows (internal IDs / redundant data)
+const SKIP_KEYS = new Set(['user_id', 'worker_id', 'care_home_id', 'document_id', 'shift_id', 'application_id', 'timesheet_id']);
+
+function PropertiesBlock({ properties }: { properties: Record<string, unknown> }) {
+    const hasOldNew = 'old' in properties && 'new' in properties;
+    // user_updated stores changes as { old: {}, new: {} } nested under 'changes'
+    const changesObj = !hasOldNew && properties.changes && typeof properties.changes === 'object'
+        ? (properties.changes as Record<string, unknown>)
+        : null;
+    const hasDiff = hasOldNew || (changesObj && 'old' in changesObj && 'new' in changesObj);
+
+    if (hasDiff) {
+        const oldVals = (hasOldNew ? properties.old : changesObj?.old) as Record<string, unknown>;
+        const newVals = (hasOldNew ? properties.new : changesObj?.new) as Record<string, unknown>;
+        const changedKeys = Object.keys(newVals).filter((k) => formatPropValue(oldVals[k]) !== formatPropValue(newVals[k]));
+
+        return (
+            <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">What Changed</Label>
+                {changedKeys.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No fields changed.</p>
+                ) : (
+                    <div className="rounded-lg border overflow-hidden text-sm">
+                        <div className="grid grid-cols-3 bg-muted/60 px-3 py-2 text-xs font-semibold text-muted-foreground">
+                            <span>Field</span><span>Before</span><span>After</span>
+                        </div>
+                        {changedKeys.map((key) => (
+                            <div key={key} className="grid grid-cols-3 px-3 py-2.5 border-t gap-2 items-start">
+                                <span className="font-medium">{formatPropLabel(key)}</span>
+                                <span className="text-red-600 dark:text-red-400 line-through opacity-75 break-words">
+                                    {formatPropValue(oldVals[key])}
+                                </span>
+                                <span className="text-green-600 dark:text-green-400 font-medium break-words">
+                                    {formatPropValue(newVals[key])}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // Flat key-value display for everything else
+    const rows = Object.entries(properties).filter(([k]) => !SKIP_KEYS.has(k) && k !== 'changes');
+    if (rows.length === 0) return null;
+
+    return (
+        <div className="space-y-2">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Details</Label>
+            <div className="rounded-lg border overflow-hidden text-sm">
+                {rows.map(([key, value]) => (
+                    <div key={key} className="grid grid-cols-2 px-3 py-2.5 border-t first:border-t-0 gap-2">
+                        <span className="text-muted-foreground">{formatPropLabel(key)}</span>
+                        <span className="font-medium break-words">{formatPropValue(value)}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export default function ActivityLogsIndex({ activityLogs, actions, filters }: Props) {
     const [search, setSearch] = useState(filters.search || '');
     const [selectedAction, setSelectedAction] = useState(filters.action || 'all');
@@ -432,11 +505,10 @@ export default function ActivityLogsIndex({ activityLogs, actions, filters }: Pr
                                                     <FileText className="h-5 w-5 text-amber-700 dark:text-amber-300" />
                                                 </div>
                                                 <div className="flex-1 min-w-0 space-y-2">
-                                                    <div className="flex items-center gap-2">
+                                                    <div>
                                                         <Badge variant="secondary" className="text-xs">
                                                             {selectedLog.subject.type}
                                                         </Badge>
-                                                        <span className="text-xs text-gray-500 font-mono">ID: {selectedLog.subject.id}</span>
                                                     </div>
                                                     {selectedLog.subject.name && (
                                                         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{selectedLog.subject.name}</p>
@@ -463,14 +535,7 @@ export default function ActivityLogsIndex({ activityLogs, actions, filters }: Pr
                                 )}
 
                                 {selectedLog.properties && Object.keys(selectedLog.properties).length > 0 && (
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Additional Properties</Label>
-                                        <div className="relative">
-                                            <pre className="text-xs bg-gray-900 dark:bg-gray-950 text-gray-100 p-4 rounded-lg overflow-x-auto border border-gray-700 font-mono leading-relaxed">
-                                                {JSON.stringify(selectedLog.properties, null, 2)}
-                                            </pre>
-                                        </div>
-                                    </div>
+                                    <PropertiesBlock properties={selectedLog.properties} />
                                 )}
                             </div>
                         )}
