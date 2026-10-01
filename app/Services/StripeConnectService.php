@@ -6,6 +6,8 @@ use App\Models\User;
 use Stripe\Account;
 use Stripe\StripeClient;
 use Stripe\Exception\ApiErrorException;
+use Stripe\Exception\InvalidRequestException;
+use Stripe\Exception\PermissionException;
 use Illuminate\Support\Facades\Log;
 
 class StripeConnectService
@@ -27,16 +29,25 @@ class StripeConnectService
     public function createConnectAccount(User $user): array
     {
         try {
-            // Check if user already has a Stripe account
+            // Reuse the user's existing Stripe account, so unfinished onboarding
+            // resumes on the same account instead of creating a duplicate
             if ($user->stripe_account_id) {
-                $account = $this->stripe->accounts->retrieve($user->stripe_account_id);
-                
-                if ($account->details_submitted) {
+                try {
+                    $account = $this->stripe->accounts->retrieve($user->stripe_account_id);
+
                     return [
                         'success' => true,
                         'account_id' => $account->id,
                         'already_exists' => true,
                     ];
+                } catch (InvalidRequestException | PermissionException $e) {
+                    // The stored account no longer exists for these API keys
+                    // (deleted, or created under different keys), so start again
+                    Log::warning('Stored Stripe account not found, creating a new one', [
+                        'user_id' => $user->id,
+                        'stripe_account_id' => $user->stripe_account_id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
 
@@ -69,6 +80,11 @@ class StripeConnectService
             $user->update([
                 'stripe_account_id' => $account->id,
                 'stripe_account_type' => $accountType,
+                'stripe_onboarding_complete' => false,
+                'stripe_charges_enabled' => false,
+                'stripe_payouts_enabled' => false,
+                'stripe_connected_at' => null,
+                'stripe_requirements' => null,
             ]);
 
             Log::info('Stripe Connect account created', [
