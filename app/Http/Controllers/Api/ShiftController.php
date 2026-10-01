@@ -27,6 +27,14 @@ class ShiftController extends BaseApiController
             ], 403);
         }
 
+        // Only workers who are ready to receive payments can see shifts
+        if (!$user->canReceivePayments()) {
+            return response()->json([
+                'error' => 'You must finish setting up your Stripe account before you can view shifts.',
+                'stripe_status' => $user->getStripeStatus()
+            ], 403);
+        }
+
         $query = Shift::with(['careHome', 'selectedWorker'])
             ->whereHas('careHome', function($q) {
                 // Only show shifts from approved care homes
@@ -89,6 +97,14 @@ class ShiftController extends BaseApiController
             return response()->json([
                 'error' => 'Your account must be approved by an administrator before you can view shifts.',
                 'approval_status' => $user->approval_status
+            ], 403);
+        }
+
+        // Only workers who are ready to receive payments can see shifts
+        if (!$user->canReceivePayments()) {
+            return response()->json([
+                'error' => 'You must finish setting up your Stripe account before you can view shifts.',
+                'stripe_status' => $user->getStripeStatus()
             ], 403);
         }
 
