@@ -239,36 +239,4 @@ class StripeController extends Controller
             ], 500);
         }
     }
-
-    /**
-     * Disconnect Stripe account
-     *
-     * @return RedirectResponse
-     */
-    public function disconnect(): RedirectResponse
-    {
-        $user = Auth::user();
-
-        if (!$user->stripe_account_id) {
-            return redirect()
-                ->route('worker.stripe.index')
-                ->with('info', 'No Stripe account is connected.');
-        }
-
-        // Note: You may want to add additional logic here to handle
-        // any pending payouts or transactions before disconnecting
-
-        $user->update([
-            'stripe_account_id' => null,
-            'stripe_onboarding_complete' => false,
-            'stripe_account_type' => null,
-            'stripe_connected_at' => null,
-            'stripe_charges_enabled' => false,
-            'stripe_payouts_enabled' => false,
-        ]);
-
-        return redirect()
-            ->route('worker.stripe.index')
-            ->with('success', 'Stripe account disconnected successfully.');
-    }
 }

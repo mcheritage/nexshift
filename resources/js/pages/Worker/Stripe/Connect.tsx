@@ -154,12 +154,6 @@ export default function Connect({ auth, stripeConnected, onboardingComplete, acc
         }
     };
 
-    const handleDisconnect = () => {
-        if (confirm('Are you sure you want to disconnect your Stripe account? This will prevent you from receiving payments.')) {
-            router.post(route('worker.stripe.disconnect'));
-        }
-    };
-
     const getStatusBadge = () => {
         if (!stripeConnected) {
             return <Badge variant="secondary">Not Connected</Badge>;
@@ -381,12 +375,6 @@ export default function Connect({ auth, stripeConnected, onboardingComplete, acc
                                         >
                                             Open Stripe Dashboard
                                             <ExternalLink className="ml-2 h-4 w-4" />
-                                        </Button>
-                                        <Button 
-                                            onClick={handleDisconnect}
-                                            variant="outline"
-                                        >
-                                            Disconnect Account
                                         </Button>
                                     </div>
                                 </>

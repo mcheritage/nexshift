@@ -165,7 +165,6 @@ Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worke
         Route::get('/refresh', [App\Http\Controllers\Worker\StripeController::class, 'refresh'])->name('refresh');
         Route::get('/dashboard', [App\Http\Controllers\Worker\StripeController::class, 'dashboard'])->name('dashboard');
         Route::get('/status', [App\Http\Controllers\Worker\StripeController::class, 'status'])->name('status');
-        Route::post('/disconnect', [App\Http\Controllers\Worker\StripeController::class, 'disconnect'])->name('disconnect');
     });
 });
 
