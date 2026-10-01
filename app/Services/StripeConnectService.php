@@ -289,7 +289,7 @@ class StripeConnectService
         }
 
         try {
-            $balance = $this->stripe->balance->retrieve([
+            $balance = $this->stripe->balance->retrieve([], [
                 'stripe_account' => $user->stripe_account_id,
             ]);
 
