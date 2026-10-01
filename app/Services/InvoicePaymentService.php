@@ -16,10 +16,12 @@ use Stripe\StripeClient;
 class InvoicePaymentService
 {
     protected StripeClient $stripe;
+    protected StripeConnectService $stripeService;
 
-    public function __construct(StripeClient $stripe)
+    public function __construct(StripeClient $stripe, StripeConnectService $stripeService)
     {
         $this->stripe = $stripe;
+        $this->stripeService = $stripeService;
     }
 
     /**
@@ -112,6 +114,24 @@ class InvoicePaymentService
                 }
 
                 try {
+                    // Check with Stripe that the account can be paid right now
+                    $this->stripeService->updateAccountStatus($worker);
+
+                    if (!$worker->canReceivePayments()) {
+                        $transfers[$workerId] = $record + [
+                            'status' => 'skipped',
+                            'error' => 'Worker\'s Stripe account is not ready to receive payments',
+                        ];
+
+                        Log::warning('Worker not paid: Stripe account not ready to receive payments', [
+                            'invoice_id' => $invoice->id,
+                            'worker_id' => $workerId,
+                            'amount' => $amount,
+                        ]);
+
+                        continue;
+                    }
+
                     $transfer = $this->stripe->transfers->create([
                         'amount' => (int) round($amount * 100),
                         'currency' => 'gbp',
