@@ -75,7 +75,7 @@ function invoiceForWorkers(array $workers): array
 
     foreach ($workers as [$stripeAccountId, $pay]) {
         $worker = User::factory()->create([
-            'role' => 'health_care_worker',
+            'role' => 'health_worker',
             'stripe_account_id' => $stripeAccountId,
         ]);
 
@@ -142,7 +142,7 @@ test('webhook rejects a request when no webhook secret is configured', function 
 
 test('webhook accepts an event signed with the connect secret', function () {
     config(['stripe.webhook.connect_secret' => 'whsec_connect']);
-    $worker = User::factory()->create(['role' => 'health_care_worker', 'stripe_account_id' => 'acct_worker_1']);
+    $worker = User::factory()->create(['role' => 'health_worker', 'stripe_account_id' => 'acct_worker_1']);
 
     postStripeEvent($this, [
         'id' => 'evt_test_2',
