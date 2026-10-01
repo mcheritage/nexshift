@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Stripe\Account;
 use Stripe\StripeClient;
 use Stripe\Exception\ApiErrorException;
 use Illuminate\Support\Facades\Log;
@@ -11,9 +12,9 @@ class StripeConnectService
 {
     protected StripeClient $stripe;
 
-    public function __construct()
+    public function __construct(StripeClient $stripe)
     {
-        $this->stripe = new StripeClient(config('stripe.secret_key'));
+        $this->stripe = $stripe;
     }
 
     /**
@@ -177,35 +178,7 @@ class StripeConnectService
         try {
             $account = $this->stripe->accounts->retrieve($user->stripe_account_id);
 
-            $onboardingComplete = $account->details_submitted ?? false;
-            $chargesEnabled = $account->charges_enabled ?? false;
-            $payoutsEnabled = $account->payouts_enabled ?? false;
-            $requirements = $account->requirements ?? null;
-
-            // Update user record
-            $user->update([
-                'stripe_onboarding_complete' => $onboardingComplete,
-                'stripe_charges_enabled' => $chargesEnabled,
-                'stripe_payouts_enabled' => $payoutsEnabled,
-                'stripe_connected_at' => $onboardingComplete && !$user->stripe_connected_at 
-                    ? now() 
-                    : $user->stripe_connected_at,
-                'stripe_requirements' => $requirements ? [
-                    'currently_due' => $requirements->currently_due ?? [],
-                    'eventually_due' => $requirements->eventually_due ?? [],
-                    'past_due' => $requirements->past_due ?? [],
-                    'pending_verification' => $requirements->pending_verification ?? [],
-                    'disabled_reason' => $requirements->disabled_reason ?? null,
-                ] : null,
-            ]);
-
-            return [
-                'connected' => true,
-                'onboarding_complete' => $onboardingComplete,
-                'charges_enabled' => $chargesEnabled,
-                'payouts_enabled' => $payoutsEnabled,
-                'requirements' => $account->requirements ?? null,
-            ];
+            return $this->syncAccountStatus($user, $account);
 
         } catch (ApiErrorException $e) {
             Log::error('Failed to retrieve account status', [
@@ -216,6 +189,46 @@ class StripeConnectService
 
             throw $e;
         }
+    }
+
+    /**
+     * Store the status of a Stripe account on the user record
+     *
+     * @param User $user
+     * @param Account $account
+     * @return array
+     */
+    public function syncAccountStatus(User $user, Account $account): array
+    {
+        $onboardingComplete = $account->details_submitted ?? false;
+        $chargesEnabled = $account->charges_enabled ?? false;
+        $payoutsEnabled = $account->payouts_enabled ?? false;
+        $requirements = $account->requirements ?? null;
+
+        // Update user record
+        $user->update([
+            'stripe_onboarding_complete' => $onboardingComplete,
+            'stripe_charges_enabled' => $chargesEnabled,
+            'stripe_payouts_enabled' => $payoutsEnabled,
+            'stripe_connected_at' => $onboardingComplete && !$user->stripe_connected_at
+                ? now()
+                : $user->stripe_connected_at,
+            'stripe_requirements' => $requirements ? [
+                'currently_due' => $requirements->currently_due ?? [],
+                'eventually_due' => $requirements->eventually_due ?? [],
+                'past_due' => $requirements->past_due ?? [],
+                'pending_verification' => $requirements->pending_verification ?? [],
+                'disabled_reason' => $requirements->disabled_reason ?? null,
+            ] : null,
+        ]);
+
+        return [
+            'connected' => true,
+            'onboarding_complete' => $onboardingComplete,
+            'charges_enabled' => $chargesEnabled,
+            'payouts_enabled' => $payoutsEnabled,
+            'requirements' => $account->requirements ?? null,
+        ];
     }
 
     /**
