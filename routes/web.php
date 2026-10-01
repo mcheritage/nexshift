@@ -30,6 +30,9 @@ Route::get('/faq', function () {
 
 Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
 
+// Stripe webhook (called by Stripe, verified by signature)
+Route::post('/stripe/webhook', [App\Http\Controllers\StripeWebhookController::class, 'handle'])->name('stripe.webhook');
+
 
 
 // Auto-login route for testing (remove in production)
