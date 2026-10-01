@@ -367,7 +367,7 @@ class InvoiceController extends Controller
                             'name' => "Invoice {$invoice->invoice_number}",
                             'description' => "Payment for {$invoice->timesheets->count()} timesheet(s)",
                         ],
-                        'unit_amount' => (int)($invoice->total * 100), // Convert to cents
+                        'unit_amount' => (int) round($invoice->total * 100), // Convert to pence
                     ],
                     'quantity' => 1,
                 ]],
