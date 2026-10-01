@@ -13,70 +13,10 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Stripe\Checkout\Session;
-use Stripe\Exception\InvalidRequestException;
-use Stripe\PaymentIntent;
 use Stripe\StripeClient;
-use Stripe\Transfer;
+use Tests\Fakes\FakeStripeClient;
 
 uses(RefreshDatabase::class);
-
-/**
- * Stands in for the Stripe API: records transfers instead of sending them.
- */
-class FakeStripeClient extends StripeClient
-{
-    public array $transfersCreated = [];
-    public array $failDestinations = [];
-    public ?Session $session = null;
-
-    public function __construct()
-    {
-        parent::__construct('sk_test_fake');
-    }
-
-    public function __get($name)
-    {
-        $fake = $this;
-
-        return match ($name) {
-            'paymentIntents' => new class {
-                public function retrieve($id)
-                {
-                    return PaymentIntent::constructFrom(['id' => $id, 'latest_charge' => 'ch_test_1']);
-                }
-            },
-            'transfers' => new class($fake) {
-                public function __construct(private FakeStripeClient $fake) {}
-
-                public function create($params, $opts = [])
-                {
-                    if (in_array($params['destination'], $this->fake->failDestinations)) {
-                        throw InvalidRequestException::factory('Destination account cannot receive transfers', 400);
-                    }
-
-                    $this->fake->transfersCreated[] = ['params' => $params, 'opts' => $opts];
-
-                    return Transfer::constructFrom(['id' => 'tr_test_' . count($this->fake->transfersCreated)]);
-                }
-            },
-            'checkout' => new class($fake) {
-                public object $sessions;
-
-                public function __construct(FakeStripeClient $fake)
-                {
-                    $this->sessions = new class($fake) {
-                        public function __construct(private FakeStripeClient $fake) {}
-
-                        public function retrieve($id)
-                        {
-                            return $this->fake->session;
-                        }
-                    };
-                }
-            },
-        };
-    }
-}
 
 beforeEach(function () {
     config(['stripe.webhook.secret' => 'whsec_test', 'stripe.webhook.connect_secret' => null]);
@@ -286,6 +226,24 @@ test('a failed transfer and a worker without stripe are recorded on the invoice'
     expect($invoice->fresh()->status)->toBe(Invoice::STATUS_PAID);
     expect($this->stripe->transfersCreated)->toHaveCount(1);
     expect(Notification::where('type', 'payment_received')->pluck('user_id')->all())->toBe([$ok->id]);
+});
+
+test('a worker whose stripe account is not ready is skipped instead of transferred to', function () {
+    [$invoice, [$restricted, $ok]] = invoiceForWorkers([
+        ['acct_restricted', 50.00],
+        ['acct_ok', 70.00],
+    ]);
+    $this->stripe->accountOverrides['acct_restricted'] = ['details_submitted' => true, 'payouts_enabled' => false];
+
+    postStripeEvent($this, checkoutCompletedEvent($invoice))->assertStatus(200);
+
+    $transfers = $invoice->fresh()->payment_metadata['transfers'];
+    expect($transfers[$restricted->id]['status'])->toBe('skipped');
+    expect($transfers[$restricted->id]['error'])->toContain('not ready');
+    expect($transfers[$ok->id]['status'])->toBe('paid');
+
+    expect(collect($this->stripe->transfersCreated)->pluck('params.destination')->all())->toBe(['acct_ok']);
+    expect($restricted->fresh()->stripe_payouts_enabled)->toBeFalse();
 });
 
 test('an unpaid checkout session leaves the invoice untouched', function () {
