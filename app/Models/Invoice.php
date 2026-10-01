@@ -43,6 +43,7 @@ class Invoice extends Model
         'tax_rate' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total' => 'decimal:2',
+        'payment_metadata' => 'array',
     ];
 
     // Status constants
