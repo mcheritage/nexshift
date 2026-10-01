@@ -30,10 +30,20 @@ class StripeConnectService
     {
         try {
             // Reuse the user's existing Stripe account, so unfinished onboarding
-            // resumes on the same account instead of creating a duplicate
-            if ($user->stripe_account_id) {
+            // resumes on the same account instead of creating a duplicate.
+            // A disconnected worker gets their previous account back.
+            $existingAccountId = $user->stripe_account_id ?: $user->stripe_disconnected_account_id;
+
+            if ($existingAccountId) {
                 try {
-                    $account = $this->stripe->accounts->retrieve($user->stripe_account_id);
+                    $account = $this->stripe->accounts->retrieve($existingAccountId);
+
+                    if (!$user->stripe_account_id) {
+                        $user->update([
+                            'stripe_account_id' => $account->id,
+                            'stripe_disconnected_account_id' => null,
+                        ]);
+                    }
 
                     return [
                         'success' => true,
@@ -45,7 +55,7 @@ class StripeConnectService
                     // (deleted, or created under different keys), so start again
                     Log::warning('Stored Stripe account not found, creating a new one', [
                         'user_id' => $user->id,
-                        'stripe_account_id' => $user->stripe_account_id,
+                        'stripe_account_id' => $existingAccountId,
                         'error' => $e->getMessage(),
                     ]);
                 }
@@ -79,6 +89,7 @@ class StripeConnectService
             // Update user with Stripe account ID
             $user->update([
                 'stripe_account_id' => $account->id,
+                'stripe_disconnected_account_id' => null,
                 'stripe_account_type' => $accountType,
                 'stripe_onboarding_complete' => false,
                 'stripe_charges_enabled' => false,
@@ -205,6 +216,33 @@ class StripeConnectService
 
             throw $e;
         }
+    }
+
+    /**
+     * Disconnect the user's Stripe account in the app
+     *
+     * The account is kept on Stripe and remembered here, so connecting
+     * again resumes it instead of creating a new one.
+     *
+     * @param User $user
+     * @return void
+     */
+    public function disconnectAccount(User $user): void
+    {
+        $user->update([
+            'stripe_disconnected_account_id' => $user->stripe_account_id,
+            'stripe_account_id' => null,
+            'stripe_onboarding_complete' => false,
+            'stripe_connected_at' => null,
+            'stripe_charges_enabled' => false,
+            'stripe_payouts_enabled' => false,
+            'stripe_requirements' => null,
+        ]);
+
+        Log::info('Stripe account disconnected', [
+            'user_id' => $user->id,
+            'stripe_account_id' => $user->stripe_disconnected_account_id,
+        ]);
     }
 
     /**
