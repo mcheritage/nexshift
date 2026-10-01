@@ -307,6 +307,15 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Check if a worker can view and pick shifts.
+     * Workers must be approved and ready to be paid for the work.
+     */
+    public function canPickShifts(): bool
+    {
+        return $this->isApproved() && $this->canReceivePayments();
+    }
+
+    /**
      * Get Stripe connection status
      */
     public function getStripeStatus(): string

@@ -32,9 +32,12 @@ class WorkerController extends Controller
         
         // Check if user is approved
         $isApproved = $user->isApproved();
+
+        // Shifts are only shown to approved workers who are ready to receive payments
+        $canPickShifts = $user->canPickShifts();
         
-        // Only load shifts if approved
-        $availableShifts = $isApproved ? Shift::where('status', Shift::STATUS_PUBLISHED)
+        // Only load shifts if the worker can pick them
+        $availableShifts = $canPickShifts ? Shift::where('status', Shift::STATUS_PUBLISHED)
             ->whereHas('careHome', function($q) {
                 $q->where('status', 'approved');
             })
@@ -57,7 +60,7 @@ class WorkerController extends Controller
 
         // Stats
         $stats = [
-            'available_shifts' => $isApproved ? Shift::where('status', Shift::STATUS_PUBLISHED)
+            'available_shifts' => $canPickShifts ? Shift::where('status', Shift::STATUS_PUBLISHED)
                 ->whereHas('careHome', function($q) {
                     $q->where('status', 'approved');
                 })
@@ -76,7 +79,7 @@ class WorkerController extends Controller
             'stats' => $stats,
             'isApproved' => $isApproved,
             'approvalStatus' => $user->status,
-            'stripeConnected' => !empty($user->stripe_account_id),
+            'stripeConnected' => $user->canReceivePayments(),
         ]);
     }
 
@@ -90,8 +93,8 @@ class WorkerController extends Controller
         // Check if user is approved
         $isApproved = $user->isApproved();
 
-        // Build query for available shifts (only if approved)
-        if ($isApproved) {
+        // Build query for available shifts (only if approved and ready to receive payments)
+        if ($user->canPickShifts()) {
             $query = Shift::where('status', Shift::STATUS_PUBLISHED)
                 ->whereHas('careHome', function($q) {
                     $q->where('status', 'approved');
@@ -133,7 +136,7 @@ class WorkerController extends Controller
                 $shift->user_has_applied = (bool) $application;
             });
         } else {
-            // Return empty pagination if not approved
+            // Return empty pagination if the worker can't pick shifts
             $shifts = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
         }
 
@@ -143,6 +146,7 @@ class WorkerController extends Controller
             'roleOptions' => Shift::getRoleLabels(),
             'isApproved' => $isApproved,
             'approvalStatus' => $user->status,
+            'canReceivePayments' => $user->canReceivePayments(),
         ]);
     }
 
@@ -167,6 +171,11 @@ class WorkerController extends Controller
         // Check if user is approved
         if (!$user->isApproved()) {
             return redirect()->back()->withErrors(['error' => 'Your account must be approved before you can apply for shifts']);
+        }
+
+        // Block if worker is not ready to receive payments
+        if (!$user->canReceivePayments()) {
+            return redirect()->back()->withErrors(['error' => 'You must finish setting up your Stripe account before you can apply for shifts.']);
         }
 
         // Block if worker has expired required documents
@@ -841,6 +850,10 @@ class WorkerController extends Controller
 
         if ($application->status !== Application::STATUS_ASSIGNED) {
             return redirect()->back()->withErrors(['error' => 'This shift is not awaiting your acceptance.']);
+        }
+
+        if (!$user->canReceivePayments()) {
+            return redirect()->back()->withErrors(['error' => 'You must finish setting up your Stripe account before you can accept shifts.']);
         }
 
         if ($user->hasExpiredRequiredDocuments()) {
