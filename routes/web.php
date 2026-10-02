@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DashboardController;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -32,18 +31,6 @@ Route::post('/contact', [ContactController::class, 'store'])->name('contact.stor
 
 // Stripe webhook (called by Stripe, verified by signature)
 Route::post('/stripe/webhook', [App\Http\Controllers\StripeWebhookController::class, 'handle'])->name('stripe.webhook');
-
-
-
-// Auto-login route for testing (remove in production)
-Route::get('/auto-login', function () {
-    $user = App\Models\User::where('email', 'admin@sunshinecare.com')->first();
-    if ($user) {
-        Auth::login($user);
-        return redirect()->route('dashboard')->with('success', 'Logged in as ' . $user->email);
-    }
-    return redirect()->route('login')->with('error', 'User not found');
-});
 
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
