@@ -115,12 +115,12 @@ export default function WorkerDashboard({ availableShifts, myApplications, stats
                                             Payment Setup Required
                                         </h3>
                                         <p className="text-orange-800 dark:text-orange-300 mb-3">
-                                            You haven't connected your Stripe account yet. You won't be able to receive payments for completed shifts until you set up your payment method.
+                                            Your Stripe account isn't ready to receive payments yet. You won't be able to view or apply for shifts until you finish setting up your payment method.
                                         </p>
                                         <Link href="/worker/stripe">
                                             <Button className="bg-orange-600 hover:bg-orange-700">
                                                 <CreditCard className="h-4 w-4 mr-2" />
-                                                Connect Stripe Now
+                                                Set Up Stripe Now
                                             </Button>
                                         </Link>
                                     </div>

@@ -140,6 +140,55 @@ services:
             start_period: 30s
         command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
 
+    scheduler:
+        image: nexshift-web-app
+        restart: always
+        working_dir: /var/www/html
+        environment:
+            APP_NAME: ${APP_NAME:?missing APP_NAME}
+            APP_ENV: ${APP_ENV:?missing APP_ENV}
+            APP_KEY: ${APP_KEY:?missing APP_KEY}
+            APP_DEBUG: ${APP_DEBUG:-false}
+            APP_URL: ${APP_URL:?missing APP_URL}
+            APP_DOMAIN: ${APP_DOMAIN:?missing APP_DOMAIN}
+
+            LOG_CHANNEL: ${LOG_CHANNEL:-}
+            LOG_STACK: ${LOG_STACK:-}
+
+            DB_CONNECTION: ${DB_CONNECTION:?missing DB_CONNECTION}
+            DB_HOST: ${DB_HOST:?missing DB_HOST}
+            DB_DATABASE: ${DB_DATABASE:?missing DB_DATABASE}
+            DB_USERNAME: ${DB_USERNAME:?missing DB_USERNAME}
+            DB_PASSWORD: ${DB_PASSWORD:?missing DB_PASSWORD}
+
+            REDIS_HOST: ${REDIS_HOST:-redis}
+            REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+            REDIS_PORT: ${REDIS_PORT:-6379}
+
+            MAIL_MAILER: ${MAIL_MAILER:-smtp}
+            MAIL_PORT: ${MAIL_PORT:-587}
+            MAIL_HOST: ${MAIL_HOST:-}
+            MAIL_USERNAME: ${MAIL_USERNAME:-}
+            MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+            MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-no-reply@example.com}
+
+            ONESIGNAL_REST_API_URL: ${ONESIGNAL_REST_API_URL:-}
+            ONESIGNAL_APP_ID: ${ONESIGNAL_APP_ID:-}
+            ONESIGNAL_REST_API_KEY: ${ONESIGNAL_REST_API_KEY:-}
+        networks:
+            - app_network
+            - dokploy-network
+        depends_on:
+            app:
+                condition: service_healthy
+        healthcheck:
+            test: [ "CMD", "php-fpm", "-t" ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
+        command: php artisan schedule:work
+
 networks:
     app_network:
         driver: bridge

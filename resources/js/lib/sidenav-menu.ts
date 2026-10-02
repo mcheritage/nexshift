@@ -18,6 +18,7 @@ import {
   Activity,
   Wallet,
   GraduationCap,
+  Hourglass,
 } from "lucide-react";
 
 // Care Home Admin Navigation Items
@@ -90,6 +91,11 @@ const adminNavItems: NavItem[] = [
     title: "Invoices",
     href: "/admin/invoices",
     icon: Receipt,
+  },
+  {
+    title: "Held Payments",
+    href: "/admin/held-payments",
+    icon: Hourglass,
   },
   {
     title: "Wallets",

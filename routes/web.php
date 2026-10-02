@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DashboardController;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -30,17 +29,8 @@ Route::get('/faq', function () {
 
 Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
 
-
-
-// Auto-login route for testing (remove in production)
-Route::get('/auto-login', function () {
-    $user = App\Models\User::where('email', 'admin@sunshinecare.com')->first();
-    if ($user) {
-        Auth::login($user);
-        return redirect()->route('dashboard')->with('success', 'Logged in as ' . $user->email);
-    }
-    return redirect()->route('login')->with('error', 'User not found');
-});
+// Stripe webhook (called by Stripe, verified by signature)
+Route::post('/stripe/webhook', [App\Http\Controllers\StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -162,7 +152,6 @@ Route::middleware(['auth', 'health_care_worker'])->prefix('worker')->name('worke
         Route::get('/refresh', [App\Http\Controllers\Worker\StripeController::class, 'refresh'])->name('refresh');
         Route::get('/dashboard', [App\Http\Controllers\Worker\StripeController::class, 'dashboard'])->name('dashboard');
         Route::get('/status', [App\Http\Controllers\Worker\StripeController::class, 'status'])->name('status');
-        Route::post('/disconnect', [App\Http\Controllers\Worker\StripeController::class, 'disconnect'])->name('disconnect');
     });
 });
 
@@ -215,6 +204,10 @@ Route::middleware(['auth'])->group(function () {
         // Invoice Management
         Route::get('/invoices', [App\Http\Controllers\Admin\AdminInvoiceController::class, 'index'])->name('invoices.index');
         Route::get('/invoices/{invoice}', [App\Http\Controllers\Admin\AdminInvoiceController::class, 'show'])->name('invoices.show');
+
+        // Held Payments (worker transfers that could not be sent yet)
+        Route::get('/held-payments', [App\Http\Controllers\Admin\HeldPaymentController::class, 'index'])->name('held-payments.index');
+        Route::post('/held-payments/{invoiceTransfer}/retry', [App\Http\Controllers\Admin\HeldPaymentController::class, 'retry'])->name('held-payments.retry');
 
         // Shift Management
         Route::get('/shifts', [App\Http\Controllers\Admin\AdminShiftController::class, 'index'])->name('shifts.index');

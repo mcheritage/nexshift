@@ -24,6 +24,14 @@ class ApplicationController extends BaseApiController
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
+        // Only workers who are ready to receive payments can apply for shifts
+        if (!$user->canReceivePayments()) {
+            return response()->json([
+                'error' => 'You must finish setting up your Stripe account before you can apply for shifts.',
+                'stripe_status' => $user->getStripeStatus()
+            ], 403);
+        }
+
         $request->validate([
             'shift_id' => 'required|uuid|exists:shifts,id',
             'message' => 'nullable|string|max:1000',

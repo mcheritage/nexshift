@@ -24,6 +24,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string phone_number
  * @property string bio
  * @property string|null stripe_account_id
+ * @property string|null stripe_disconnected_account_id
  * @property CareHome $care_home
  */
 class User extends Authenticatable implements MustVerifyEmail
@@ -66,6 +67,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'approved_at',
         'rejection_reason',
         'stripe_account_id',
+        'stripe_disconnected_account_id',
         'stripe_onboarding_complete',
         'stripe_account_type',
         'stripe_connected_at',
@@ -302,6 +304,15 @@ class User extends Authenticatable implements MustVerifyEmail
             && $this->hasCompletedStripeOnboarding()
             && $this->stripe_charges_enabled
             && $this->stripe_payouts_enabled;
+    }
+
+    /**
+     * Check if a worker can view and pick shifts.
+     * Workers must be approved and ready to be paid for the work.
+     */
+    public function canPickShifts(): bool
+    {
+        return $this->isApproved() && $this->canReceivePayments();
     }
 
     /**

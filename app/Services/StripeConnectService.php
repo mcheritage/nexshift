@@ -3,17 +3,20 @@
 namespace App\Services;
 
 use App\Models\User;
+use Stripe\Account;
 use Stripe\StripeClient;
 use Stripe\Exception\ApiErrorException;
+use Stripe\Exception\InvalidRequestException;
+use Stripe\Exception\PermissionException;
 use Illuminate\Support\Facades\Log;
 
 class StripeConnectService
 {
     protected StripeClient $stripe;
 
-    public function __construct()
+    public function __construct(StripeClient $stripe)
     {
-        $this->stripe = new StripeClient(config('stripe.secret_key'));
+        $this->stripe = $stripe;
     }
 
     /**
@@ -26,16 +29,35 @@ class StripeConnectService
     public function createConnectAccount(User $user): array
     {
         try {
-            // Check if user already has a Stripe account
-            if ($user->stripe_account_id) {
-                $account = $this->stripe->accounts->retrieve($user->stripe_account_id);
-                
-                if ($account->details_submitted) {
+            // Reuse the user's existing Stripe account, so unfinished onboarding
+            // resumes on the same account instead of creating a duplicate.
+            // A disconnected worker gets their previous account back.
+            $existingAccountId = $user->stripe_account_id ?: $user->stripe_disconnected_account_id;
+
+            if ($existingAccountId) {
+                try {
+                    $account = $this->stripe->accounts->retrieve($existingAccountId);
+
+                    if (!$user->stripe_account_id) {
+                        $user->update([
+                            'stripe_account_id' => $account->id,
+                            'stripe_disconnected_account_id' => null,
+                        ]);
+                    }
+
                     return [
                         'success' => true,
                         'account_id' => $account->id,
                         'already_exists' => true,
                     ];
+                } catch (InvalidRequestException | PermissionException $e) {
+                    // The stored account no longer exists for these API keys
+                    // (deleted, or created under different keys), so start again
+                    Log::warning('Stored Stripe account not found, creating a new one', [
+                        'user_id' => $user->id,
+                        'stripe_account_id' => $existingAccountId,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
 
@@ -67,7 +89,13 @@ class StripeConnectService
             // Update user with Stripe account ID
             $user->update([
                 'stripe_account_id' => $account->id,
+                'stripe_disconnected_account_id' => null,
                 'stripe_account_type' => $accountType,
+                'stripe_onboarding_complete' => false,
+                'stripe_charges_enabled' => false,
+                'stripe_payouts_enabled' => false,
+                'stripe_connected_at' => null,
+                'stripe_requirements' => null,
             ]);
 
             Log::info('Stripe Connect account created', [
@@ -177,35 +205,7 @@ class StripeConnectService
         try {
             $account = $this->stripe->accounts->retrieve($user->stripe_account_id);
 
-            $onboardingComplete = $account->details_submitted ?? false;
-            $chargesEnabled = $account->charges_enabled ?? false;
-            $payoutsEnabled = $account->payouts_enabled ?? false;
-            $requirements = $account->requirements ?? null;
-
-            // Update user record
-            $user->update([
-                'stripe_onboarding_complete' => $onboardingComplete,
-                'stripe_charges_enabled' => $chargesEnabled,
-                'stripe_payouts_enabled' => $payoutsEnabled,
-                'stripe_connected_at' => $onboardingComplete && !$user->stripe_connected_at 
-                    ? now() 
-                    : $user->stripe_connected_at,
-                'stripe_requirements' => $requirements ? [
-                    'currently_due' => $requirements->currently_due ?? [],
-                    'eventually_due' => $requirements->eventually_due ?? [],
-                    'past_due' => $requirements->past_due ?? [],
-                    'pending_verification' => $requirements->pending_verification ?? [],
-                    'disabled_reason' => $requirements->disabled_reason ?? null,
-                ] : null,
-            ]);
-
-            return [
-                'connected' => true,
-                'onboarding_complete' => $onboardingComplete,
-                'charges_enabled' => $chargesEnabled,
-                'payouts_enabled' => $payoutsEnabled,
-                'requirements' => $account->requirements ?? null,
-            ];
+            return $this->syncAccountStatus($user, $account);
 
         } catch (ApiErrorException $e) {
             Log::error('Failed to retrieve account status', [
@@ -216,6 +216,73 @@ class StripeConnectService
 
             throw $e;
         }
+    }
+
+    /**
+     * Disconnect the user's Stripe account in the app
+     *
+     * The account is kept on Stripe and remembered here, so connecting
+     * again resumes it instead of creating a new one.
+     *
+     * @param User $user
+     * @return void
+     */
+    public function disconnectAccount(User $user): void
+    {
+        $user->update([
+            'stripe_disconnected_account_id' => $user->stripe_account_id,
+            'stripe_account_id' => null,
+            'stripe_onboarding_complete' => false,
+            'stripe_connected_at' => null,
+            'stripe_charges_enabled' => false,
+            'stripe_payouts_enabled' => false,
+            'stripe_requirements' => null,
+        ]);
+
+        Log::info('Stripe account disconnected', [
+            'user_id' => $user->id,
+            'stripe_account_id' => $user->stripe_disconnected_account_id,
+        ]);
+    }
+
+    /**
+     * Store the status of a Stripe account on the user record
+     *
+     * @param User $user
+     * @param Account $account
+     * @return array
+     */
+    public function syncAccountStatus(User $user, Account $account): array
+    {
+        $onboardingComplete = $account->details_submitted ?? false;
+        $chargesEnabled = $account->charges_enabled ?? false;
+        $payoutsEnabled = $account->payouts_enabled ?? false;
+        $requirements = $account->requirements ?? null;
+
+        // Update user record
+        $user->update([
+            'stripe_onboarding_complete' => $onboardingComplete,
+            'stripe_charges_enabled' => $chargesEnabled,
+            'stripe_payouts_enabled' => $payoutsEnabled,
+            'stripe_connected_at' => $onboardingComplete && !$user->stripe_connected_at
+                ? now()
+                : $user->stripe_connected_at,
+            'stripe_requirements' => $requirements ? [
+                'currently_due' => $requirements->currently_due ?? [],
+                'eventually_due' => $requirements->eventually_due ?? [],
+                'past_due' => $requirements->past_due ?? [],
+                'pending_verification' => $requirements->pending_verification ?? [],
+                'disabled_reason' => $requirements->disabled_reason ?? null,
+            ] : null,
+        ]);
+
+        return [
+            'connected' => true,
+            'onboarding_complete' => $onboardingComplete,
+            'charges_enabled' => $chargesEnabled,
+            'payouts_enabled' => $payoutsEnabled,
+            'requirements' => $account->requirements ?? null,
+        ];
     }
 
     /**
@@ -276,7 +343,7 @@ class StripeConnectService
         }
 
         try {
-            $balance = $this->stripe->balance->retrieve([
+            $balance = $this->stripe->balance->retrieve([], [
                 'stripe_account' => $user->stripe_account_id,
             ]);
 

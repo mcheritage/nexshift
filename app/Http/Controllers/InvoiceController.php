@@ -6,11 +6,13 @@ use App\Models\Invoice;
 use App\Models\Timesheet;
 use App\Models\Wallet;
 use App\Models\Notification;
+use App\Services\InvoicePaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Stripe\StripeClient;
 
 class InvoiceController extends Controller
 {
@@ -367,7 +369,7 @@ class InvoiceController extends Controller
                             'name' => "Invoice {$invoice->invoice_number}",
                             'description' => "Payment for {$invoice->timesheets->count()} timesheet(s)",
                         ],
-                        'unit_amount' => (int)($invoice->total * 100), // Convert to cents
+                        'unit_amount' => (int) round($invoice->total * 100), // Convert to pence
                     ],
                     'quantity' => 1,
                 ]],
@@ -404,8 +406,11 @@ class InvoiceController extends Controller
 
     /**
      * Handle successful Stripe payment
+     *
+     * The Stripe webhook also processes the payment, so this only needs to
+     * confirm it for the care home; whichever arrives first does the work.
      */
-    public function stripeSuccess(Request $request, Invoice $invoice)
+    public function stripeSuccess(Request $request, Invoice $invoice, StripeClient $stripe, InvoicePaymentService $paymentService)
     {
         $user = Auth::user();
         $careHome = $user->care_home;
@@ -415,159 +420,22 @@ class InvoiceController extends Controller
         }
 
         $sessionId = $request->get('session_id');
-        if (!$sessionId || $invoice->stripe_session_id !== $sessionId) {
+        if (!$sessionId) {
             return redirect()->route('invoices.show', $invoice)
                 ->with('error', 'Invalid payment session');
         }
 
         try {
-            \Stripe\Stripe::setApiKey(config('stripe.secret_key'));
-            $session = \Stripe\Checkout\Session::retrieve($sessionId);
+            $session = $stripe->checkout->sessions->retrieve($sessionId);
+
+            // The session must be one we created for this invoice
+            if (($session->metadata->invoice_id ?? null) !== $invoice->id) {
+                return redirect()->route('invoices.show', $invoice)
+                    ->with('error', 'Invalid payment session');
+            }
 
             if ($session->payment_status === 'paid') {
-                DB::transaction(function () use ($invoice, $session, $careHome) {
-                    // Set Stripe API key for operations inside transaction
-                    \Stripe\Stripe::setApiKey(config('stripe.secret_key'));
-                    
-                    // Mark invoice as paid first
-                    $invoice->update([
-                        'status' => 'paid',
-                        'paid_at' => now(),
-                        'stripe_payment_intent_id' => $session->payment_intent,
-                    ]);
-
-                    // Mark all timesheets as paid
-                    $invoice->timesheets()->update(['status' => 'paid']);
-                    
-                    // Log status change for each timesheet
-                    foreach ($invoice->timesheets as $timesheet) {
-                        $timesheet->logStatusChange('paid', null, "Paid via invoice {$invoice->invoice_number}");
-                    }
-
-                    // Get the PaymentIntent to access charge ID
-                    $paymentIntent = \Stripe\PaymentIntent::retrieve(
-                        $session->payment_intent
-                    );
-                    
-                    \Log::info('PaymentIntent retrieved', [
-                        'payment_intent_id' => $paymentIntent->id,
-                        'latest_charge' => $paymentIntent->latest_charge,
-                        'status' => $paymentIntent->status,
-                    ]);
-                    
-                    // Get charge ID from latest_charge field
-                    if (!$paymentIntent->latest_charge) {
-                        \Log::error('No charge found in PaymentIntent', [
-                            'payment_intent' => $paymentIntent->toArray()
-                        ]);
-                        throw new \Exception('No charge found in PaymentIntent');
-                    }
-                    
-                    $chargeId = $paymentIntent->latest_charge;
-
-                    // Process transfers to each worker's Stripe account
-                    $invoice->load(['timesheets.worker']);
-                    $workerPayments = [];
-                    
-                    foreach ($invoice->timesheets as $timesheet) {
-                        $workerId = $timesheet->worker_id;
-                        if (!isset($workerPayments[$workerId])) {
-                            $workerPayments[$workerId] = [
-                                'worker' => $timesheet->worker,
-                                'amount' => 0,
-                            ];
-                        }
-                        $workerPayments[$workerId]['amount'] += $timesheet->total_pay;
-                    }
-
-                    // Create transfers to connected accounts using the source transaction
-                    // This allows transfers even when balance is pending
-                    foreach ($workerPayments as $payment) {
-                        if ($payment['worker']->stripe_account_id) {
-                            try {
-                                $transfer = \Stripe\Transfer::create([
-                                    'amount' => (int)($payment['amount'] * 100),
-                                    'currency' => 'gbp',
-                                    'destination' => $payment['worker']->stripe_account_id,
-                                    'source_transaction' => $chargeId,
-                                    'description' => "Payment for invoice {$invoice->invoice_number}",
-                                    'metadata' => [
-                                        'invoice_id' => $invoice->id,
-                                        'worker_id' => $payment['worker']->id,
-                                    ],
-                                ]);
-
-                                // Create notification for worker
-                                Notification::create([
-                                    'user_id' => $payment['worker']->id,
-                                    'type' => 'payment_received',
-                                    'title' => 'Payment Received',
-                                    'message' => "You have received a payment of £" . number_format($payment['amount'], 2) . " from {$careHome->name} for invoice {$invoice->invoice_number}.",
-                                    'data' => [
-                                        'amount' => $payment['amount'],
-                                        'invoice_id' => $invoice->id,
-                                        'invoice_number' => $invoice->invoice_number,
-                                        'care_home_name' => $careHome->name,
-                                        'transfer_id' => $transfer->id,
-                                    ],
-                                ]);
-                                
-                                // Send email to worker
-                                try {
-                                    \Mail::to($payment['worker']->email)->send(
-                                        new \App\Mail\PaymentReceived(
-                                            $payment['amount'],
-                                            $invoice,
-                                            $careHome->name
-                                        )
-                                    );
-                                } catch (\Exception $e) {
-                                    \Log::error('Failed to send payment received email to worker', [
-                                        'worker_id' => $payment['worker']->id,
-                                        'error' => $e->getMessage(),
-                                    ]);
-                                }
-                                
-                                \Log::info('Stripe transfer created successfully', [
-                                    'transfer_id' => $transfer->id,
-                                    'worker_id' => $payment['worker']->id,
-                                    'worker_email' => $payment['worker']->email,
-                                    'amount' => $payment['amount'],
-                                    'stripe_account_id' => $payment['worker']->stripe_account_id,
-                                ]);
-                            } catch (\Exception $e) {
-                                \Log::error('Stripe transfer failed', [
-                                    'worker_id' => $payment['worker']->id,
-                                    'amount' => $payment['amount'],
-                                    'error' => $e->getMessage(),
-                                    'error_type' => get_class($e),
-                                ]);
-                                
-                                // Store failed transfer info in invoice metadata for retry
-                                $failedTransfers = json_decode($invoice->metadata ?? '[]', true);
-                                $failedTransfers[] = [
-                                    'worker_id' => $payment['worker']->id,
-                                    'amount' => $payment['amount'],
-                                    'error' => $e->getMessage(),
-                                    'timestamp' => now()->toIso8601String(),
-                                ];
-                                $invoice->update(['metadata' => json_encode($failedTransfers)]);
-                            }
-                        }
-                    }
-                });
-
-                // Send email to care home confirming payment
-                try {
-                    \Mail::to($careHome->email)->send(
-                        new \App\Mail\InvoicePaid($invoice)
-                    );
-                } catch (\Exception $e) {
-                    \Log::error('Failed to send invoice paid email to care home', [
-                        'care_home_id' => $careHome->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
+                $paymentService->completeStripePayment($invoice, $session);
 
                 return redirect()->route('invoices.show', $invoice)
                     ->with('success', 'Payment successful! Funds are being transferred to workers.');

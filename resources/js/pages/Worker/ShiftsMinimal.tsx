@@ -1,9 +1,9 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { SharedData } from '@/types';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
-import { Timer, XCircle } from 'lucide-react';
+import { CreditCard, Timer, XCircle } from 'lucide-react';
 
 interface Shift {
     id: string;
@@ -43,9 +43,10 @@ interface WorkerShiftsMinimalProps extends SharedData {
     roleOptions: Record<string, string>;
     isApproved?: boolean;
     approvalStatus?: string;
+    canReceivePayments?: boolean;
 }
 
-export default function WorkerShiftsMinimal({ shifts, filters, roleOptions, isApproved, approvalStatus }: WorkerShiftsMinimalProps) {
+export default function WorkerShiftsMinimal({ shifts, filters, roleOptions, isApproved, approvalStatus, canReceivePayments }: WorkerShiftsMinimalProps) {
     const [selectedShift, setSelectedShift] = useState<string | null>(null);
     const [applicationMessage, setApplicationMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -150,6 +151,29 @@ export default function WorkerShiftsMinimal({ shifts, filters, roleOptions, isAp
                                     : 'Your account has been rejected. Please contact support for assistance.'
                                 }
                             </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Stripe Setup Warning */}
+            {isApproved && !canReceivePayments && (
+                <div className="rounded-lg p-4 mb-6 bg-orange-50 border border-orange-200 dark:bg-orange-950/20 dark:border-orange-800">
+                    <div className="flex items-start gap-3">
+                        <CreditCard className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
+                        <div>
+                            <h3 className="font-semibold mb-1 text-orange-800 dark:text-orange-400">
+                                Payment Setup Required
+                            </h3>
+                            <p className="text-orange-700 dark:text-orange-300 mb-3">
+                                Your Stripe account isn't ready to receive payments yet. You will be able to view and apply for shifts once you finish setting it up.
+                            </p>
+                            <Link href="/worker/stripe">
+                                <Button className="bg-orange-600 hover:bg-orange-700">
+                                    <CreditCard className="h-4 w-4 mr-2" />
+                                    Set Up Stripe Now
+                                </Button>
+                            </Link>
                         </div>
                     </div>
                 </div>

@@ -45,10 +45,15 @@ return [
     |
     | Stripe webhook configuration for receiving event notifications.
     |
+    | Dashboard webhook destinations listen either to your own account or to
+    | connected accounts, and each has its own signing secret. The Stripe CLI
+    | uses one secret for both, so connect_secret can stay empty locally.
+    |
     */
 
     'webhook' => [
         'secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'connect_secret' => env('STRIPE_CONNECT_WEBHOOK_SECRET'),
         'tolerance' => env('STRIPE_WEBHOOK_TOLERANCE', 300),
     ],
 

@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Worker;
 
 use App\Http\Controllers\Controller;
+use App\Services\InvoicePaymentService;
 use App\Services\StripeConnectService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
@@ -14,10 +16,12 @@ use Stripe\Exception\ApiErrorException;
 class StripeController extends Controller
 {
     protected StripeConnectService $stripeService;
+    protected InvoicePaymentService $paymentService;
 
-    public function __construct(StripeConnectService $stripeService)
+    public function __construct(StripeConnectService $stripeService, InvoicePaymentService $paymentService)
     {
         $this->stripeService = $stripeService;
+        $this->paymentService = $paymentService;
     }
 
     /**
@@ -113,6 +117,18 @@ class StripeController extends Controller
             $status = $this->stripeService->updateAccountStatus($user);
 
             if ($status['onboarding_complete']) {
+                // Pay anything that was held while the account wasn't ready
+                if ($user->canReceivePayments()) {
+                    try {
+                        $this->paymentService->payOwedTransfers($user);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to pay held transfers after Stripe onboarding', [
+                            'user_id' => $user->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+
                 return redirect()
                     ->route('worker.dashboard')
                     ->with('success', 'Stripe account successfully connected! You can now receive payments.');
@@ -238,37 +254,5 @@ class StripeController extends Controller
                 'error' => 'Unable to retrieve account status',
             ], 500);
         }
-    }
-
-    /**
-     * Disconnect Stripe account
-     *
-     * @return RedirectResponse
-     */
-    public function disconnect(): RedirectResponse
-    {
-        $user = Auth::user();
-
-        if (!$user->stripe_account_id) {
-            return redirect()
-                ->route('worker.stripe.index')
-                ->with('info', 'No Stripe account is connected.');
-        }
-
-        // Note: You may want to add additional logic here to handle
-        // any pending payouts or transactions before disconnecting
-
-        $user->update([
-            'stripe_account_id' => null,
-            'stripe_onboarding_complete' => false,
-            'stripe_account_type' => null,
-            'stripe_connected_at' => null,
-            'stripe_charges_enabled' => false,
-            'stripe_payouts_enabled' => false,
-        ]);
-
-        return redirect()
-            ->route('worker.stripe.index')
-            ->with('success', 'Stripe account disconnected successfully.');
     }
 }
