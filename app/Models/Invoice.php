@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Invoice extends Model
 {
@@ -69,6 +70,14 @@ class Invoice extends Model
     {
         return $this->belongsToMany(Timesheet::class, 'invoice_timesheet')
             ->withTimestamps();
+    }
+
+    /**
+     * Get the Stripe transfers to each worker on this invoice
+     */
+    public function transfers(): HasMany
+    {
+        return $this->hasMany(InvoiceTransfer::class);
     }
 
     /**
