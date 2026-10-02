@@ -4,11 +4,9 @@ namespace Tests\Feature;
 
 use App\Mail\InvoicePaid;
 use App\Mail\PaymentReceived;
-use App\Models\CareHome;
 use App\Models\Invoice;
+use App\Models\InvoiceTransfer;
 use App\Models\Notification;
-use App\Models\Shift;
-use App\Models\Timesheet;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -26,101 +24,6 @@ beforeEach(function () {
 
     Mail::fake();
 });
-
-function postStripeEvent($test, array $event, string $secret = 'whsec_test')
-{
-    $payload = json_encode($event);
-    $timestamp = time();
-    $signature = hash_hmac('sha256', "{$timestamp}.{$payload}", $secret);
-
-    return $test->call('POST', '/stripe/webhook', [], [], [], [
-        'HTTP_STRIPE_SIGNATURE' => "t={$timestamp},v1={$signature}",
-        'CONTENT_TYPE' => 'application/json',
-    ], $payload);
-}
-
-function checkoutSession(Invoice $invoice, array $overrides = []): array
-{
-    return array_merge([
-        'id' => 'cs_test_1',
-        'object' => 'checkout.session',
-        'payment_status' => 'paid',
-        'payment_intent' => 'pi_test_1',
-        'metadata' => ['invoice_id' => $invoice->id],
-    ], $overrides);
-}
-
-function checkoutCompletedEvent(Invoice $invoice, array $overrides = []): array
-{
-    return [
-        'id' => 'evt_test_1',
-        'object' => 'event',
-        'type' => 'checkout.session.completed',
-        'data' => ['object' => checkoutSession($invoice, $overrides)],
-    ];
-}
-
-/**
- * An unpaid invoice with one approved timesheet per worker.
- * $workers is a list of [stripe_account_id|null, total_pay].
- */
-function invoiceForWorkers(array $workers): array
-{
-    $careHome = CareHome::create(['name' => 'Sunrise Care Home']);
-    $admin = User::factory()->create(['care_home_id' => $careHome->id, 'role' => 'care_home_admin']);
-
-    $users = [];
-    $timesheetIds = [];
-    $total = 0;
-
-    foreach ($workers as [$stripeAccountId, $pay]) {
-        $worker = User::factory()->create([
-            'role' => 'health_worker',
-            'stripe_account_id' => $stripeAccountId,
-        ]);
-
-        $shift = Shift::create([
-            'care_home_id' => $careHome->id,
-            'title' => 'Day shift',
-            'role' => Shift::ROLE_HEALTHCARE_ASSISTANT,
-            'start_datetime' => now()->subDay(),
-            'end_datetime' => now()->subDay()->addHours(8),
-            'duration_hours' => 8,
-            'hourly_rate' => 15,
-            'status' => Shift::STATUS_COMPLETED,
-            'created_by' => $admin->id,
-        ]);
-
-        $timesheetIds[] = Timesheet::create([
-            'shift_id' => $shift->id,
-            'worker_id' => $worker->id,
-            'care_home_id' => $careHome->id,
-            'clock_in_time' => now()->subDay(),
-            'clock_out_time' => now()->subDay()->addHours(8),
-            'total_hours' => 8,
-            'hourly_rate' => 15,
-            'total_pay' => $pay,
-            'status' => Timesheet::STATUS_APPROVED,
-        ])->id;
-
-        $users[] = $worker;
-        $total += $pay;
-    }
-
-    $invoice = Invoice::create([
-        'care_home_id' => $careHome->id,
-        'invoice_number' => 'INV-TEST-001',
-        'invoice_date' => now(),
-        'period_start' => now()->subDay(),
-        'period_end' => now(),
-        'subtotal' => $total,
-        'total' => $total,
-        'status' => Invoice::STATUS_PENDING,
-    ]);
-    $invoice->timesheets()->attach($timesheetIds);
-
-    return [$invoice, $users, $admin];
-}
 
 test('webhook rejects a request with an invalid signature', function () {
     [$invoice] = invoiceForWorkers([['acct_worker_1', 120.00]]);
@@ -187,8 +90,11 @@ test('checkout completed marks the invoice paid and transfers each worker their 
     expect($transfers['acct_worker_a']['params']['source_transaction'])->toBe('ch_test_1');
     expect($transfers['acct_worker_a']['opts']['idempotency_key'])->toBe("invoice-{$invoice->id}-worker-{$workerA->id}");
 
-    expect($invoice->payment_metadata['transfers'][$workerA->id]['status'])->toBe('paid');
-    expect($invoice->payment_metadata['transfers'][$workerB->id]['transfer_id'])->not->toBeNull();
+    $rows = $invoice->transfers->keyBy('worker_id');
+    expect($rows[$workerA->id]->status)->toBe(InvoiceTransfer::STATUS_PAID);
+    expect($rows[$workerA->id]->amount)->toBe('120.00');
+    expect($rows[$workerB->id]->stripe_transfer_id)->not->toBeNull();
+    expect($rows[$workerB->id]->paid_at)->not->toBeNull();
 
     expect(Notification::where('type', 'payment_received')->count())->toBe(2);
     Mail::assertSent(PaymentReceived::class, 2);
@@ -207,7 +113,7 @@ test('the same event delivered twice does not pay workers twice', function () {
     Mail::assertSent(InvoicePaid::class, 1);
 });
 
-test('a failed transfer and a worker without stripe are recorded on the invoice', function () {
+test('a failed transfer and a worker without stripe are recorded as owed', function () {
     [$invoice, [$failing, $unconnected, $ok]] = invoiceForWorkers([
         ['acct_failing', 50.00],
         [null, 60.00],
@@ -217,18 +123,21 @@ test('a failed transfer and a worker without stripe are recorded on the invoice'
 
     postStripeEvent($this, checkoutCompletedEvent($invoice))->assertStatus(200);
 
-    $transfers = $invoice->fresh()->payment_metadata['transfers'];
-    expect($transfers[$failing->id]['status'])->toBe('failed');
-    expect($transfers[$failing->id]['error'])->toContain('cannot receive transfers');
-    expect($transfers[$unconnected->id]['status'])->toBe('skipped');
-    expect($transfers[$ok->id]['status'])->toBe('paid');
+    $transfers = $invoice->transfers->keyBy('worker_id');
+    expect($transfers[$failing->id]->status)->toBe(InvoiceTransfer::STATUS_FAILED);
+    expect($transfers[$failing->id]->reason)->toContain('cannot receive transfers');
+    expect($transfers[$failing->id]->attempts)->toBe(1);
+    expect($transfers[$unconnected->id]->status)->toBe(InvoiceTransfer::STATUS_HELD);
+    expect($transfers[$unconnected->id]->amount)->toBe('60.00');
+    expect($transfers[$ok->id]->status)->toBe(InvoiceTransfer::STATUS_PAID);
+    expect(InvoiceTransfer::owed()->count())->toBe(2);
 
     expect($invoice->fresh()->status)->toBe(Invoice::STATUS_PAID);
     expect($this->stripe->transfersCreated)->toHaveCount(1);
     expect(Notification::where('type', 'payment_received')->pluck('user_id')->all())->toBe([$ok->id]);
 });
 
-test('a worker whose stripe account is not ready is skipped instead of transferred to', function () {
+test('a worker whose stripe account is not ready has their payment held', function () {
     [$invoice, [$restricted, $ok]] = invoiceForWorkers([
         ['acct_restricted', 50.00],
         ['acct_ok', 70.00],
@@ -237,10 +146,11 @@ test('a worker whose stripe account is not ready is skipped instead of transferr
 
     postStripeEvent($this, checkoutCompletedEvent($invoice))->assertStatus(200);
 
-    $transfers = $invoice->fresh()->payment_metadata['transfers'];
-    expect($transfers[$restricted->id]['status'])->toBe('skipped');
-    expect($transfers[$restricted->id]['error'])->toContain('not ready');
-    expect($transfers[$ok->id]['status'])->toBe('paid');
+    $transfers = $invoice->transfers->keyBy('worker_id');
+    expect($transfers[$restricted->id]->status)->toBe(InvoiceTransfer::STATUS_HELD);
+    expect($transfers[$restricted->id]->reason)->toContain('not ready');
+    expect($transfers[$ok->id]->status)->toBe(InvoiceTransfer::STATUS_PAID);
+    expect(Notification::where('type', 'payment_held')->pluck('user_id')->all())->toBe([$restricted->id]);
 
     expect(collect($this->stripe->transfersCreated)->pluck('params.destination')->all())->toBe(['acct_ok']);
     expect($restricted->fresh()->stripe_payouts_enabled)->toBeFalse();
