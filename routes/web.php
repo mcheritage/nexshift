@@ -218,6 +218,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/invoices', [App\Http\Controllers\Admin\AdminInvoiceController::class, 'index'])->name('invoices.index');
         Route::get('/invoices/{invoice}', [App\Http\Controllers\Admin\AdminInvoiceController::class, 'show'])->name('invoices.show');
 
+        // Held Payments (worker transfers that could not be sent yet)
+        Route::get('/held-payments', [App\Http\Controllers\Admin\HeldPaymentController::class, 'index'])->name('held-payments.index');
+        Route::post('/held-payments/{invoiceTransfer}/retry', [App\Http\Controllers\Admin\HeldPaymentController::class, 'retry'])->name('held-payments.retry');
+
         // Shift Management
         Route::get('/shifts', [App\Http\Controllers\Admin\AdminShiftController::class, 'index'])->name('shifts.index');
         Route::post('/shifts/{shift}/assign', [App\Http\Controllers\Admin\AdminShiftController::class, 'assign'])->name('shifts.assign');
