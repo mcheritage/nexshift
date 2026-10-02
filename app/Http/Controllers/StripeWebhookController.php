@@ -131,5 +131,10 @@ class StripeWebhookController extends Controller
         }
 
         $this->stripeService->syncAccountStatus($user, $account);
+
+        // Pay anything that was held while the worker's account wasn't ready
+        if ($user->canReceivePayments()) {
+            $this->paymentService->payOwedTransfers($user);
+        }
     }
 }
